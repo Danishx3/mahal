@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,6 +13,7 @@ import {
 } from '@/lib/schemas';
 import { DataService } from '@/lib/data-service';
 import { useAuth } from '@/lib/context/AuthContext';
+import { createClient, hasSupabaseConfig } from '@/lib/supabase/client';
 import { DIVISION_LABELS, Division } from '@/lib/supabase/types';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
@@ -26,14 +28,47 @@ import {
   ArrowLeft,
   Crown,
   ShieldCheck,
+  Lock,
+  Landmark,
+  Clock,
+  Loader2,
+  RotateCcw,
 } from 'lucide-react';
+
+const ONBOARDING_DRAFT_KEY = 'mahallu_onboarding_draft_v1';
+
+const DEFAULT_ONBOARDING_VALUES: OnboardingInput = {
+  house: {
+    house_name: '',
+    house_number: '',
+    mahallu_reg_no: '',
+    division: 'alungal',
+    phone: '',
+  },
+  members: [
+    {
+      name: '',
+      is_head_of_family: true,
+      relationship: 'Self',
+      marital_status: 'married',
+      job_status: 'Employed',
+      general_education: 'Plus Two',
+      religious_education: 'Madrasa 10th',
+      age: 40,
+      phone: '',
+    },
+  ],
+};
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, refreshProfile } = useAuth();
+  const { user, profile, house, isApproved, isPending, isLoading, refreshProfile, signOut } = useAuth();
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [hasSavedDraft, setHasSavedDraft] = useState(false);
 
   const {
     register,
@@ -41,32 +76,12 @@ export default function OnboardingPage() {
     handleSubmit,
     watch,
     setValue,
+    reset,
     trigger,
     formState: { errors },
   } = useForm<OnboardingInput>({
     resolver: zodResolver(onboardingSchema) as any,
-    defaultValues: {
-      house: {
-        house_name: '',
-        house_number: '',
-        mahallu_reg_no: '',
-        division: 'alungal',
-        phone: '',
-      },
-      members: [
-        {
-          name: '',
-          is_head_of_family: true,
-          relationship: 'Self',
-          marital_status: 'married',
-          job_status: 'Employed',
-          general_education: 'Plus Two',
-          religious_education: 'Madrasa 10th',
-          age: 40,
-          phone: '',
-        },
-      ],
-    },
+    defaultValues: DEFAULT_ONBOARDING_VALUES,
     mode: 'onChange',
   });
 
@@ -74,6 +89,86 @@ export default function OnboardingPage() {
     control,
     name: 'members',
   });
+
+  // 1. Restore saved draft on mount so data is never lost on refresh
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(ONBOARDING_DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.formData && typeof parsed.formData === 'object') {
+          reset(parsed.formData);
+          setHasSavedDraft(true);
+        }
+        if (parsed.step && [1, 2, 3].includes(parsed.step)) {
+          setCurrentStep(parsed.step);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to restore onboarding draft from localStorage:', e);
+    } finally {
+      setDraftRestored(true);
+    }
+  }, [reset]);
+
+  // 2. Auto-save form inputs to localStorage whenever changes happen
+  useEffect(() => {
+    if (!draftRestored) return;
+
+    const subscription = watch((value) => {
+      try {
+        localStorage.setItem(
+          ONBOARDING_DRAFT_KEY,
+          JSON.stringify({
+            formData: value,
+            step: currentStep,
+            updatedAt: Date.now(),
+          })
+        );
+        setHasSavedDraft(true);
+      } catch (e) {
+        console.warn('Failed to auto-save onboarding draft to localStorage:', e);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [watch, currentStep, draftRestored]);
+
+  // 3. Keep current step synced to localStorage
+  useEffect(() => {
+    if (!draftRestored) return;
+    try {
+      const saved = localStorage.getItem(ONBOARDING_DRAFT_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        localStorage.setItem(
+          ONBOARDING_DRAFT_KEY,
+          JSON.stringify({
+            ...parsed,
+            step: currentStep,
+            updatedAt: Date.now(),
+          })
+        );
+      }
+    } catch {
+      // Handled
+    }
+  }, [currentStep, draftRestored]);
+
+  // Handler to clear draft and start fresh
+  const handleResetDraft = () => {
+    if (typeof window !== 'undefined' && window.confirm('Are you sure you want to clear your saved draft and start fresh?')) {
+      try {
+        localStorage.removeItem(ONBOARDING_DRAFT_KEY);
+      } catch {
+        // Handled
+      }
+      reset(DEFAULT_ONBOARDING_VALUES);
+      setCurrentStep(1);
+      setHasSavedDraft(false);
+      toast('Registration draft cleared. Starting fresh.', 'info');
+    }
+  };
 
   const memberCount = watch('members')?.length || 1;
 
@@ -113,7 +208,7 @@ export default function OnboardingPage() {
       }
       // Check uniqueness of reg no
       const regNo = watch('house.mahallu_reg_no');
-      const isAvailable = DataService.checkRegNoAvailable(regNo);
+      const isAvailable = await DataService.checkRegNoAvailable(regNo);
       if (!isAvailable) {
         toast(`Registration number "${regNo}" is already taken. Please enter a unique ID.`, 'error');
         return;
@@ -138,23 +233,249 @@ export default function OnboardingPage() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    if (!hasSupabaseConfig()) {
+      toast(
+        'Supabase project credentials not configured in .env.local yet. Please configure your Supabase URL and Anon Key.',
+        'info'
+      );
+      return;
+    }
+    setIsGoogleLoading(true);
+    try {
+      const supabase = createClient();
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent('/onboarding')}`,
+        },
+      });
+      if (error) {
+        toast(error.message, 'error');
+      }
+    } catch (err: any) {
+      toast(err?.message || 'Authentication failed. Please check credentials.', 'error');
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   const onSubmit = async (data: OnboardingInput) => {
+    if (!user) {
+      toast('Authentication required. Please sign in with Google before submitting.', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // Save house and members via DataService
-      const userId = user?.id || ('user-' + Date.now());
-      const newHouse = DataService.createHouse(data, userId);
+      // Save house and members via DataService with authenticated Supabase user ID and email
+      const newHouse = await DataService.createHouse(data, user.id, user.email || undefined);
       await refreshProfile();
-      toast('House registration submitted successfully for administrative review!', 'success');
+      // Clear auto-saved draft upon successful submission
+      try {
+        localStorage.removeItem(ONBOARDING_DRAFT_KEY);
+      } catch {
+        // Handled
+      }
+      toast('House and family members registered successfully!', 'success');
       router.push('/onboarding/pending');
     } catch (err: any) {
-      toast(err?.message || 'Submission failed. Please check inputs.', 'error');
+      console.error('Onboarding submission error:', err);
+      toast(err?.message || 'Submission failed. Please check inputs and database connection.', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const watchedData = watch();
+
+  // 1. Session Loading State
+  if (isLoading) {
+    return (
+      <div className="flex-1 min-h-[75vh] flex flex-col items-center justify-center space-y-4 bg-slate-50">
+        <div className="h-14 w-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shadow-xs">
+          <Loader2 className="h-7 w-7 animate-spin" />
+        </div>
+        <div className="text-center space-y-1">
+          <p className="text-sm font-bold text-slate-800">Checking Account Status</p>
+          <p className="text-xs text-slate-400">Verifying session credentials...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Unauthenticated Resident Gate: Ask user to log in with Google
+  if (!user) {
+    return (
+      <div className="flex-1 bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center min-h-[80vh]">
+        <div className="max-w-lg w-full space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-10 text-center space-y-6">
+            {/* Badge & Icon */}
+            <div className="relative mx-auto w-16 h-16">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shadow-xs">
+                <Lock className="w-8 h-8" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 bg-emerald-700 text-white rounded-full p-1.5 shadow-sm">
+                <Landmark className="w-3.5 h-3.5" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-semibold">
+                Sign In Required
+              </span>
+              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                Please Sign In to Register
+              </h1>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                To submit your household details and family census to the Mahallu directory, please sign in with your Google account.
+              </p>
+            </div>
+
+            {/* Why Sign In with Google */}
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-left space-y-2.5">
+              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                Why Google Sign-In is Required:
+              </div>
+              <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
+                <li>
+                  <strong className="text-slate-800">Identity Security:</strong> Links your house records directly to your verified Google account.
+                </li>
+                <li>
+                  <strong className="text-slate-800">Dues & Receipts:</strong> Enables real-time tracking of monthly Mahallu dues and payment receipts.
+                </li>
+                <li>
+                  <strong className="text-slate-800">Verification Updates:</strong> Allows committee officials to verify your dwelling and family census.
+                </li>
+              </ul>
+            </div>
+
+            {/* Google Sign In Action */}
+            <div className="space-y-3 pt-2">
+              <Button
+                type="button"
+                onClick={handleGoogleLogin}
+                isLoading={isGoogleLoading}
+                className="w-full py-3.5 h-auto bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 hover:border-slate-400 font-bold shadow-sm flex items-center justify-center gap-3 cursor-pointer text-sm rounded-xl transition-all"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.16 0 9.97 0 12s.45 3.84 1.25 5.42l4.03-3.15z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                  />
+                </svg>
+                Sign In with Google to Register
+              </Button>
+
+              <div className="flex items-center justify-between pt-2">
+                <Link
+                  href="/"
+                  className="text-xs text-slate-500 hover:text-slate-800 transition-colors inline-flex items-center gap-1"
+                >
+                  <ArrowLeft className="h-3 w-3" />
+                  Return to Home
+                </Link>
+
+                <Link
+                  href="/auth/login?redirect=/onboarding"
+                  className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
+                >
+                  Go to Login Page &rarr;
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Compute effective house and status across Supabase and local storage
+  const effectiveHouse = house || (user ? DataService.getHouseByUserId(user.id) : null);
+  const effectiveStatus = (effectiveHouse as any)?.profile?.status || profile?.status;
+  const effectiveIsApproved = isApproved || effectiveStatus === 'approved';
+  const effectiveIsPending = !effectiveIsApproved && (isPending || effectiveStatus === 'pending_verification');
+
+  // 3. User already has a registered house
+  if (effectiveHouse) {
+    if (effectiveIsPending) {
+      return (
+        <div className="flex-1 bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center min-h-[80vh]">
+          <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-8 text-center space-y-6">
+            <div className="h-16 w-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto shadow-sm">
+              <Clock className="h-8 w-8 animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-semibold">
+                Registration Under Review
+              </span>
+              <h1 className="text-xl font-bold text-slate-900">
+                Household Already Registered
+              </h1>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                You have already registered household <strong>{effectiveHouse.house_name}</strong>. It is currently under administrative review by the Mahallu Committee.
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col gap-2">
+              <Button onClick={() => router.push('/onboarding/pending')} className="gap-2">
+                Check Verification Status
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" onClick={() => router.push('/')} className="text-xs">
+                Back to Home
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (effectiveIsApproved) {
+      return (
+        <div className="flex-1 bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center min-h-[80vh]">
+          <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-8 text-center space-y-6">
+            <div className="h-16 w-16 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto shadow-sm">
+              <CheckCircle2 className="h-8 w-8" />
+            </div>
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold">
+                Household Active
+              </span>
+              <h1 className="text-xl font-bold text-slate-900">
+                Registration Complete & Approved
+              </h1>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Your household <strong>{effectiveHouse.house_name}</strong> is verified. You have full access to the resident portal.
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col gap-2">
+              <Button onClick={() => router.push('/dashboard')} className="gap-2">
+                Go to Resident Dashboard
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" onClick={() => router.push('/')} className="text-xs">
+                Back to Home
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
 
   return (
     <div className="flex-1 bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
@@ -171,6 +492,42 @@ export default function OnboardingPage() {
           <p className="text-sm text-slate-500 max-w-xl mx-auto">
             Complete your house registration to join the Mahallu directory, track monthly membership dues, and access community services.
           </p>
+
+          {/* Authenticated Resident Identity Pill & Local Auto-Save Status */}
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-1">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-xs text-slate-600 shadow-xs">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span>
+                Signed in with Google as <strong className="text-slate-900">{user.email}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => signOut()}
+                className="text-rose-600 hover:text-rose-700 font-semibold ml-1.5 hover:underline cursor-pointer"
+              >
+                Sign out
+              </button>
+            </div>
+
+            {hasSavedDraft && (
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 font-medium animate-in fade-in">
+                <span className="flex items-center gap-1">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  Auto-saved in browser
+                </span>
+                <span className="text-emerald-300">•</span>
+                <button
+                  type="button"
+                  onClick={handleResetDraft}
+                  className="text-slate-500 hover:text-rose-600 font-semibold hover:underline cursor-pointer flex items-center gap-1"
+                  title="Clear saved draft and start over"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Reset Form
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Stepper Wizard Progress */}

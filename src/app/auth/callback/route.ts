@@ -16,27 +16,26 @@ export async function GET(request: Request) {
         .from('profiles')
         .select('role, status')
         .eq('id', data.user.id)
-        .single()) as { data: { role?: string; status?: string } | null };
+        .maybeSingle()) as { data: { role?: string; status?: string } | null };
 
       if (profile?.role === 'admin') {
         return NextResponse.redirect(`${origin}/admin`);
       }
 
-      // Check if house exists
+      // Check if house exists in DB
       const { data: house } = (await supabase
         .from('houses')
         .select('id')
         .eq('user_id', data.user.id)
-        .single()) as { data: { id?: string } | null };
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()) as { data: { id?: string } | null };
 
-      if (!house) {
-        return NextResponse.redirect(`${origin}/onboarding`);
-      }
-
-      if (profile?.status === 'pending_verification') {
+      if (house && profile?.status === 'pending_verification') {
         return NextResponse.redirect(`${origin}/onboarding/pending`);
       }
 
+      // Allow client-side AuthContext and DashboardLayout to resolve local vs remote house
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

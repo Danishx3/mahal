@@ -35,7 +35,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const syncUserState = useCallback(async (currentUser: User) => {
     setUser(currentUser);
 
-    // 1. Try fetching profile from Supabase profiles table
+    // 1. Instant local read for snappy UI and offline support
+    const localHouse = DataService.getHouseByUserId(currentUser.id);
+    if (localHouse) {
+      setHouse(localHouse);
+      if (localHouse.profile) {
+        setProfile(localHouse.profile);
+      }
+    }
+
+    // 2. Sync with Supabase database if configured
     if (hasSupabaseConfig()) {
       try {
         const supabase = createClient();
@@ -43,43 +52,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .from('profiles')
           .select('*')
           .eq('id', currentUser.id)
-          .single()) as { data: Profile | null };
+          .maybeSingle()) as { data: Profile | null };
 
-        if (profileData) {
-          setProfile(profileData);
-        } else {
-          // Default fallback profile for newly registered user
-          setProfile({
-            id: currentUser.id,
-            email: currentUser.email || '',
-            role: 'resident',
-            status: 'pending_verification',
-            created_at: new Date().toISOString(),
-          });
-        }
-
-        // 2. Fetch associated house
+        // 3. Fetch associated house with family members & dues
         const { data: houseData } = (await supabase
           .from('houses')
-          .select('*')
+          .select('*, family_members(*), payment_dues(*)')
           .eq('user_id', currentUser.id)
-          .single()) as { data: House | null };
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()) as { data: HouseWithDetails | null };
+
+        // Determine effective status: do not revert a locally approved house back to pending
+        const effectiveStatus: ProfileStatus =
+          localHouse?.profile?.status === 'approved'
+            ? 'approved'
+            : (profileData?.status || localHouse?.profile?.status || 'approved');
+
+        const resolvedProfile: Profile = {
+          id: currentUser.id,
+          email: currentUser.email || profileData?.email || localHouse?.profile?.email || '',
+          role: (profileData?.role || localHouse?.profile?.role || 'resident') as UserRole,
+          status: effectiveStatus,
+          created_at: profileData?.created_at || localHouse?.created_at || new Date().toISOString(),
+        };
+
+        setProfile(resolvedProfile);
 
         if (houseData) {
+          houseData.profile = resolvedProfile;
+          houseData.family_members = houseData.family_members || [];
+          houseData.payment_dues = houseData.payment_dues || [];
           setHouse(houseData);
-        } else {
-          const localHouse = DataService.getHouseByUserId(currentUser.id);
-          setHouse(localHouse || null);
+          DataService.saveHouseToStorage(houseData);
+        } else if (localHouse) {
+          localHouse.profile = resolvedProfile;
+          setHouse(localHouse);
         }
       } catch (err) {
         console.warn('Profile sync warning:', err);
       }
     } else {
       // Local sync if Supabase is unconfigured
-      const localHouse = DataService.getHouseByUserId(currentUser.id);
-      setHouse(localHouse || null);
-      if (localHouse?.profile) {
-        setProfile(localHouse.profile);
+      if (localHouse) {
+        setHouse(localHouse);
+        if (localHouse.profile) {
+          setProfile(localHouse.profile);
+        }
       }
     }
   }, []);
@@ -200,12 +219,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const role = profile?.role || null;
-  const status = profile?.status || null;
+  const effectiveHouse = house || (user ? DataService.getHouseByUserId(user.id) : null);
+  const role = profile?.role || (effectiveHouse as any)?.profile?.role || null;
+  const status =
+    (effectiveHouse as any)?.profile?.status === 'approved' || profile?.status === 'approved'
+      ? 'approved'
+      : (profile?.status || (effectiveHouse as any)?.profile?.status || null);
   const isAdmin = role === 'admin';
   const isResident = role === 'resident';
   const isApproved = status === 'approved';
-  const isPending = status === 'pending_verification';
+  const isPending = !isApproved && (status === 'pending_verification' || (effectiveHouse as any)?.profile?.status === 'pending_verification');
 
   return (
     <AuthContext.Provider

@@ -3,6 +3,7 @@ import './globals.css';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AuthProvider } from '@/lib/context/AuthContext';
 import { Navbar } from '@/components/shared/Navbar';
+import { TopProgressBar } from '@/components/shared/TopProgressBar';
 
 export const metadata: Metadata = {
   title: "Mahallu & Village Management System | Al-Huda Jama'ath",
@@ -23,6 +24,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           <ToastProvider>
+            <TopProgressBar />
             <Navbar />
             <main className="flex-1 flex flex-col">{children}</main>
           </ToastProvider>

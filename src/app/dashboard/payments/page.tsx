@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { DataService } from '@/lib/data-service';
 import { HouseWithDetails, PaymentDue, PaymentStatus } from '@/lib/supabase/types';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
@@ -21,11 +22,15 @@ import {
   Printer,
   Copy,
   Info,
+  Loader2,
+  Home,
 } from 'lucide-react';
+
+import { LoadingScreen } from '@/components/ui/LoadingAnimation';
 
 export default function ResidentPaymentCenter() {
   const { toast } = useToast();
-  const { user, profile, house: authHouse } = useAuth();
+  const { user, profile, house: authHouse, isLoading } = useAuth();
   const [house, setHouse] = useState<HouseWithDetails | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'under_review' | 'verified' | 'failed'>('all');
 
@@ -41,21 +46,33 @@ export default function ResidentPaymentCenter() {
 
   const loadData = () => {
     if (!user) return;
-    let userHouse = authHouse?.id
-      ? DataService.getHouseById(authHouse.id)
-      : DataService.getHouseByUserId(user.id);
+    // 1. Direct use of authHouse from Supabase via useAuth
+    let userHouse = (authHouse as HouseWithDetails | null) || null;
 
+    if (!userHouse && authHouse?.id) {
+      userHouse = DataService.getHouseById(authHouse.id) || null;
+    }
     if (!userHouse) {
-      userHouse = DataService.getHouses().find((h) => h.user_id === user.id);
+      userHouse = DataService.getHouseByUserId(user.id) || null;
+    }
+    if (!userHouse) {
+      userHouse = DataService.getHouses().find((h) => h.user_id === user.id) || null;
     }
 
     if (userHouse) {
-      // Ensure current billing cycle due exists (e.g. 2026-09)
+      if (!userHouse.family_members) userHouse.family_members = [];
+      if (!userHouse.payment_dues) userHouse.payment_dues = [];
+
+      // Ensure current billing cycle due exists (e.g. 2026-09) if not already present
       const currentMonth = '2026-09';
-      DataService.createDueForCurrentMonth(userHouse.id, currentMonth);
-      // Reload fresh house copy
-      const refreshed = DataService.getHouseById(userHouse.id);
-      setHouse(refreshed || null);
+      const hasCurrentDue = userHouse.payment_dues.some((d) => d.billing_month === currentMonth);
+      if (!hasCurrentDue) {
+        DataService.createDueForCurrentMonth(userHouse.id, currentMonth, userHouse);
+        const refreshed = DataService.getHouseById(userHouse.id);
+        setHouse(refreshed || userHouse);
+      } else {
+        setHouse(userHouse);
+      }
     }
   };
 
@@ -65,11 +82,13 @@ export default function ResidentPaymentCenter() {
     return () => window.removeEventListener('mahallu_data_updated', loadData);
   }, [user, authHouse]);
 
-  if (!house) {
+  if (isLoading || !house) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <p className="text-slate-500">Loading household payment account...</p>
-      </div>
+      <LoadingScreen
+        title="Dues & Receipts Center"
+        message="Loading monthly dues, receipts & ledger balances..."
+        minHeight="min-h-[60vh]"
+      />
     );
   }
 
@@ -147,6 +166,15 @@ export default function ResidentPaymentCenter() {
             <p className="text-xs text-slate-500">
               Track your monthly ₹100 contribution, submit UPI transaction references, and download official receipts.
             </p>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <Link href="/dashboard">
+              <Button variant="outline" size="sm" className="gap-2 text-slate-700 bg-white">
+                <Home className="h-4 w-4 text-emerald-700" />
+                Household Overview
+              </Button>
+            </Link>
           </div>
         </div>
 

@@ -70,7 +70,7 @@ export async function updateSession(request: NextRequest) {
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single()) as { data: { role?: string } | null };
+      .maybeSingle()) as { data: { role?: string } | null };
 
     if (profile?.role !== 'admin') {
       const url = request.nextUrl.clone();
@@ -87,36 +87,9 @@ export async function updateSession(request: NextRequest) {
       url.searchParams.set('redirect', pathname);
       return NextResponse.redirect(url);
     }
-
-    // Verify profile status & house
-    const { data: profile } = (await supabase
-      .from('profiles')
-      .select('status, role')
-      .eq('id', user.id)
-      .single()) as { data: { status?: string; role?: string } | null };
-
-    // Admins are allowed to inspect resident dashboards
-    if (profile?.role === 'admin') {
-      return supabaseResponse;
-    }
-
-    const { data: house } = (await supabase
-      .from('houses')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()) as { data: { id?: string } | null };
-
-    if (!house) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/onboarding';
-      return NextResponse.redirect(url);
-    }
-
-    if (profile?.status === 'pending_verification' || profile?.status === 'blocked' || profile?.status === 'rejected') {
-      const url = request.nextUrl.clone();
-      url.pathname = '/onboarding/pending';
-      return NextResponse.redirect(url);
-    }
+    // Authenticated users are permitted into /dashboard routes on the server.
+    // Client-side DashboardLayout and AuthContext handle offline-first/localStorage
+    // profile & house verification seamlessly without server-side redirect loops.
   }
 
   return supabaseResponse;

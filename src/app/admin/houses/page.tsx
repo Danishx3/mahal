@@ -43,7 +43,8 @@ export default function HousesDirectoryPage() {
   const [selectedHouse, setSelectedHouse] = useState<HouseWithDetails | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const loadData = () => {
+  const loadData = async () => {
+    await DataService.syncHousesFromSupabase();
     setStats(DataService.getSystemStats());
     const list = DataService.getHouses({
       division: divisionFilter,
@@ -59,23 +60,23 @@ export default function HousesDirectoryPage() {
     return () => window.removeEventListener('mahallu_data_updated', loadData);
   }, [divisionFilter, searchQuery, statusFilter]);
 
-  const handleBlockHouse = (houseId: string) => {
+  const handleBlockHouse = async (houseId: string) => {
     if (confirm('Are you sure you want to block this household from accessing portal services?')) {
-      DataService.blockHouse(houseId);
+      await DataService.blockHouse(houseId);
       toast('House marked as blocked', 'info');
       loadData();
     }
   };
 
-  const handleUnblockHouse = (houseId: string) => {
-    DataService.unblockHouse(houseId);
+  const handleUnblockHouse = async (houseId: string) => {
+    await DataService.unblockHouse(houseId);
     toast('House unblocked and restored to approved status', 'success');
     loadData();
   };
 
-  const handleDeleteHouse = (houseId: string, houseName: string) => {
+  const handleDeleteHouse = async (houseId: string, houseName: string) => {
     if (confirm(`Permanently delete house "${houseName}" and all associated member records?`)) {
-      DataService.deleteHouse(houseId);
+      await DataService.deleteHouse(houseId);
       toast('Household record removed', 'info');
       setDrawerOpen(false);
       loadData();

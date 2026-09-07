@@ -28,8 +28,11 @@ import {
   Briefcase,
   GraduationCap,
   BookOpen,
+  Loader2,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
+import { LoadingScreen } from '@/components/ui/LoadingAnimation';
 
 export default function ResidentDashboard() {
   const router = useRouter();
@@ -42,14 +45,23 @@ export default function ResidentDashboard() {
 
   const loadData = () => {
     if (!user) return;
-    // Load house for current user
-    let userHouse = authHouse?.id
-      ? DataService.getHouseById(authHouse.id)
-      : DataService.getHouseByUserId(user.id);
+    // 1. Direct use of authHouse from Supabase via useAuth
+    let userHouse = (authHouse as HouseWithDetails | null) || null;
 
-    // If still null, try finding any house registered by this user
+    // 2. If not found or needed, check DataService / storage
+    if (!userHouse && authHouse?.id) {
+      userHouse = DataService.getHouseById(authHouse.id) || null;
+    }
     if (!userHouse) {
-      userHouse = DataService.getHouses().find((h) => h.user_id === user.id);
+      userHouse = DataService.getHouseByUserId(user.id) || null;
+    }
+    if (!userHouse) {
+      userHouse = DataService.getHouses().find((h) => h.user_id === user.id) || null;
+    }
+
+    if (userHouse) {
+      if (!userHouse.family_members) userHouse.family_members = [];
+      if (!userHouse.payment_dues) userHouse.payment_dues = [];
     }
 
     setHouse(userHouse || null);
@@ -60,6 +72,16 @@ export default function ResidentDashboard() {
     window.addEventListener('mahallu_data_updated', loadData);
     return () => window.removeEventListener('mahallu_data_updated', loadData);
   }, [user, authHouse]);
+
+  if (isLoading) {
+    return (
+      <LoadingScreen
+        title="Resident Portal"
+        message="Loading household dashboard & dwelling records..."
+        minHeight="min-h-[60vh]"
+      />
+    );
+  }
 
   if (!house) {
     return (
@@ -137,6 +159,13 @@ export default function ResidentDashboard() {
               <p className="text-xs text-slate-500 mt-1">
                 {pendingDues.length} month(s) awaiting payment or review
               </p>
+              <Link
+                href="/dashboard/payments"
+                className="mt-3.5 inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 hover:text-amber-900 hover:underline"
+              >
+                <span>Pay Dues & Submit UPI Ref</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
           </div>
 
@@ -157,6 +186,13 @@ export default function ResidentDashboard() {
               <p className="text-xs text-slate-500 mt-1">
                 {verifiedDues.length} verified monthly contributions
               </p>
+              <Link
+                href="/dashboard/payments"
+                className="mt-3.5 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline"
+              >
+                <span>View Receipts & Ledger</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
           </div>
 

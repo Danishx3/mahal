@@ -255,6 +255,11 @@ CREATE POLICY "Users can update own basic profile"
     ON public.profiles FOR UPDATE
     USING (auth.uid() = id OR public.is_admin());
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+CREATE POLICY "Users can insert own profile"
+    ON public.profiles FOR INSERT
+    WITH CHECK (auth.uid() = id);
+
 DROP POLICY IF EXISTS "Admins have full access to profiles" ON public.profiles;
 CREATE POLICY "Admins have full access to profiles"
     ON public.profiles FOR ALL
@@ -331,6 +336,17 @@ DROP POLICY IF EXISTS "Residents can view own dues" ON public.payment_dues;
 CREATE POLICY "Residents can view own dues"
     ON public.payment_dues FOR SELECT
     USING (
+        EXISTS (
+            SELECT 1 FROM public.houses
+            WHERE houses.id = payment_dues.house_id
+              AND (houses.user_id = auth.uid() OR public.is_admin())
+        )
+    );
+
+DROP POLICY IF EXISTS "Residents can insert own dues" ON public.payment_dues;
+CREATE POLICY "Residents can insert own dues"
+    ON public.payment_dues FOR INSERT
+    WITH CHECK (
         EXISTS (
             SELECT 1 FROM public.houses
             WHERE houses.id = payment_dues.house_id

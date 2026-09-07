@@ -23,7 +23,7 @@ import { divisions } from '@/lib/schemas';
 import { useAuth } from '@/lib/context/AuthContext';
 
 export default function LandingPage() {
-  const { user, isAdmin, isApproved } = useAuth();
+  const { user, house, isAdmin, isApproved, isPending } = useAuth();
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
@@ -32,6 +32,26 @@ export default function LandingPage() {
     window.addEventListener('mahallu_data_updated', handleUpdate);
     return () => window.removeEventListener('mahallu_data_updated', handleUpdate);
   }, []);
+
+  const primaryHref = !user
+    ? '/auth/login'
+    : isAdmin
+    ? '/admin'
+    : isApproved
+    ? '/dashboard'
+    : isPending && house
+    ? '/onboarding/pending'
+    : '/onboarding';
+
+  const primaryLabel = !user
+    ? 'Access Resident Portal'
+    : isAdmin
+    ? 'Admin Console'
+    : isApproved
+    ? 'My Household Dashboard'
+    : isPending
+    ? 'Verification Status'
+    : 'Register Household';
 
   const totalHouses = stats?.totalHouses ?? 0;
   const totalPopulation = stats?.totalPopulation ?? 0;
@@ -62,14 +82,14 @@ export default function LandingPage() {
 
           {/* Primary Action Buttons */}
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-            <Link href={!user ? '/auth/login' : isAdmin ? '/admin' : isApproved ? '/dashboard' : '/onboarding/pending'}>
+            <Link href={primaryHref}>
               <Button
                 variant="primary"
                 size="lg"
                 className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold border-none shadow-xl gap-2 px-6 cursor-pointer"
               >
                 <Home className="h-5 w-5" />
-                {!user ? 'Access Resident Portal' : isAdmin ? 'Admin Console' : 'My Household Dashboard'}
+                {primaryLabel}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>

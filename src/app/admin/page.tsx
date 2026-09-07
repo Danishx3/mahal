@@ -31,7 +31,8 @@ export default function AdminDashboardPage() {
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
   const [recentLedger, setRecentLedger] = useState<any[]>([]);
 
-  const loadData = () => {
+  const loadData = async () => {
+    await DataService.syncHousesFromSupabase();
     setStats(DataService.getSystemStats());
     setFinSummary(DataService.getFinancialSummary());
     setPendingProfiles(DataService.getPendingProfiles());

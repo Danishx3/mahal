@@ -20,6 +20,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
+import { DataService } from '@/lib/data-service';
 import { Badge } from '@/components/ui/Badge';
 
 export function Navbar() {
@@ -39,6 +40,12 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
+  // Compute effective house and approval state across both Supabase and local storage
+  const effectiveHouse = house || (user ? DataService.getHouseByUserId(user.id) : null);
+  const effectiveStatus = (effectiveHouse as any)?.profile?.status || profile?.status;
+  const effectiveIsApproved = isApproved || effectiveStatus === 'approved';
+  const effectiveIsPending = !effectiveIsApproved && (isPending || effectiveStatus === 'pending_verification');
+
   // Dynamic Navigation Items based on Authenticated Role
   const adminNavItems = [
     { label: 'Dashboard', href: '/admin', icon: Landmark },
@@ -49,14 +56,15 @@ export function Navbar() {
     { label: 'Financial Ledger', href: '/admin/ledger', icon: FileSpreadsheet },
   ];
 
-  const residentNavItems = isApproved && house
-    ? [
-        { label: 'My House', href: '/dashboard', icon: Home },
-        { label: 'Pay Dues & Receipts', href: '/dashboard/payments', icon: CreditCard },
-      ]
-    : isPending && house
-    ? [{ label: 'Verification Status', href: '/onboarding/pending', icon: Clock }]
-    : [{ label: 'Register House', href: '/onboarding', icon: UserPlus }];
+  const residentNavItems =
+    effectiveIsApproved || (effectiveHouse && effectiveStatus !== 'pending_verification')
+      ? [
+          { label: 'Household Overview', href: '/dashboard', icon: Home },
+          { label: 'Pay Dues & Receipts', href: '/dashboard/payments', icon: CreditCard },
+        ]
+      : effectiveIsPending && effectiveHouse
+      ? [{ label: 'Verification Status', href: '/onboarding/pending', icon: Clock }]
+      : [{ label: 'Register House', href: '/onboarding', icon: UserPlus }];
 
   const publicNavItems = [
     { label: 'Home', href: '/', icon: Landmark },
@@ -71,9 +79,16 @@ export function Navbar() {
   const getHomeRedirect = () => {
     if (!user) return '/';
     if (isAdmin) return '/admin';
-    if (isApproved && house) return '/dashboard';
-    if (isPending && house) return '/onboarding/pending';
+    if (effectiveIsApproved && effectiveHouse) return '/dashboard';
+    if (effectiveIsPending && effectiveHouse) return '/onboarding/pending';
     return '/onboarding';
+  };
+
+  const isItemActive = (href: string) => {
+    if (href === '/' || href === '/admin' || href === '/dashboard') {
+      return pathname === href;
+    }
+    return pathname.startsWith(href);
   };
 
   return (
@@ -102,16 +117,13 @@ export function Navbar() {
             {!isLoading &&
               navItems.map((item) => {
                 const Icon = item.icon;
-                const isActive =
-                  item.href === '/admin' || item.href === '/dashboard' || item.href === '/'
-                    ? pathname === item.href
-                    : pathname.startsWith(item.href);
+                const isActive = isItemActive(item.href);
 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                       isActive
                         ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/60 shadow-xs'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
@@ -181,13 +193,22 @@ export function Navbar() {
                           Admin Console
                         </Link>
                       ) : (
-                        <Link
-                          href="/dashboard"
-                          className="flex items-center gap-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium"
-                        >
-                          <Home className="h-4 w-4 text-emerald-600" />
-                          Resident Portal
-                        </Link>
+                        <>
+                          <Link
+                            href="/dashboard"
+                            className="flex items-center gap-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium"
+                          >
+                            <Home className="h-4 w-4 text-emerald-600" />
+                            Household Overview
+                          </Link>
+                          <Link
+                            href="/dashboard/payments"
+                            className="flex items-center gap-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 font-medium"
+                          >
+                            <CreditCard className="h-4 w-4 text-emerald-600" />
+                            Pay Dues & Receipts
+                          </Link>
+                        </>
                       )}
                     </div>
 
@@ -231,7 +252,7 @@ export function Navbar() {
         <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-2 pb-4 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || pathname.startsWith(item.href);
+            const isActive = isItemActive(item.href);
             return (
               <Link
                 key={item.href}

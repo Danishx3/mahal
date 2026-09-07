@@ -4,26 +4,31 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Clock, RefreshCw, Landmark } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
+import { DataService } from '@/lib/data-service';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 
 export default function PendingVerificationPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, profile, isApproved, refreshProfile } = useAuth();
+  const { user, profile, house, isApproved, refreshProfile } = useAuth();
   const [isChecking, setIsChecking] = useState(false);
 
+  const effectiveHouse = house || (user ? DataService.getHouseByUserId(user.id) : null);
+  const effectiveIsApproved = isApproved || profile?.status === 'approved' || (effectiveHouse as any)?.profile?.status === 'approved';
+
   useEffect(() => {
-    if (isApproved) {
+    if (effectiveIsApproved) {
       router.push('/dashboard');
     }
-  }, [isApproved, router]);
+  }, [effectiveIsApproved, router]);
 
   const handleCheckStatus = async () => {
     setIsChecking(true);
     try {
       await refreshProfile();
-      if (profile?.status === 'approved') {
+      const updatedHouse = user ? DataService.getHouseByUserId(user.id) : null;
+      if (profile?.status === 'approved' || updatedHouse?.profile?.status === 'approved') {
         toast('Congratulations! Your profile has been approved.', 'success');
         router.push('/dashboard');
       } else {

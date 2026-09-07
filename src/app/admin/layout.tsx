@@ -18,6 +18,7 @@ import {
 import { useAuth } from '@/lib/context/AuthContext';
 import { DataService } from '@/lib/data-service';
 import { Button } from '@/components/ui/Button';
+import { LoadingScreen } from '@/components/ui/LoadingAnimation';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -49,14 +50,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         router.push('/dashboard');
       }
     }
-  }, [user, isAdmin, isLoading, router, pathname]);
+  }, [user, isAdmin, isLoading, router]);
 
   if (isLoading) {
     return (
-      <div className="flex-1 min-h-[70vh] flex flex-col items-center justify-center space-y-3">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-700" />
-        <p className="text-xs font-semibold text-slate-500">Verifying administrative credentials...</p>
-      </div>
+      <LoadingScreen
+        title="Mahallu Administration"
+        message="Verifying administrative credentials & loading console..."
+        minHeight="min-h-[70vh]"
+      />
     );
   }
 

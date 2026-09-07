@@ -29,13 +29,16 @@ export default function ProfileVerificationHub() {
   const [pendingHouses, setPendingHouses] = useState<HouseWithDetails[]>([]);
   const [selectedHouse, setSelectedHouse] = useState<HouseWithDetails | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   // Reject modal state
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [houseToReject, setHouseToReject] = useState<HouseWithDetails | null>(null);
+  const [isRejecting, setIsRejecting] = useState(false);
 
-  const loadPending = () => {
+  const loadPending = async () => {
+    await DataService.syncHousesFromSupabase();
     const list = DataService.getPendingProfiles();
     setPendingHouses(list);
   };
@@ -51,14 +54,22 @@ export default function ProfileVerificationHub() {
     setDrawerOpen(true);
   };
 
-  const handleApprove = (houseId: string) => {
-    const success = DataService.approveProfile(houseId);
-    if (success) {
-      toast('Household profile approved successfully! Portal access unlocked.', 'success');
-      setDrawerOpen(false);
-      loadPending();
-    } else {
-      toast('Failed to approve profile', 'error');
+  const handleApprove = async (houseId: string) => {
+    setApprovingId(houseId);
+    try {
+      const success = await DataService.approveProfile(houseId);
+      if (success) {
+        toast('Household profile approved successfully! Portal access unlocked.', 'success');
+        setDrawerOpen(false);
+        const list = DataService.getPendingProfiles();
+        setPendingHouses(list);
+      } else {
+        toast('Failed to approve profile. Please try again.', 'error');
+      }
+    } catch (err: any) {
+      toast(err?.message || 'Failed to approve profile', 'error');
+    } finally {
+      setApprovingId(null);
     }
   };
 
@@ -68,7 +79,7 @@ export default function ProfileVerificationHub() {
     setRejectModalOpen(true);
   };
 
-  const handleConfirmReject = (e: React.FormEvent) => {
+  const handleConfirmReject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!houseToReject) return;
 
@@ -77,14 +88,22 @@ export default function ProfileVerificationHub() {
       return;
     }
 
-    const success = DataService.rejectProfile(houseToReject.id, rejectionReason.trim());
-    if (success) {
-      toast('Profile rejected with explanation returned to applicant.', 'info');
-      setRejectModalOpen(false);
-      setDrawerOpen(false);
-      loadPending();
-    } else {
-      toast('Failed to reject profile', 'error');
+    setIsRejecting(true);
+    try {
+      const success = await DataService.rejectProfile(houseToReject.id, rejectionReason.trim());
+      if (success) {
+        toast('Profile rejected with explanation returned to applicant.', 'info');
+        setRejectModalOpen(false);
+        setDrawerOpen(false);
+        const list = DataService.getPendingProfiles();
+        setPendingHouses(list);
+      } else {
+        toast('Failed to reject profile', 'error');
+      }
+    } catch (err: any) {
+      toast(err?.message || 'Failed to reject profile', 'error');
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -188,6 +207,8 @@ export default function ProfileVerificationHub() {
                             variant="primary"
                             size="sm"
                             onClick={() => handleApprove(house.id)}
+                            isLoading={approvingId === house.id}
+                            disabled={approvingId !== null}
                             className="gap-1 bg-emerald-700 hover:bg-emerald-800"
                           >
                             <CheckCircle2 className="h-3.5 w-3.5" />
@@ -314,12 +335,14 @@ export default function ProfileVerificationHub() {
               </Button>
 
               <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={() => setDrawerOpen(false)}>
+                <Button variant="outline" onClick={() => setDrawerOpen(false)} disabled={approvingId !== null}>
                   Close
                 </Button>
                 <Button
                   variant="primary"
                   onClick={() => handleApprove(selectedHouse.id)}
+                  isLoading={approvingId === selectedHouse.id}
+                  disabled={approvingId !== null}
                   className="gap-1.5 bg-emerald-700 hover:bg-emerald-800"
                 >
                   <CheckCircle2 className="h-4 w-4" />
@@ -358,10 +381,11 @@ export default function ProfileVerificationHub() {
               type="button"
               variant="outline"
               onClick={() => setRejectModalOpen(false)}
+              disabled={isRejecting}
             >
               Cancel
             </Button>
-            <Button type="submit" variant="destructive">
+            <Button type="submit" variant="destructive" isLoading={isRejecting} disabled={isRejecting}>
               Confirm Rejection
             </Button>
           </div>

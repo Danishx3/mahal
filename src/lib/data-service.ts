@@ -9,7 +9,7 @@ import {
   DIVISION_LABELS,
 } from './supabase/types';
 import { OnboardingInput } from './schemas';
-import { createClient } from './supabase/client';
+import { createClient, hasSupabaseConfig } from './supabase/client';
 
 // Storage keys for client persistence
 const STORAGE_HOUSES_KEY = 'mahallu_houses_prod_v1';
@@ -36,9 +36,16 @@ function getStoredHouses(): HouseWithDetails[] {
 }
 
 function saveStoredHouses(houses: HouseWithDetails[]) {
-  memoryHouses = houses;
+  // Normalize any array profile to single object
+  const normalized = houses.map((h) => {
+    if (Array.isArray(h.profile)) {
+      return { ...h, profile: (h.profile as any)[0] };
+    }
+    return h;
+  });
+  memoryHouses = normalized;
   if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_HOUSES_KEY, JSON.stringify(houses));
+    localStorage.setItem(STORAGE_HOUSES_KEY, JSON.stringify(normalized));
     window.dispatchEvent(new Event('mahallu_data_updated'));
   }
 }
@@ -78,7 +85,10 @@ export const DataService = {
     }
 
     if (filter?.status && filter.status !== 'all') {
-      list = list.filter((h) => h.profile?.status === filter.status);
+      list = list.filter((h) => {
+        const prof = Array.isArray(h.profile) ? (h.profile[0] as any) : h.profile;
+        return prof?.status === filter.status;
+      });
     }
 
     if (filter?.search?.trim()) {
@@ -97,24 +107,208 @@ export const DataService = {
   },
 
   getHouseById(id: string): HouseWithDetails | undefined {
-    return getStoredHouses().find((h) => h.id === id);
+    const h = getStoredHouses().find((h) => h.id === id);
+    if (h && Array.isArray(h.profile)) {
+      h.profile = (h.profile as any)[0];
+    }
+    return h;
   },
 
   getHouseByUserId(userId: string): HouseWithDetails | undefined {
-    return getStoredHouses().find((h) => h.user_id === userId);
+    const h = getStoredHouses().find((h) => h.user_id === userId);
+    if (h && Array.isArray(h.profile)) {
+      h.profile = (h.profile as any)[0];
+    }
+    return h;
   },
 
-  checkRegNoAvailable(regNo: string, excludeHouseId?: string): boolean {
+  saveHouseToStorage(house: HouseWithDetails): void {
+    const houses = getStoredHouses();
+    const existing = houses.find((h) => h.id === house.id || h.user_id === house.user_id);
+    if (existing) {
+      const sameStatus = existing.profile?.status === house.profile?.status;
+      const sameDues = (existing.payment_dues?.length || 0) === (house.payment_dues?.length || 0);
+      const sameMembers = (existing.family_members?.length || 0) === (house.family_members?.length || 0);
+      if (sameStatus && sameDues && sameMembers) {
+        return;
+      }
+    }
+    const filtered = houses.filter((h) => h.id !== house.id && h.user_id !== house.user_id);
+    filtered.unshift(house);
+    saveStoredHouses(filtered);
+  },
+
+  async checkRegNoAvailable(regNo: string, excludeHouseId?: string): Promise<boolean> {
+    const cleanReg = regNo.trim();
+    if (!cleanReg) return true;
+
+    if (hasSupabaseConfig()) {
+      try {
+        const supabase = createClient();
+        let query = (supabase.from('houses') as any)
+          .select('id')
+          .ilike('mahallu_reg_no', cleanReg);
+
+        if (excludeHouseId) {
+          query = query.neq('id', excludeHouseId);
+        }
+
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          return false;
+        }
+      } catch (err) {
+        console.warn('Supabase reg_no check warning:', err);
+      }
+    }
+
     const list = getStoredHouses();
     return !list.some(
-      (h) => h.mahallu_reg_no.toLowerCase() === regNo.toLowerCase() && h.id !== excludeHouseId
+      (h) => h.mahallu_reg_no.toLowerCase() === cleanReg.toLowerCase() && h.id !== excludeHouseId
     );
   },
 
-  createHouse(input: OnboardingInput, userId: string): HouseWithDetails {
-    const houses = getStoredHouses();
-    const houseId = `h-${Date.now()}`;
+  async createHouse(input: OnboardingInput, userId: string, userEmail?: string): Promise<HouseWithDetails> {
+    const currentMonth = new Date().toISOString().slice(0, 7);
 
+    // If Supabase is configured, persist to PostgreSQL database tables
+    if (hasSupabaseConfig()) {
+      const supabase = createClient();
+
+      // 1. Ensure user profile exists in public.profiles table
+      try {
+        const { data: existingProf } = await (supabase.from('profiles') as any)
+          .select('id')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (!existingProf) {
+          const { error: profErr } = await (supabase.from('profiles') as any).upsert({
+            id: userId,
+            email: userEmail || input.members[0]?.phone || 'resident@mahallu.org',
+            role: 'resident',
+            status: 'pending_verification',
+          });
+          if (profErr) {
+            console.warn('Profile initialization note:', profErr.message);
+          }
+        }
+      } catch (profCheckErr) {
+        console.warn('Profile check warning:', profCheckErr);
+      }
+
+      // 2. Insert house into public.houses
+      const { data: insertedHouse, error: houseErr } = await (supabase.from('houses') as any)
+        .insert({
+          user_id: userId,
+          house_name: input.house.house_name.trim(),
+          house_number: input.house.house_number.trim(),
+          mahallu_reg_no: input.house.mahallu_reg_no.trim(),
+          division: input.house.division,
+          phone: input.house.phone.trim(),
+        })
+        .select()
+        .single();
+
+      if (houseErr) {
+        console.error('Database house insert error:', houseErr);
+        if (houseErr.code === '23505') {
+          if (houseErr.message.includes('mahallu_reg_no')) {
+            throw new Error(`Mahallu registration number "${input.house.mahallu_reg_no}" is already registered in the database.`);
+          }
+          if (houseErr.message.includes('user_id')) {
+            throw new Error('A household is already registered for this user account in the database.');
+          }
+        }
+        throw new Error(`Database error saving house: ${houseErr.message}`);
+      }
+
+      const realHouseId = insertedHouse.id;
+
+      // 3. Insert family members into public.family_members
+      const membersToInsert = input.members.map((m) => ({
+        house_id: realHouseId,
+        name: m.name.trim(),
+        is_head_of_family: Boolean(m.is_head_of_family),
+        relationship: m.relationship,
+        marital_status: m.marital_status,
+        job_status: m.job_status,
+        general_education: m.general_education,
+        religious_education: m.religious_education,
+        age: typeof m.age === 'number' ? m.age : null,
+        phone: m.phone && m.phone.trim() !== '' ? m.phone.trim() : null,
+      }));
+
+      const { data: insertedMembers, error: membersErr } = await (supabase.from('family_members') as any)
+        .insert(membersToInsert)
+        .select();
+
+      if (membersErr) {
+        console.error('Database family members insert error:', membersErr);
+        throw new Error(`House registered, but failed to save family members: ${membersErr.message}`);
+      }
+
+      // 4. Create initial monthly payment due in public.payment_dues
+      let insertedDue: any = null;
+      try {
+        const { data: dueData } = await (supabase.from('payment_dues') as any)
+          .insert({
+            house_id: realHouseId,
+            billing_month: currentMonth,
+            amount: 100,
+            status: 'pending',
+          })
+          .select()
+          .maybeSingle();
+        insertedDue = dueData;
+      } catch (dueErr) {
+        console.warn('Initial due notice:', dueErr);
+      }
+
+      const newHouse: HouseWithDetails = {
+        id: realHouseId,
+        user_id: userId,
+        house_name: input.house.house_name,
+        house_number: input.house.house_number,
+        mahallu_reg_no: input.house.mahallu_reg_no,
+        division: input.house.division,
+        phone: input.house.phone,
+        created_at: insertedHouse.created_at || new Date().toISOString(),
+        profile: {
+          id: userId,
+          email: userEmail || input.members[0]?.phone || 'resident@mahallu.org',
+          role: 'resident',
+          status: 'pending_verification',
+          created_at: new Date().toISOString(),
+        },
+        family_members: (insertedMembers as any[]) || membersToInsert.map((m, idx) => ({ ...m, id: `fm-${idx}` })),
+        payment_dues: insertedDue
+          ? [insertedDue]
+          : [
+              {
+                id: `due-${Date.now()}`,
+                house_id: realHouseId,
+                billing_month: currentMonth,
+                amount: 100,
+                transaction_ref: null,
+                status: 'pending',
+                submitted_at: null,
+                verified_at: null,
+                verified_by: null,
+                rejection_reason: null,
+              },
+            ],
+      };
+
+      const houses = getStoredHouses();
+      const filtered = houses.filter((h) => h.user_id !== userId && h.mahallu_reg_no !== input.house.mahallu_reg_no);
+      filtered.unshift(newHouse);
+      saveStoredHouses(filtered);
+      return newHouse;
+    }
+
+    // Local fallback if Supabase credentials are not configured
+    const houseId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `h-${Date.now()}`;
     const newHouse: HouseWithDetails = {
       id: houseId,
       user_id: userId,
@@ -126,13 +320,13 @@ export const DataService = {
       created_at: new Date().toISOString(),
       profile: {
         id: userId,
-        email: input.members[0]?.phone || 'resident@mahallu.org',
+        email: userEmail || input.members[0]?.phone || 'resident@mahallu.org',
         role: 'resident',
         status: 'pending_verification',
         created_at: new Date().toISOString(),
       },
       family_members: input.members.map((m, idx) => ({
-        id: `fm-${Date.now()}-${idx}`,
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `fm-${Date.now()}-${idx}`,
         house_id: houseId,
         name: m.name,
         is_head_of_family: m.is_head_of_family,
@@ -148,7 +342,7 @@ export const DataService = {
         {
           id: `due-${Date.now()}`,
           house_id: houseId,
-          billing_month: new Date().toISOString().slice(0, 7),
+          billing_month: currentMonth,
           amount: 100,
           transaction_ref: null,
           status: 'pending',
@@ -160,128 +354,286 @@ export const DataService = {
       ],
     };
 
-    // Also persist to Supabase if configured
+    const houses = getStoredHouses();
+    const filtered = houses.filter((h) => h.user_id !== userId && h.mahallu_reg_no !== input.house.mahallu_reg_no);
+    filtered.unshift(newHouse);
+    saveStoredHouses(filtered);
+    return newHouse;
+  },
+
+  async syncHousesFromSupabase(): Promise<HouseWithDetails[]> {
+    if (!hasSupabaseConfig()) return getStoredHouses();
     try {
       const supabase = createClient();
-      (supabase.from('houses') as any).insert({
-        id: houseId,
-        user_id: userId,
-        house_name: input.house.house_name,
-        house_number: input.house.house_number,
-        mahallu_reg_no: input.house.mahallu_reg_no,
-        division: input.house.division,
-        phone: input.house.phone,
-      }).then(() => {
-        const membersData = newHouse.family_members.map((m) => ({
-          house_id: houseId,
-          name: m.name,
-          is_head_of_family: m.is_head_of_family,
-          relationship: m.relationship,
-          marital_status: m.marital_status,
-          job_status: m.job_status,
-          general_education: m.general_education,
-          religious_education: m.religious_education,
-          age: m.age,
-          phone: m.phone,
-        }));
-        (supabase.from('family_members') as any).insert(membersData);
-      });
-    } catch {
-      // Handled
-    }
+      const { data, error } = await (supabase.from('houses') as any)
+        .select('*, family_members(*), payment_dues(*), profile:profiles(*)');
 
-    houses.unshift(newHouse);
-    saveStoredHouses(houses);
-    return newHouse;
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const existingHouses = getStoredHouses();
+        const mapped: HouseWithDetails[] = data.map((h: any) => {
+          let prof = Array.isArray(h.profile) ? h.profile[0] : h.profile;
+          const match = existingHouses.find((eh) => eh.id === h.id || eh.user_id === h.user_id);
+          if (!prof && h.user_id) {
+            prof = match?.profile || {
+              id: h.user_id,
+              email: 'resident@mahallu.org',
+              role: 'resident',
+              status: 'pending_verification',
+              created_at: h.created_at,
+            };
+          }
+          // Prevent stale Supabase read from reverting a locally approved house
+          if (match?.profile?.status === 'approved' && prof?.status === 'pending_verification') {
+            prof.status = 'approved';
+          }
+          return {
+            id: h.id,
+            user_id: h.user_id,
+            house_name: h.house_name,
+            house_number: h.house_number,
+            mahallu_reg_no: h.mahallu_reg_no,
+            division: h.division,
+            phone: h.phone,
+            created_at: h.created_at,
+            profile: prof || undefined,
+            family_members: h.family_members || [],
+            payment_dues: h.payment_dues || [],
+          };
+        });
+
+        // Merge to keep any local houses that haven't synced yet
+        const mappedIds = new Set(mapped.map((h) => h.id));
+        const merged = [...mapped];
+        for (const eh of existingHouses) {
+          if (!mappedIds.has(eh.id)) {
+            merged.push(eh);
+          }
+        }
+
+        saveStoredHouses(merged);
+        return merged;
+      }
+    } catch (err) {
+      console.warn('Supabase sync error:', err);
+    }
+    return getStoredHouses();
   },
 
   // Admin Profile Verification
   getPendingProfiles(): HouseWithDetails[] {
-    return getStoredHouses().filter((h) => h.profile?.status === 'pending_verification');
+    return getStoredHouses().filter((h) => {
+      const prof = Array.isArray(h.profile) ? (h.profile[0] as any) : h.profile;
+      return prof?.status === 'pending_verification';
+    });
   },
 
-  approveProfile(houseId: string): boolean {
+  async approveProfile(houseId: string): Promise<boolean> {
     const houses = getStoredHouses();
-    const house = houses.find((h) => h.id === houseId);
-    if (!house || !house.profile) return false;
+    const house = houses.find((h) => h.id === houseId || h.user_id === houseId);
+    if (!house) {
+      console.warn('approveProfile: house not found for id', houseId);
+      return false;
+    }
 
+    // Ensure house.profile object is initialized
+    if (Array.isArray(house.profile)) {
+      house.profile = (house.profile as any)[0];
+    }
+    if (!house.profile) {
+      house.profile = {
+        id: house.user_id,
+        email: house.phone || 'resident@mahallu.org',
+        role: 'resident',
+        status: 'pending_verification',
+        created_at: house.created_at || new Date().toISOString(),
+      };
+    }
+
+    // 1. Update local cache immediately
     house.profile.status = 'approved';
     saveStoredHouses(houses);
 
-    try {
-      const supabase = createClient();
-      (supabase.from('profiles') as any).update({ status: 'approved' }).eq('id', house.user_id);
-    } catch {
-      // Handled
+    // 2. Persist to Supabase database
+    if (hasSupabaseConfig()) {
+      try {
+        const supabase = createClient();
+        const { data, error } = await (supabase.from('profiles') as any)
+          .update({ status: 'approved' })
+          .eq('id', house.user_id)
+          .select();
+
+        if (error) {
+          console.warn('Supabase profile update warning:', error.message);
+        } else if (!data || data.length === 0) {
+          // If no row updated, try upserting profile in case it wasn't present
+          await (supabase.from('profiles') as any).upsert({
+            id: house.user_id,
+            email: house.profile?.email || 'resident@mahallu.org',
+            role: 'resident',
+            status: 'approved',
+          });
+        }
+      } catch (err) {
+        console.warn('Supabase profile approval exception:', err);
+      }
     }
 
     return true;
   },
 
-  rejectProfile(houseId: string, reason: string): boolean {
+  async rejectProfile(houseId: string, reason: string): Promise<boolean> {
     const houses = getStoredHouses();
-    const house = houses.find((h) => h.id === houseId);
-    if (!house || !house.profile) return false;
+    const house = houses.find((h) => h.id === houseId || h.user_id === houseId);
+    if (!house) return false;
+
+    if (Array.isArray(house.profile)) {
+      house.profile = (house.profile as any)[0];
+    }
+    if (!house.profile) {
+      house.profile = {
+        id: house.user_id,
+        email: house.phone || 'resident@mahallu.org',
+        role: 'resident',
+        status: 'pending_verification',
+        created_at: house.created_at || new Date().toISOString(),
+      };
+    }
 
     house.profile.status = 'rejected';
     saveStoredHouses(houses);
 
-    try {
-      const supabase = createClient();
-      (supabase.from('profiles') as any).update({ status: 'rejected' }).eq('id', house.user_id);
-    } catch {
-      // Handled
+    if (hasSupabaseConfig()) {
+      try {
+        const supabase = createClient();
+        const { data, error } = await (supabase.from('profiles') as any)
+          .update({ status: 'rejected' })
+          .eq('id', house.user_id)
+          .select();
+
+        if (error) {
+          console.warn('Supabase profile reject warning:', error.message);
+        } else if (!data || data.length === 0) {
+          await (supabase.from('profiles') as any).upsert({
+            id: house.user_id,
+            email: house.profile?.email || 'resident@mahallu.org',
+            role: 'resident',
+            status: 'rejected',
+          });
+        }
+      } catch (err) {
+        console.warn('Supabase profile reject exception:', err);
+      }
     }
 
     return true;
   },
 
-  blockHouse(houseId: string): boolean {
+  async blockHouse(houseId: string): Promise<boolean> {
     const houses = getStoredHouses();
-    const house = houses.find((h) => h.id === houseId);
-    if (!house || !house.profile) return false;
+    const house = houses.find((h) => h.id === houseId || h.user_id === houseId);
+    if (!house) return false;
+
+    if (Array.isArray(house.profile)) {
+      house.profile = (house.profile as any)[0];
+    }
+    if (!house.profile) {
+      house.profile = {
+        id: house.user_id,
+        email: house.phone || 'resident@mahallu.org',
+        role: 'resident',
+        status: 'pending_verification',
+        created_at: house.created_at || new Date().toISOString(),
+      };
+    }
 
     house.profile.status = 'blocked';
     saveStoredHouses(houses);
 
-    try {
-      const supabase = createClient();
-      (supabase.from('profiles') as any).update({ status: 'blocked' }).eq('id', house.user_id);
-    } catch {
-      // Handled
+    if (hasSupabaseConfig()) {
+      try {
+        const supabase = createClient();
+        const { data, error } = await (supabase.from('profiles') as any)
+          .update({ status: 'blocked' })
+          .eq('id', house.user_id)
+          .select();
+
+        if (error) {
+          console.warn('Supabase block warning:', error.message);
+        } else if (!data || data.length === 0) {
+          await (supabase.from('profiles') as any).upsert({
+            id: house.user_id,
+            email: house.profile?.email || 'resident@mahallu.org',
+            role: 'resident',
+            status: 'blocked',
+          });
+        }
+      } catch (err) {
+        console.warn('Supabase block exception:', err);
+      }
     }
 
     return true;
   },
 
-  unblockHouse(houseId: string): boolean {
+  async unblockHouse(houseId: string): Promise<boolean> {
     const houses = getStoredHouses();
-    const house = houses.find((h) => h.id === houseId);
-    if (!house || !house.profile) return false;
+    const house = houses.find((h) => h.id === houseId || h.user_id === houseId);
+    if (!house) return false;
+
+    if (Array.isArray(house.profile)) {
+      house.profile = (house.profile as any)[0];
+    }
+    if (!house.profile) {
+      house.profile = {
+        id: house.user_id,
+        email: house.phone || 'resident@mahallu.org',
+        role: 'resident',
+        status: 'pending_verification',
+        created_at: house.created_at || new Date().toISOString(),
+      };
+    }
 
     house.profile.status = 'approved';
     saveStoredHouses(houses);
 
-    try {
-      const supabase = createClient();
-      (supabase.from('profiles') as any).update({ status: 'approved' }).eq('id', house.user_id);
-    } catch {
-      // Handled
+    if (hasSupabaseConfig()) {
+      try {
+        const supabase = createClient();
+        const { data, error } = await (supabase.from('profiles') as any)
+          .update({ status: 'approved' })
+          .eq('id', house.user_id)
+          .select();
+
+        if (error) {
+          console.warn('Supabase unblock warning:', error.message);
+        } else if (!data || data.length === 0) {
+          await (supabase.from('profiles') as any).upsert({
+            id: house.user_id,
+            email: house.profile?.email || 'resident@mahallu.org',
+            role: 'resident',
+            status: 'approved',
+          });
+        }
+      } catch (err) {
+        console.warn('Supabase unblock exception:', err);
+      }
     }
 
     return true;
   },
 
-  deleteHouse(houseId: string): boolean {
+  async deleteHouse(houseId: string): Promise<boolean> {
     let houses = getStoredHouses();
-    houses = houses.filter((h) => h.id !== houseId);
+    houses = houses.filter((h) => h.id !== houseId && h.user_id !== houseId);
     saveStoredHouses(houses);
 
-    try {
-      const supabase = createClient();
-      (supabase.from('houses') as any).delete().eq('id', houseId);
-    } catch {
-      // Handled
+    if (hasSupabaseConfig()) {
+      try {
+        const supabase = createClient();
+        await (supabase.from('houses') as any).delete().eq('id', houseId);
+      } catch (err) {
+        console.warn('Supabase delete exception:', err);
+      }
     }
 
     return true;
@@ -316,10 +668,31 @@ export const DataService = {
     return false;
   },
 
-  createDueForCurrentMonth(houseId: string, month: string = new Date().toISOString().slice(0, 7)): PaymentDue {
+  createDueForCurrentMonth(
+    houseId: string,
+    month: string = new Date().toISOString().slice(0, 7),
+    fallbackHouse?: HouseWithDetails
+  ): PaymentDue {
     const houses = getStoredHouses();
-    const house = houses.find((h) => h.id === houseId);
-    if (!house) throw new Error('House not found');
+    let house = houses.find((h) => h.id === houseId || h.user_id === houseId);
+    if (!house && fallbackHouse) {
+      this.saveHouseToStorage(fallbackHouse);
+      house = fallbackHouse;
+    }
+    if (!house) {
+      return {
+        id: `due-${Date.now()}`,
+        house_id: houseId,
+        billing_month: month,
+        amount: 100,
+        transaction_ref: null,
+        status: 'pending',
+        submitted_at: null,
+        verified_at: null,
+        verified_by: null,
+        rejection_reason: null,
+      };
+    }
 
     let due = house.payment_dues.find((d) => d.billing_month === month);
     if (!due) {
