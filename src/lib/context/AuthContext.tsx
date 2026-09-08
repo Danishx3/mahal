@@ -31,20 +31,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [house, setHouse] = useState<HouseWithDetails | House | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Sync profile & house for authenticated user
+  // Sync profile & house for authenticated user directly from Supabase
   const syncUserState = useCallback(async (currentUser: User) => {
     setUser(currentUser);
 
-    // 1. Instant local read for snappy UI and offline support
-    const localHouse = DataService.getHouseByUserId(currentUser.id);
-    if (localHouse) {
-      setHouse(localHouse);
-      if (localHouse.profile) {
-        setProfile(localHouse.profile);
-      }
-    }
-
-    // 2. Sync with Supabase database if configured
     if (hasSupabaseConfig()) {
       try {
         const supabase = createClient();
@@ -54,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('id', currentUser.id)
           .maybeSingle()) as { data: Profile | null };
 
-        // 3. Fetch associated house with family members & dues
+        // Fetch associated house with family members & dues directly from Supabase
         const { data: houseData } = (await supabase
           .from('houses')
           .select('*, family_members(*), payment_dues(*)')
@@ -63,18 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .limit(1)
           .maybeSingle()) as { data: HouseWithDetails | null };
 
-        // Determine effective status: do not revert a locally approved house back to pending
-        const effectiveStatus: ProfileStatus =
-          localHouse?.profile?.status === 'approved'
-            ? 'approved'
-            : (profileData?.status || localHouse?.profile?.status || 'approved');
-
         const resolvedProfile: Profile = {
           id: currentUser.id,
-          email: currentUser.email || profileData?.email || localHouse?.profile?.email || '',
-          role: (profileData?.role || localHouse?.profile?.role || 'resident') as UserRole,
-          status: effectiveStatus,
-          created_at: profileData?.created_at || localHouse?.created_at || new Date().toISOString(),
+          email: currentUser.email || profileData?.email || '',
+          role: (profileData?.role || 'resident') as UserRole,
+          status: profileData?.status || 'approved',
+          created_at: profileData?.created_at || new Date().toISOString(),
         };
 
         setProfile(resolvedProfile);
@@ -82,18 +66,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (houseData) {
           houseData.profile = resolvedProfile;
           houseData.family_members = houseData.family_members || [];
-          houseData.payment_dues = houseData.payment_dues || [];
+          houseData.payment_dues = (houseData.payment_dues || []).sort((a: any, b: any) =>
+            b.billing_month.localeCompare(a.billing_month)
+          );
           setHouse(houseData);
           DataService.saveHouseToStorage(houseData);
-        } else if (localHouse) {
-          localHouse.profile = resolvedProfile;
-          setHouse(localHouse);
+        } else {
+          setHouse(null);
         }
       } catch (err) {
         console.warn('Profile sync warning:', err);
       }
     } else {
-      // Local sync if Supabase is unconfigured
+      const localHouse = DataService.getHouseByUserId(currentUser.id);
       if (localHouse) {
         setHouse(localHouse);
         if (localHouse.profile) {
@@ -178,13 +163,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Listen to live data changes (e.g. admin approves house)
   useEffect(() => {
-    const handleDataUpdated = () => {
+    const handleDataUpdated = async () => {
       if (user?.id) {
-        const localHouse = DataService.getHouseByUserId(user.id);
-        if (localHouse) {
-          setHouse(localHouse);
-          if (localHouse.profile) {
-            setProfile(localHouse.profile);
+        const freshHouse = await DataService.getHouseByUserIdAsync(user.id);
+        if (freshHouse) {
+          setHouse(freshHouse);
+          if (freshHouse.profile) {
+            setProfile(freshHouse.profile);
           }
         }
       }

@@ -27,12 +27,26 @@ import {
 } from 'lucide-react';
 
 import { LoadingScreen } from '@/components/ui/LoadingAnimation';
+import { UpiQrCode } from '@/components/shared/UpiQrCode';
 
 export default function ResidentPaymentCenter() {
   const { toast } = useToast();
   const { user, profile, house: authHouse, isLoading } = useAuth();
   const [house, setHouse] = useState<HouseWithDetails | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'under_review' | 'verified' | 'failed'>('all');
+
+  // Dynamic UPI Settings
+  const [upiSettings, setUpiSettings] = useState<{
+    upiId: string;
+    payeeName: string;
+    bankName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+  }>({
+    upiId: 'alhudamahallu@upi',
+    payeeName: "Al-Huda Mahallu Jama'ath",
+  });
+  const [showHeroQr, setShowHeroQr] = useState(false);
 
   // Submit payment modal state
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
@@ -44,43 +58,58 @@ export default function ResidentPaymentCenter() {
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [receiptDue, setReceiptDue] = useState<PaymentDue | null>(null);
 
-  const loadData = () => {
+  const loadData = async () => {
     if (!user) return;
-    // 1. Direct use of authHouse from Supabase via useAuth
-    let userHouse = (authHouse as HouseWithDetails | null) || null;
-
-    if (!userHouse && authHouse?.id) {
-      userHouse = DataService.getHouseById(authHouse.id) || null;
-    }
-    if (!userHouse) {
-      userHouse = DataService.getHouseByUserId(user.id) || null;
-    }
-    if (!userHouse) {
-      userHouse = DataService.getHouses().find((h) => h.user_id === user.id) || null;
-    }
-
-    if (userHouse) {
-      if (!userHouse.family_members) userHouse.family_members = [];
-      if (!userHouse.payment_dues) userHouse.payment_dues = [];
-
-      // Ensure current billing cycle due exists (e.g. 2026-09) if not already present
-      const currentMonth = '2026-09';
-      const hasCurrentDue = userHouse.payment_dues.some((d) => d.billing_month === currentMonth);
-      if (!hasCurrentDue) {
-        DataService.createDueForCurrentMonth(userHouse.id, currentMonth, userHouse);
-        const refreshed = DataService.getHouseById(userHouse.id);
-        setHouse(refreshed || userHouse);
-      } else {
-        setHouse(userHouse);
+    try {
+      // 1. Read directly from Supabase via DataService.getHouseByUserIdAsync
+      let userHouse = await DataService.getHouseByUserIdAsync(user.id);
+      if (!userHouse && authHouse?.id) {
+        userHouse = await DataService.getHouseByIdAsync(authHouse.id);
       }
+      if (!userHouse) {
+        userHouse = (authHouse as HouseWithDetails | null) || null;
+      }
+
+      if (userHouse) {
+        if (!userHouse.family_members) userHouse.family_members = [];
+        if (!userHouse.payment_dues) userHouse.payment_dues = [];
+
+        // Ensure all dues start from house registration date up to current month in Supabase
+        const ensuredHouse = await DataService.ensureDuesForHouse(userHouse);
+        const targetHouse: HouseWithDetails = {
+          ...ensuredHouse,
+          family_members: ensuredHouse.family_members || [],
+          payment_dues: [...ensuredHouse.payment_dues],
+        };
+
+        setHouse(targetHouse);
+      }
+
+      // 2. Load dynamic Mahallu UPI configuration
+      const upi = await DataService.getUpiSettingsAsync();
+      if (upi && upi.upiId) {
+        setUpiSettings(upi);
+      }
+    } catch (err) {
+      console.warn('loadData exception in resident payments:', err);
     }
   };
 
   useEffect(() => {
     loadData();
+    const handleUpiUpdated = (e: any) => {
+      if (e.detail && e.detail.upiId) {
+        setUpiSettings(e.detail);
+      }
+    };
+
     window.addEventListener('mahallu_data_updated', loadData);
-    return () => window.removeEventListener('mahallu_data_updated', loadData);
-  }, [user, authHouse]);
+    window.addEventListener('mahallu_upi_updated', handleUpiUpdated);
+    return () => {
+      window.removeEventListener('mahallu_data_updated', loadData);
+      window.removeEventListener('mahallu_upi_updated', handleUpiUpdated);
+    };
+  }, [user?.id]);
 
   if (isLoading || !house) {
     return (
@@ -106,7 +135,7 @@ export default function ResidentPaymentCenter() {
   const currentMonthDue =
     house.payment_dues.find((d) => d.status === 'pending') ||
     house.payment_dues.find((d) => d.status === 'under_review') ||
-    house.payment_dues[house.payment_dues.length - 1];
+    house.payment_dues[0];
 
   // Filter dues by tab
   const filteredDues = house.payment_dues.filter((d) => {
@@ -120,28 +149,57 @@ export default function ResidentPaymentCenter() {
     setSubmitModalOpen(true);
   };
 
-  const handlePaymentSubmit = (e: React.FormEvent) => {
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDue) return;
+    if (!selectedDue || !house) return;
 
-    if (!transactionRef.trim() || transactionRef.trim().length < 6) {
+    const cleanRef = transactionRef.trim();
+    if (!cleanRef || cleanRef.length < 6) {
       toast('Please enter a valid UPI or Bank UTR Transaction ID (minimum 6 characters)', 'error');
       return;
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      const success = DataService.submitPayment(selectedDue.id, transactionRef.trim());
-      setIsSubmitting(false);
-      setSubmitModalOpen(false);
+    try {
+      const success = await DataService.submitPayment(
+        selectedDue.id,
+        cleanRef,
+        house.id,
+        selectedDue.billing_month
+      );
 
       if (success) {
-        toast('Payment reference submitted successfully! Sent to Admin queue for verification.', 'success');
-        loadData();
+        toast(`Payment reference for ${selectedDue.billing_month} submitted successfully! Sent to Admin queue for verification.`, 'success');
+        setSubmitModalOpen(false);
+
+        // Immediate optimistic UI update
+        setHouse((prev) => {
+          if (!prev) return prev;
+          const updatedDues = prev.payment_dues.map((d) => {
+            if (d.id === selectedDue.id || d.billing_month === selectedDue.billing_month) {
+              return {
+                ...d,
+                status: 'under_review' as const,
+                transaction_ref: cleanRef,
+                submitted_at: new Date().toISOString(),
+                rejection_reason: null,
+              };
+            }
+            return d;
+          });
+          return { ...prev, payment_dues: updatedDues };
+        });
+
+        await loadData();
       } else {
-        toast('Failed to record submission. Please try again.', 'error');
+        toast('Failed to record submission. Please check transaction details and try again.', 'error');
       }
-    }, 400);
+    } catch (err: any) {
+      console.error('Submit payment error:', err);
+      toast(err?.message || 'Failed to submit payment reference.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleOpenReceipt = (due: PaymentDue) => {
@@ -150,8 +208,8 @@ export default function ResidentPaymentCenter() {
   };
 
   const handleCopyUpi = () => {
-    navigator.clipboard.writeText('alhudamahallu@upi');
-    toast('UPI VPA copied to clipboard: alhudamahallu@upi', 'success');
+    navigator.clipboard.writeText(upiSettings.upiId);
+    toast(`UPI ID copied to clipboard: ${upiSettings.upiId}`, 'success');
   };
 
   return (
@@ -256,8 +314,8 @@ export default function ResidentPaymentCenter() {
                 <p className="text-xs text-emerald-100/80 max-w-xl">
                   Transfer via any UPI app (GPay, PhonePe, Paytm) to the Mahallu account, then enter your 12-digit UPI reference / UTR number below.
                 </p>
-                <div className="flex items-center gap-3 pt-1 text-xs">
-                  <span className="text-emerald-200 font-mono">UPI ID: alhudamahallu@upi</span>
+                <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
+                  <span className="text-emerald-200 font-mono font-bold">UPI ID: {upiSettings.upiId}</span>
                   <button
                     onClick={handleCopyUpi}
                     className="p-1 hover:bg-white/10 rounded transition-colors text-white"
@@ -265,7 +323,29 @@ export default function ResidentPaymentCenter() {
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowHeroQr(!showHeroQr)}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-[11px] font-semibold transition-colors border border-emerald-400/30 cursor-pointer"
+                  >
+                    <QrCode className="h-3 w-3" />
+                    {showHeroQr ? 'Hide QR Code' : 'Show QR Code'}
+                  </button>
                 </div>
+
+                {showHeroQr && (
+                  <div className="mt-3 p-3.5 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md max-w-xs text-slate-900 flex justify-center">
+                    <UpiQrCode
+                      upiId={upiSettings.upiId}
+                      payeeName={upiSettings.payeeName}
+                      amount={currentMonthDue.amount}
+                      note={`Monthly Dues ${currentMonthDue.billing_month} - ${house.house_name}`}
+                      size={140}
+                      showDetails={false}
+                      showOpenAppButton={true}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
@@ -397,12 +477,12 @@ export default function ResidentPaymentCenter() {
                           </Button>
                         ) : due.status === 'pending' || due.status === 'failed' ? (
                           <Button
-                            variant="primary"
+                            variant={due.status === 'failed' ? 'destructive' : 'primary'}
                             size="sm"
                             onClick={() => handleOpenSubmitModal(due)}
                             className="gap-1.5"
                           >
-                            Pay / Enter UTR
+                            {due.status === 'failed' ? 'Re-submit UTR' : 'Pay / Enter UTR'}
                           </Button>
                         ) : (
                           <span className="text-slate-400 text-xs italic">In Admin Queue</span>
@@ -425,18 +505,34 @@ export default function ResidentPaymentCenter() {
         description={`Record your transfer for billing month ${selectedDue?.billing_month}`}
       >
         <form onSubmit={handlePaymentSubmit} className="space-y-4 text-xs">
-          {/* Transfer Instructions */}
-          <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 text-emerald-950 space-y-2">
-            <p className="font-bold flex items-center gap-1.5 text-emerald-900">
-              <QrCode className="h-4 w-4" />
-              Step 1: Pay {selectedDue ? formatCurrency(selectedDue.amount) : '₹100'}
+          {/* Step 1: Transfer Instructions & Live Dynamic UPI QR Code */}
+          <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="font-bold flex items-center gap-1.5 text-emerald-900 text-sm">
+                <QrCode className="h-4 w-4 text-emerald-800" />
+                Step 1: Scan & Pay {selectedDue ? formatCurrency(selectedDue.amount) : '₹100'}
+              </p>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200/80 text-emerald-950 uppercase tracking-wide">
+                Instant UPI
+              </span>
+            </div>
+
+            <p className="text-[11px] text-slate-600">
+              Scan this QR code with any UPI app (Google Pay, PhonePe, Paytm, BHIM) to make the transfer.
             </p>
-            <p className="text-slate-700">
-              Transfer to the Mahallu Jama&apos;ath UPI account:
-              <strong className="block font-mono text-emerald-900 select-all mt-0.5">
-                alhudamahallu@upi
-              </strong>
-            </p>
+
+            {/* Dynamic Scannable QR Code */}
+            <div className="py-2 flex justify-center">
+              <UpiQrCode
+                upiId={upiSettings.upiId}
+                payeeName={upiSettings.payeeName}
+                amount={selectedDue?.amount || 100}
+                note={`Dues ${selectedDue?.billing_month || ''} - ${house?.house_name || ''}`}
+                size={160}
+                showDetails={true}
+                showOpenAppButton={true}
+              />
+            </div>
           </div>
 
           {/* UTR Input Field */}

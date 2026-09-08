@@ -32,12 +32,18 @@ export default function AdminDashboardPage() {
   const [recentLedger, setRecentLedger] = useState<any[]>([]);
 
   const loadData = async () => {
-    await DataService.syncHousesFromSupabase();
-    setStats(DataService.getSystemStats());
-    setFinSummary(DataService.getFinancialSummary());
-    setPendingProfiles(DataService.getPendingProfiles());
-    setPendingPayments(DataService.getPaymentsUnderReview());
-    setRecentLedger(DataService.getLedger().slice(0, 5));
+    const [statsData, finData, profiles, payments, ledger] = await Promise.all([
+      DataService.getSystemStatsAsync(),
+      DataService.getFinancialSummaryAsync(),
+      DataService.getPendingProfilesAsync(),
+      DataService.getPaymentsUnderReviewAsync(),
+      DataService.getLedgerAsync(),
+    ]);
+    setStats(statsData);
+    setFinSummary(finData);
+    setPendingProfiles(profiles);
+    setPendingPayments(payments);
+    setRecentLedger(ledger.slice(0, 5));
   };
 
   useEffect(() => {

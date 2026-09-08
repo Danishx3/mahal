@@ -27,18 +27,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [pendingCount, setPendingCount] = useState(0);
   const [paymentsReviewCount, setPaymentsReviewCount] = useState(0);
 
-  const loadCounts = () => {
-    const pendingProfiles = DataService.getPendingProfiles();
-    setPendingCount(pendingProfiles.length);
-
-    const pendingPayments = DataService.getPaymentsUnderReview();
-    setPaymentsReviewCount(pendingPayments.length);
+  const loadCounts = async () => {
+    try {
+      const [pendingProfiles, pendingPayments] = await Promise.all([
+        DataService.getPendingProfilesAsync(),
+        DataService.getPaymentsUnderReviewAsync(),
+      ]);
+      setPendingCount(pendingProfiles.length);
+      setPaymentsReviewCount(pendingPayments.length);
+    } catch {
+      // Fallback
+    }
   };
 
   useEffect(() => {
     loadCounts();
-    window.addEventListener('mahallu_data_updated', loadCounts);
-    return () => window.removeEventListener('mahallu_data_updated', loadCounts);
+    const interval = setInterval(() => {
+      loadCounts();
+    }, 12000);
+
+    const handleLocalUpdate = () => {
+      loadCounts();
+    };
+
+    window.addEventListener('mahallu_data_updated', handleLocalUpdate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('mahallu_data_updated', handleLocalUpdate);
+    };
   }, []);
 
   // Role-Based Access Enforcement

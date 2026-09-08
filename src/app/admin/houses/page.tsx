@@ -44,14 +44,13 @@ export default function HousesDirectoryPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const loadData = async () => {
-    await DataService.syncHousesFromSupabase();
-    setStats(DataService.getSystemStats());
-    const list = DataService.getHouses({
+    const list = await DataService.getHousesAsync({
       division: divisionFilter,
       search: searchQuery,
       status: statusFilter,
     });
     setHouses(list);
+    setStats(DataService.getSystemStats());
   };
 
   useEffect(() => {

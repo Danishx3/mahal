@@ -38,8 +38,7 @@ export default function ProfileVerificationHub() {
   const [isRejecting, setIsRejecting] = useState(false);
 
   const loadPending = async () => {
-    await DataService.syncHousesFromSupabase();
-    const list = DataService.getPendingProfiles();
+    const list = await DataService.getPendingProfilesAsync();
     setPendingHouses(list);
   };
 

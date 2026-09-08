@@ -40,9 +40,11 @@ export default function FinancialLedgerPage() {
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const loadLedger = () => {
-    setLedger(DataService.getLedger());
-    setSummary(DataService.getFinancialSummary());
+  const loadLedger = async () => {
+    const list = await DataService.getLedgerAsync();
+    setLedger(list);
+    const sum = await DataService.getFinancialSummaryAsync();
+    setSummary(sum);
   };
 
   useEffect(() => {
@@ -68,8 +70,10 @@ export default function FinancialLedgerPage() {
 
   const categories = Array.from(new Set(ledger.map((item) => item.category)));
 
-  const handleCreateEntry = (e: React.FormEvent) => {
+  const handleCreateEntry = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
       toast('Please enter a valid positive amount', 'error');
@@ -80,21 +84,24 @@ export default function FinancialLedgerPage() {
       return;
     }
 
-    setIsSubmitting(true);
-    setTimeout(() => {
-      DataService.addLedgerEntry({
+    try {
+      setIsSubmitting(true);
+      await DataService.addLedgerEntryAsync({
         type: entryType,
         category,
         amount: numAmount,
         description: description.trim(),
       });
-      setIsSubmitting(false);
       setEntryModalOpen(false);
       setAmount('');
       setDescription('');
       toast(`Recorded manual ${entryType} transaction of ${formatCurrency(numAmount)}!`, 'success');
-      loadLedger();
-    }, 400);
+      await loadLedger();
+    } catch {
+      toast('Failed to record transaction', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleExportCSV = () => {

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
+import { useAuth } from '@/lib/context/AuthContext';
 import {
   CreditCard,
   CheckCircle2,
@@ -19,28 +20,138 @@ import {
   Calendar,
   AlertCircle,
   Check,
+  RefreshCw,
+  QrCode,
+  Settings,
 } from 'lucide-react';
+
+import { UpiQrCode } from '@/components/shared/UpiQrCode';
 
 export default function PaymentVerificationHub() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [reviewQueue, setReviewQueue] = useState<{ due: PaymentDue; house: HouseWithDetails }[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // UPI Settings state
+  const [upiModalOpen, setUpiModalOpen] = useState(false);
+  const [isSavingUpi, setIsSavingUpi] = useState(false);
+  const [upiSettings, setUpiSettings] = useState<{
+    upiId: string;
+    payeeName: string;
+    bankName?: string;
+    accountNumber?: string;
+    ifscCode?: string;
+  }>({
+    upiId: 'alhudamahallu@upi',
+    payeeName: "Al-Huda Mahallu Jama'ath",
+    bankName: 'State Bank of India',
+    accountNumber: '123456789012',
+    ifscCode: 'SBIN0001234',
+  });
+
+  // Modal form fields
+  const [formUpiId, setFormUpiId] = useState('');
+  const [formPayeeName, setFormPayeeName] = useState('');
+  const [formBankName, setFormBankName] = useState('');
+  const [formAccountNumber, setFormAccountNumber] = useState('');
+  const [formIfscCode, setFormIfscCode] = useState('');
 
   // Rejection modal state
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [selectedDueId, setSelectedDueId] = useState<string | null>(null);
+  const [isRejecting, setIsRejecting] = useState(false);
 
-  const loadQueue = () => {
-    const list = DataService.getPaymentsUnderReview();
-    setReviewQueue(list);
+  const loadUpi = async () => {
+    try {
+      const s = await DataService.getUpiSettingsAsync();
+      if (s && s.upiId) {
+        setUpiSettings(s);
+        setFormUpiId(s.upiId);
+        setFormPayeeName(s.payeeName);
+        setFormBankName(s.bankName || '');
+        setFormAccountNumber(s.accountNumber || '');
+        setFormIfscCode(s.ifscCode || '');
+      }
+    } catch {}
+  };
+
+  const loadQueue = async (manual = false) => {
+    try {
+      if (manual) {
+        setIsRefreshing(true);
+      }
+      const list = await DataService.getPaymentsUnderReviewAsync();
+      setReviewQueue(list);
+      if (manual) {
+        toast(`Verification queue updated: ${list.length} payment(s) awaiting review.`, 'info');
+      }
+    } catch (err) {
+      console.warn('Error syncing payments review queue from Supabase:', err);
+      setReviewQueue(DataService.getPaymentsUnderReview());
+    } finally {
+      if (manual) {
+        setIsRefreshing(false);
+      }
+    }
   };
 
   useEffect(() => {
-    loadQueue();
-    window.addEventListener('mahallu_data_updated', loadQueue);
-    return () => window.removeEventListener('mahallu_data_updated', loadQueue);
+    loadQueue(false);
+    loadUpi();
+
+    const interval = setInterval(() => {
+      loadQueue(false);
+    }, 15000);
+
+    const handleDataUpdated = () => {
+      loadQueue(false);
+    };
+
+    const handleUpiUpdated = (e: any) => {
+      if (e.detail) {
+        setUpiSettings(e.detail);
+      }
+    };
+
+    window.addEventListener('mahallu_data_updated', handleDataUpdated);
+    window.addEventListener('mahallu_upi_updated', handleUpiUpdated);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('mahallu_data_updated', handleDataUpdated);
+      window.removeEventListener('mahallu_upi_updated', handleUpiUpdated);
+    };
   }, []);
+
+  const handleSaveUpi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanId = formUpiId.trim().toLowerCase();
+    if (!cleanId || !cleanId.includes('@')) {
+      toast('Please enter a valid UPI ID containing "@" (e.g., alhudamahallu@upi)', 'error');
+      return;
+    }
+
+    setIsSavingUpi(true);
+    try {
+      const updated = await DataService.saveUpiSettingsAsync({
+        upiId: cleanId,
+        payeeName: formPayeeName.trim() || "Al-Huda Mahallu Jama'ath",
+        bankName: formBankName.trim() || undefined,
+        accountNumber: formAccountNumber.trim() || undefined,
+        ifscCode: formIfscCode.trim() || undefined,
+      });
+
+      setUpiSettings(updated);
+      setUpiModalOpen(false);
+      toast(`Mahallu UPI ID updated successfully to ${updated.upiId}!`, 'success');
+    } catch (err: any) {
+      toast(err?.message || 'Failed to save UPI settings', 'error');
+    } finally {
+      setIsSavingUpi(false);
+    }
+  };
 
   const handleCopy = (ref: string, dueId: string) => {
     navigator.clipboard.writeText(ref);
@@ -49,16 +160,19 @@ export default function PaymentVerificationHub() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleApprove = (dueId: string, houseRegNo: string) => {
-    const success = DataService.verifyPayment(dueId);
+  const handleApprove = async (dueId: string, houseRegNo: string) => {
+    // Optimistically remove from review queue for instant UI response
+    setReviewQueue((prev) => prev.filter((item) => item.due.id !== dueId && item.due.billing_month !== dueId));
+    const success = await DataService.verifyPayment(dueId, user?.id);
     if (success) {
       toast(
         `Payment for ${houseRegNo} approved! Automatic credit posted to Financial Ledger.`,
         'success'
       );
-      loadQueue();
+      await loadQueue(false);
     } else {
       toast('Failed to verify payment', 'error');
+      await loadQueue(false);
     }
   };
 
@@ -68,22 +182,33 @@ export default function PaymentVerificationHub() {
     setRejectModalOpen(true);
   };
 
-  const handleConfirmReject = (e: React.FormEvent) => {
+  const handleConfirmReject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDueId) return;
+    if (!selectedDueId || isRejecting) return;
 
-    if (!rejectionReason.trim()) {
+    const trimmedReason = rejectionReason.trim();
+    if (!trimmedReason) {
       toast('Please enter a rejection reason', 'error');
       return;
     }
 
-    const success = DataService.rejectPayment(selectedDueId, rejectionReason.trim());
-    if (success) {
-      toast('Payment marked failed. Explanation returned to resident dashboard.', 'info');
-      setRejectModalOpen(false);
-      loadQueue();
-    } else {
-      toast('Failed to reject payment', 'error');
+    try {
+      setIsRejecting(true);
+      // Optimistically remove from queue immediately
+      setReviewQueue((prev) => prev.filter((item) => item.due.id !== selectedDueId && item.due.billing_month !== selectedDueId));
+
+      const success = await DataService.rejectPayment(selectedDueId, trimmedReason, user?.id);
+      if (success) {
+        toast('Payment marked failed. Explanation returned to resident dashboard.', 'info');
+        setRejectModalOpen(false);
+        setRejectionReason('');
+        await loadQueue(false);
+      } else {
+        toast('Failed to reject payment', 'error');
+        await loadQueue(false);
+      }
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -103,6 +228,93 @@ export default function PaymentVerificationHub() {
           <p className="text-xs text-slate-500 mt-0.5">
             Real-time queue of monthly dues submissions. Reconcile UPI / UTR transaction IDs against bank records.
           </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => loadQueue(true)}
+            disabled={isRefreshing}
+            className="gap-2 text-xs border-slate-200 hover:bg-slate-50 text-slate-700 font-medium shadow-xs"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-emerald-600' : 'text-slate-500'}`} />
+            {isRefreshing ? 'Syncing...' : 'Sync Queue'}
+          </Button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              setFormUpiId(upiSettings.upiId);
+              setFormPayeeName(upiSettings.payeeName);
+              setFormBankName(upiSettings.bankName || '');
+              setFormAccountNumber(upiSettings.accountNumber || '');
+              setFormIfscCode(upiSettings.ifscCode || '');
+              setUpiModalOpen(true);
+            }}
+            className="gap-2 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold shadow-xs"
+          >
+            <QrCode className="h-3.5 w-3.5" />
+            Mahallu UPI Settings
+          </Button>
+        </div>
+      </div>
+
+      {/* Active Mahallu UPI Account & QR Banner */}
+      <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="p-3 rounded-xl bg-white/10 text-emerald-300 border border-white/10 shrink-0">
+            <QrCode className="h-6 w-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-emerald-200 uppercase tracking-wider">
+                Official Mahallu Receiving Account
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/20">
+                Active
+              </span>
+            </div>
+            <div className="text-base sm:text-lg font-mono font-bold text-white mt-0.5 flex items-center gap-2">
+              <span>{upiSettings.upiId}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(upiSettings.upiId);
+                  toast(`Copied UPI ID: ${upiSettings.upiId}`, 'success');
+                }}
+                className="p-1 hover:bg-white/10 rounded transition-colors text-emerald-300 hover:text-white"
+                title="Copy UPI ID"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <p className="text-[11px] text-emerald-100/70 mt-0.5">
+              Payee: <strong>{upiSettings.payeeName}</strong>
+              {upiSettings.bankName && ` • ${upiSettings.bankName}`}
+              {upiSettings.accountNumber && ` (A/C: ${upiSettings.accountNumber})`}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setFormUpiId(upiSettings.upiId);
+              setFormPayeeName(upiSettings.payeeName);
+              setFormBankName(upiSettings.bankName || '');
+              setFormAccountNumber(upiSettings.accountNumber || '');
+              setFormIfscCode(upiSettings.ifscCode || '');
+              setUpiModalOpen(true);
+            }}
+            className="w-full sm:w-auto text-xs bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5"
+          >
+            <Settings className="h-3.5 w-3.5" />
+            Configure UPI ID & QR
+          </Button>
         </div>
       </div>
 
@@ -245,12 +457,151 @@ export default function PaymentVerificationHub() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setRejectModalOpen(false)}
+              onClick={() => {
+                if (!isRejecting) setRejectModalOpen(false);
+              }}
+              disabled={isRejecting}
             >
               Cancel
             </Button>
-            <Button type="submit" variant="destructive">
-              Confirm Rejection
+            <Button
+              type="submit"
+              variant="destructive"
+              disabled={isRejecting || !rejectionReason.trim()}
+            >
+              {isRejecting ? 'Rejecting...' : 'Confirm Rejection'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Configure Mahallu UPI ID Modal */}
+      <Modal
+        isOpen={upiModalOpen}
+        onClose={() => setUpiModalOpen(false)}
+        title="Configure Mahallu UPI & Receiving Account"
+        description="Update the official UPI ID and bank details used for resident dues collection and QR codes"
+        maxWidth="2xl"
+      >
+        <form onSubmit={handleSaveUpi} className="space-y-4 text-xs">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+            {/* Left Column: Form Fields */}
+            <div className="space-y-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Mahallu UPI ID (VPA) *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. alhudamahallu@upi or 9847012345@okbizaxis"
+                  value={formUpiId}
+                  onChange={(e) => setFormUpiId(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  required
+                />
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Must include &apos;@&apos; (Google Pay, PhonePe, Paytm, BHIM VPA).
+                </p>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Payee Organization Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Al-Huda Mahallu Jama'ath"
+                  value={formPayeeName}
+                  onChange={(e) => setFormPayeeName(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Bank Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. State Bank of India"
+                  value={formBankName}
+                  onChange={(e) => setFormBankName(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Account No. (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Account Number"
+                    value={formAccountNumber}
+                    onChange={(e) => setFormAccountNumber(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    IFSC Code (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. SBIN0001234"
+                    value={formIfscCode}
+                    onChange={(e) => setFormIfscCode(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none uppercase"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Real-time Live QR Code Preview */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col items-center text-center space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Live QR Code Preview
+              </span>
+              <p className="text-[11px] text-slate-400">
+                This exact QR code will be generated for residents paying ₹100 dues.
+              </p>
+
+              <div className="py-2">
+                <UpiQrCode
+                  upiId={formUpiId.trim() || 'alhudamahallu@upi'}
+                  payeeName={formPayeeName.trim() || "Al-Huda Mahallu Jama'ath"}
+                  amount={100}
+                  note="Mahallu Monthly Dues Preview"
+                  size={140}
+                  showDetails={false}
+                  showOpenAppButton={false}
+                />
+              </div>
+
+              <span className="font-mono text-xs text-emerald-900 font-bold">
+                {formUpiId.trim() || 'alhudamahallu@upi'}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setUpiModalOpen(false)}
+              disabled={isSavingUpi}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={isSavingUpi}
+              className="bg-emerald-700 hover:bg-emerald-800"
+            >
+              Save UPI Settings
             </Button>
           </div>
         </form>

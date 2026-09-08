@@ -43,35 +43,43 @@ export default function ResidentDashboard() {
   const [editRequestModalOpen, setEditRequestModalOpen] = useState(false);
   const [editNote, setEditNote] = useState('');
 
-  const loadData = () => {
+  const loadData = async () => {
     if (!user) return;
-    // 1. Direct use of authHouse from Supabase via useAuth
-    let userHouse = (authHouse as HouseWithDetails | null) || null;
+    try {
+      // Direct query from Supabase
+      let userHouse = await DataService.getHouseByUserIdAsync(user.id);
 
-    // 2. If not found or needed, check DataService / storage
-    if (!userHouse && authHouse?.id) {
-      userHouse = DataService.getHouseById(authHouse.id) || null;
-    }
-    if (!userHouse) {
-      userHouse = DataService.getHouseByUserId(user.id) || null;
-    }
-    if (!userHouse) {
-      userHouse = DataService.getHouses().find((h) => h.user_id === user.id) || null;
-    }
+      if (!userHouse && authHouse?.id) {
+        userHouse = await DataService.getHouseByIdAsync(authHouse.id);
+      }
+      if (!userHouse) {
+        userHouse = (authHouse as HouseWithDetails | null) || null;
+      }
 
-    if (userHouse) {
-      if (!userHouse.family_members) userHouse.family_members = [];
-      if (!userHouse.payment_dues) userHouse.payment_dues = [];
-    }
+      if (userHouse) {
+        if (!userHouse.family_members) userHouse.family_members = [];
+        if (!userHouse.payment_dues) userHouse.payment_dues = [];
+        const ensured = DataService.ensureDuesForHouseSync(userHouse);
+        const targetHouse: HouseWithDetails = {
+          ...ensured,
+          family_members: ensured.family_members || [],
+          payment_dues: [...ensured.payment_dues],
+        };
 
-    setHouse(userHouse || null);
+        setHouse(targetHouse);
+      } else {
+        setHouse(null);
+      }
+    } catch (err) {
+      console.warn('loadData resident dashboard error:', err);
+    }
   };
 
   useEffect(() => {
     loadData();
     window.addEventListener('mahallu_data_updated', loadData);
     return () => window.removeEventListener('mahallu_data_updated', loadData);
-  }, [user, authHouse]);
+  }, [user?.id]);
 
   if (isLoading) {
     return (
