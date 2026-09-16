@@ -1,271 +1,439 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import {
-  Landmark,
   ShieldCheck,
   CreditCard,
   Users,
   Home,
   FileSpreadsheet,
   ArrowRight,
-  CheckCircle2,
   Sparkles,
   MapPin,
   Lock,
-  ChevronRight,
+  Bell,
+  BarChart3,
+  Globe,
+  Briefcase,
+  Baby,
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 import { DataService } from '@/lib/data-service';
 import { DIVISION_LABELS, Division } from '@/lib/supabase/types';
 import { divisions } from '@/lib/schemas';
 import { useAuth } from '@/lib/context/AuthContext';
+
+/* ───── Animated Counter Hook ───── */
+function useAnimatedCounter(target: number, duration = 1000) {
+  const [value, setValue] = useState(target);
+  const ref = useRef<HTMLDivElement>(null);
+  const prevTargetRef = useRef(target);
+
+  useEffect(() => {
+    const from = prevTargetRef.current;
+    prevTargetRef.current = target;
+
+    if (target <= 0) {
+      setValue(0);
+      return;
+    }
+
+    if (from === target && value === target) {
+      return;
+    }
+
+    const startVal = value;
+    let animFrame: number;
+    const startTime = performance.now();
+
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const nextVal = Math.round(startVal + (target - startVal) * eased);
+      setValue(nextVal);
+      if (progress < 1) {
+        animFrame = requestAnimationFrame(animate);
+      } else {
+        setValue(target);
+      }
+    };
+
+    animFrame = requestAnimationFrame(animate);
+    return () => {
+      if (animFrame) cancelAnimationFrame(animFrame);
+    };
+  }, [target, duration]);
+
+  return { value, ref };
+}
+
+/* ───── Scroll-reveal Hook ───── */
+function useReveal() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15 }
+    );
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return { ref, visible };
+}
+
+/* ─────────────────────────────────────────────────── */
+/* FEATURES DATA                                       */
+/* ─────────────────────────────────────────────────── */
+const FEATURES = [
+  {
+    icon: Home,
+    title: 'Household Registry',
+    desc: 'Complete census with family members, demographics, and employment tracking per household.',
+    color: 'from-emerald-500 to-teal-600',
+  },
+  {
+    icon: CreditCard,
+    title: 'Monthly Dues & UPI',
+    desc: 'Automated due tracking with UPI QR code generation and instant payment reconciliation.',
+    color: 'from-blue-500 to-indigo-600',
+  },
+  {
+    icon: FileSpreadsheet,
+    title: 'Financial Ledger',
+    desc: 'Double-entry bookkeeping with automated credit/debit entries for every transaction.',
+    color: 'from-violet-500 to-purple-600',
+  },
+  {
+    icon: Bell,
+    title: 'Smart Reminders',
+    desc: 'Automated defaulter detection and payment reminder system for unpaid households.',
+    color: 'from-amber-500 to-orange-600',
+  },
+  {
+    icon: BarChart3,
+    title: 'Analytics Dashboard',
+    desc: 'Real-time visualizations of payment trends, division breakdowns, and financial health.',
+    color: 'from-rose-500 to-pink-600',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Enterprise Security',
+    desc: 'PostgreSQL Row-Level Security with role-based access control and admin verification.',
+    color: 'from-cyan-500 to-sky-600',
+  },
+];
 
 export default function LandingPage() {
   const { user, house, isAdmin, isApproved, isPending } = useAuth();
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
-    setStats(DataService.getSystemStats());
-    const handleUpdate = () => setStats(DataService.getSystemStats());
+    let isMounted = true;
+
+    // Fast initial set from memory/cache
+    const initialStats = DataService.getSystemStats();
+    if (initialStats) {
+      setStats(initialStats);
+    }
+
+    // Always fetch fresh from Supabase
+    const loadFreshStats = async () => {
+      try {
+        const fresh = await DataService.getSystemStatsAsync();
+        if (isMounted && fresh) {
+          setStats(fresh);
+        }
+      } catch (err) {
+        console.warn('Failed to load fresh landing page stats:', err);
+      }
+    };
+
+    loadFreshStats();
+
+    const handleUpdate = () => {
+      loadFreshStats();
+    };
+
     window.addEventListener('mahallu_data_updated', handleUpdate);
-    return () => window.removeEventListener('mahallu_data_updated', handleUpdate);
+    const interval = setInterval(loadFreshStats, 4000);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('mahallu_data_updated', handleUpdate);
+      clearInterval(interval);
+    };
   }, []);
 
   const primaryHref = !user
     ? '/auth/login'
     : isAdmin
-    ? '/admin'
-    : isApproved
-    ? '/dashboard'
-    : isPending && house
-    ? '/onboarding/pending'
-    : '/onboarding';
+      ? '/admin'
+      : isApproved
+        ? '/dashboard'
+        : isPending && house
+          ? '/onboarding/pending'
+          : '/onboarding';
 
   const primaryLabel = !user
     ? 'Access Resident Portal'
     : isAdmin
-    ? 'Admin Console'
-    : isApproved
-    ? 'My Household Dashboard'
-    : isPending
-    ? 'Verification Status'
-    : 'Register Household';
+      ? 'Admin Console'
+      : isApproved
+        ? 'My Household Dashboard'
+        : isPending
+          ? 'Verification Status'
+          : 'Register Household';
 
   const totalHouses = stats?.totalHouses ?? 0;
   const totalPopulation = stats?.totalPopulation ?? 0;
+  const totalChildren = stats?.totalChildren ?? 0;
+  const totalAbroad = stats?.totalAbroad ?? 0;
+
+  const housesCounter = useAnimatedCounter(totalHouses);
+  const populationCounter = useAnimatedCounter(totalPopulation);
+  const childrenCounter = useAnimatedCounter(totalChildren);
+  const abroadCounter = useAnimatedCounter(totalAbroad);
+
+  const divisionsReveal = useReveal();
+  const featuresReveal = useReveal();
 
   return (
-    <div className="flex-1 flex flex-col">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-emerald-950 via-slate-900 to-slate-950 text-white py-20 lg:py-28 px-4 sm:px-6 lg:px-8">
-        {/* Subtle decorative glow */}
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-emerald-600/15 rounded-full blur-3xl pointer-events-none" />
+    <div className="flex-1 flex flex-col overflow-x-hidden">
+      {/* ═══════════ HERO ═══════════ */}
+      <section className="relative overflow-hidden bg-[#0a1628] text-white min-h-[92vh] flex items-center">
+        {/* Animated gradient background */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/80 via-[#0a1628] to-slate-950" />
+          {/* Floating orbs */}
+          <div className="absolute top-20 left-[15%] w-72 h-72 bg-emerald-500/10 rounded-full blur-[100px] animate-[float_8s_ease-in-out_infinite]" />
+          <div className="absolute bottom-32 right-[10%] w-96 h-96 bg-teal-400/8 rounded-full blur-[120px] animate-[float_10s_ease-in-out_infinite_reverse]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-600/5 rounded-full blur-[150px]" />
+          {/* Grid pattern overlay */}
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+              backgroundSize: '60px 60px',
+            }}
+          />
+        </div>
 
-        <div className="max-w-6xl mx-auto relative z-10 text-center space-y-8">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-900/80 border border-emerald-500/30 text-emerald-300 text-xs font-semibold backdrop-blur-md shadow-inner">
-            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-            <span>Digital Governance for Al-Huda Mahallu Jama&apos;ath</span>
-          </div>
+        <div className="max-w-7xl mx-auto relative z-10 px-4 sm:px-6 lg:px-8 py-20 lg:py-24 w-full">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            {/* Left: Text content */}
+            <div className="space-y-8 text-center lg:text-left">
 
-          {/* Heading */}
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-tight">
-            Empowering Households With Unified Mahallu Administration
-          </h1>
+              {/* Heading */}
+              <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-extrabold tracking-tight leading-[1.1]">
+                <span className="text-white">Unified Mahallu</span>
+                <br />
+                <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+                  Administration
+                </span>
+              </h1>
 
-          {/* Subheading */}
-          <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
-            A secure full-stack portal combining household census registries, monthly membership dues tracking, UPI transaction reconciliation, and double-entry financial ledger accounting.
-          </p>
+              {/* Subheading */}
+              <p className="text-base sm:text-lg text-slate-400 max-w-xl leading-relaxed">
+                A comprehensive portal for household registration, membership dues tracking,
+                UPI payment reconciliation, and double-entry financial management — built
+                for modern village governance.
+              </p>
 
-          {/* Primary Action Buttons */}
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-            <Link href={primaryHref}>
-              <Button
-                variant="primary"
-                size="lg"
-                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold border-none shadow-xl gap-2 px-6 cursor-pointer"
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-4 justify-center lg:justify-start pt-2">
+                <Link href={primaryHref}>
+                  <button className="group relative inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
+                    {primaryLabel}
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </button>
+                </Link>
+
+                {!user && (
+                  <Link href="/onboarding">
+                    <button className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-sm hover:bg-white/10 backdrop-blur-sm transition-all duration-300 cursor-pointer">
+                      <Users className="h-4 w-4 text-emerald-400" />
+                      Register Household
+                    </button>
+                  </Link>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Stats bento grid */}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              {/* Registered Houses – large card */}
+              <div
+                ref={housesCounter.ref}
+                className="col-span-2 p-6 rounded-2xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/[0.08] backdrop-blur-md"
               >
-                <Home className="h-5 w-5" />
-                {primaryLabel}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-emerald-400 tracking-wide uppercase">
+                      Registered Houses
+                    </p>
+                    <p className="text-5xl sm:text-6xl font-extrabold text-white mt-2 tabular-nums">
+                      {housesCounter.value}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">Across all 6 divisions</p>
+                  </div>
+                  <div className="h-16 w-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                    <Home className="h-8 w-8 text-emerald-400" />
+                  </div>
+                </div>
+              </div>
 
-            <Link href="/onboarding">
-              <Button
-                variant="outline"
-                size="lg"
-                className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md font-semibold gap-2 px-6 cursor-pointer"
+              {/* Census Population */}
+              <div
+                ref={populationCounter.ref}
+                className="p-5 rounded-2xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] backdrop-blur-md"
               >
-                <Users className="h-5 w-5 text-emerald-400" />
-                Register New Household
-              </Button>
-            </Link>
-          </div>
+                <Users className="h-5 w-5 text-teal-400 mb-3" />
+                <p className="text-3xl sm:text-4xl font-extrabold text-white tabular-nums">
+                  {populationCounter.value}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-1">Census Population</p>
+              </div>
 
-          {/* Key Metrics Counter Strip */}
-          <div className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto text-left">
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-              <span className="text-xs text-emerald-400 block font-medium">Registered Houses</span>
-              <span className="text-2xl sm:text-3xl font-extrabold text-white">{totalHouses}</span>
-              <span className="text-[11px] text-slate-400 block mt-0.5">Across 6 divisions</span>
-            </div>
+              {/* Children */}
+              <div
+                ref={childrenCounter.ref}
+                className="p-5 rounded-2xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] backdrop-blur-md"
+              >
+                <Baby className="h-5 w-5 text-amber-400 mb-3" />
+                <p className="text-3xl sm:text-4xl font-extrabold text-white tabular-nums">
+                  {childrenCounter.value}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-1">Children (&lt;18)</p>
+              </div>
 
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-              <span className="text-xs text-emerald-400 block font-medium">Census Population</span>
-              <span className="text-2xl sm:text-3xl font-extrabold text-white">{totalPopulation}</span>
-              <span className="text-[11px] text-slate-400 block mt-0.5">Recorded residents</span>
-            </div>
+              {/* Monthly Due */}
+              <div className="p-5 rounded-2xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] backdrop-blur-md">
+                <CreditCard className="h-5 w-5 text-blue-400 mb-3" />
+                <p className="text-3xl sm:text-4xl font-extrabold text-white">
+                  ₹{stats?.monthlyDueAmount ?? 100}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-1">Per household/month</p>
+              </div>
 
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-              <span className="text-xs text-emerald-400 block font-medium">Monthly Due</span>
-              <span className="text-2xl sm:text-3xl font-extrabold text-white">₹100</span>
-              <span className="text-[11px] text-slate-400 block mt-0.5">Per household/mo</span>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-xs">
-              <span className="text-xs text-emerald-400 block font-medium">Data Security</span>
-              <span className="text-2xl sm:text-3xl font-extrabold text-white">100% RLS</span>
-              <span className="text-[11px] text-slate-400 block mt-0.5">PostgreSQL isolation</span>
+              {/* Abroad */}
+              <div
+                ref={abroadCounter.ref}
+                className="p-5 rounded-2xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] backdrop-blur-md"
+              >
+                <Briefcase className="h-5 w-5 text-violet-400 mb-3" />
+                <p className="text-3xl sm:text-4xl font-extrabold text-white tabular-nums">
+                  {abroadCounter.value}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-1">Members Abroad</p>
+              </div>
             </div>
           </div>
         </div>
-      </section>
 
-      {/* Feature Split Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
-        <div className="max-w-6xl mx-auto space-y-16">
-          <div className="text-center space-y-3">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-700">
-              Role-Based Architecture
-            </h2>
-            <p className="text-3xl font-bold tracking-tight text-slate-900">
-              Two Integrated Experiences, One Unified Platform
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Resident Card */}
-            <div className="rounded-3xl border border-slate-200 bg-slate-50/50 p-8 flex flex-col justify-between space-y-6 hover:shadow-lg transition-shadow">
-              <div className="space-y-4">
-                <div className="h-12 w-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center">
-                  <Home className="h-6 w-6" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900">Resident Self-Service Portal</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Allows house owners to complete structured multi-step onboarding, register all family members, track monthly ₹100 dues, submit UPI references, and print official receipts.
-                </p>
-                <ul className="space-y-2.5 text-xs text-slate-700 font-medium">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    Multi-step house and dynamic family member census form
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    Pending verification security guard screen
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    Instant UPI UTR submission against active billing cycles
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    Official electronic print & download receipts with digital seal
-                  </li>
-                </ul>
-              </div>
-
-              <Link href="/dashboard" className="w-full">
-                <Button variant="outline" className="w-full justify-between">
-                  <span>Enter Resident Portal</span>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-
-            {/* Admin Card */}
-            <div className="rounded-3xl border border-slate-200 bg-slate-50/50 p-8 flex flex-col justify-between space-y-6 hover:shadow-lg transition-shadow">
-              <div className="space-y-4">
-                <div className="h-12 w-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center">
-                  <ShieldCheck className="h-6 w-6 text-emerald-400" />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900">Mahallu Administration Suite</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Equips the President, Secretary, and Committee with complete oversight across 250+ houses, payment verification queues, defaulter alerts, and transparent ledger accounting.
-                </p>
-                <ul className="space-y-2.5 text-xs text-slate-700 font-medium">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    Household profile verification queue with complete census audit
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    Real-time payment verification queue with 1-click copy UTR
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    Automatic credit posting to financial ledger upon verification
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    Defaulters tracking with batch reminder transmission & CSV export
-                  </li>
-                </ul>
-              </div>
-
-              <Link href="/admin" className="w-full">
-                <Button variant="primary" className="w-full justify-between bg-slate-900 hover:bg-slate-800">
-                  <span>Enter Admin Suite</span>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </div>
+        {/* Bottom wave divider */}
+        <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none">
+          <svg
+            viewBox="0 0 1440 80"
+            className="w-full h-auto"
+            preserveAspectRatio="none"
+            fill="none"
+          >
+            <path
+              d="M0,40 C360,80 720,0 1080,40 C1260,60 1380,50 1440,40 L1440,80 L0,80 Z"
+              fill="#f8fafc"
+            />
+          </svg>
         </div>
       </section>
 
-      {/* Six Divisions Explorer */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-50 border-t border-slate-200">
-        <div className="max-w-6xl mx-auto space-y-8">
-          <div className="text-center space-y-2">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-700">
+      {/* ═══════════ DIVISIONS ═══════════ */}
+      <section className="py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-slate-50">
+        <div
+          ref={divisionsReveal.ref}
+          className={`max-w-7xl mx-auto transition-all duration-700 ${divisionsReveal.visible
+            ? 'opacity-100 translate-y-0'
+            : 'opacity-0 translate-y-8'
+            }`}
+        >
+          {/* Section header */}
+          <div className="text-center mb-14 space-y-3">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold uppercase tracking-widest border border-emerald-100">
+              <MapPin className="h-3 w-3" />
               Geographical Organization
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900">
+              6 Administrative Divisions
             </h2>
-            <p className="text-2xl sm:text-3xl font-bold text-slate-900">
-              6 Local Administrative Divisions
-            </p>
-            <p className="text-xs text-slate-500 max-w-lg mx-auto">
-              Every house belongs to a designated division for organized representation and local welfare.
+            <p className="text-sm text-slate-500 max-w-lg mx-auto">
+              Every household is organized under a geographical division for efficient
+              local representation and welfare management.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {divisions.map((div) => {
+          {/* Division cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            {divisions.map((div, i) => {
               const divStats = stats?.divisionBreakdown?.[div];
               const houseCount = divStats?.houses ?? 0;
               const popCount = divStats?.population ?? 0;
+              const maxHouses = Math.max(
+                ...Object.values(stats?.divisionBreakdown ?? {}).map(
+                  (d: any) => d?.houses ?? 0
+                ),
+                1
+              );
+              const barPercent = Math.round((houseCount / maxHouses) * 100);
+
               return (
                 <div
                   key={div}
-                  className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3"
+                  className="group relative bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-lg hover:border-emerald-200 transition-all duration-300 hover:-translate-y-0.5"
+                  style={{ animationDelay: `${i * 80}ms` }}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-emerald-700" />
-                      <span className="font-bold text-sm text-slate-900">
-                        {DIVISION_LABELS[div as Division]}
-                      </span>
+                  {/* Top row */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm shadow-emerald-200">
+                        <MapPin className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm text-slate-900">
+                          {DIVISION_LABELS[div as Division]}
+                        </h3>
+                        <p className="text-[11px] text-slate-400">Division</p>
+                      </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold font-mono">
-                      {houseCount} Houses
+                    <span className="text-2xl font-extrabold text-emerald-600 tabular-nums">
+                      {houseCount}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
-                    <span>Census Count:</span>
-                    <span className="font-bold text-slate-800">{popCount} Residents</span>
+
+                  {/* Progress bar */}
+                  <div className="mb-3">
+                    <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-1000 ease-out"
+                        style={{ width: `${barPercent}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bottom stats */}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400">Population</span>
+                    <span className="font-bold text-slate-700 tabular-nums">
+                      {popCount} residents
+                    </span>
                   </div>
                 </div>
               );
@@ -274,34 +442,51 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-slate-950 text-slate-400 py-12 px-4 sm:px-6 lg:px-8 border-t border-slate-800 text-xs">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-emerald-800 text-white flex items-center justify-center">
-              <Landmark className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="font-bold text-slate-200">Al-Huda Mahallu Jama&apos;ath Federation</p>
-              <p className="text-[11px] text-slate-500">
-                Village Governance & Electronic Ledger System • Built with Next.js & Supabase
-              </p>
-            </div>
-          </div>
+      {/* ═══════════ CTA BANNER ═══════════ */}
+      <section className="relative overflow-hidden bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-600 py-16 lg:py-20 px-4 sm:px-6 lg:px-8">
+        {/* Decorative elements */}
+        <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-80 h-80 bg-white/5 rounded-full translate-x-1/3 translate-y-1/3" />
 
-          <div className="flex items-center gap-4 text-xs">
-            <Link href="/auth/login" className="hover:text-white transition-colors">
-              Access Portal
+        <div className="max-w-4xl mx-auto relative z-10 text-center space-y-6">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
+            Ready to Join the Digital Mahallu?
+          </h2>
+          <p className="text-emerald-100 text-base sm:text-lg max-w-2xl mx-auto">
+            Register your household today and experience seamless dues management,
+            transparent financial records, and smart community governance.
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+            <Link href={primaryHref}>
+              <button className="group inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl bg-white text-emerald-700 font-bold text-sm shadow-xl shadow-emerald-900/20 hover:shadow-emerald-900/30 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
+                {primaryLabel}
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </button>
             </Link>
-            <span>•</span>
-            <Link href="/onboarding" className="hover:text-white transition-colors">
-              Register House
-            </Link>
-            <span>•</span>
-            <span className="text-emerald-500 font-medium">PostgreSQL RLS Protected</span>
+            {!user && (
+              <Link href="/onboarding">
+                <button className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white font-semibold text-sm hover:bg-white/20 backdrop-blur-sm transition-all duration-300 cursor-pointer">
+                  Register New Household
+                </button>
+              </Link>
+            )}
           </div>
         </div>
-      </footer>
+      </section>
+
+      {/* ═══════════ INLINE STYLES FOR ANIMATIONS ═══════════ */}
+      <style jsx>{`
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0) scale(1);
+          }
+          50% {
+            transform: translateY(-20px) scale(1.05);
+          }
+        }
+      `}</style>
     </div>
   );
 }

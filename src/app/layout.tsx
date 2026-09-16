@@ -3,10 +3,11 @@ import './globals.css';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AuthProvider } from '@/lib/context/AuthContext';
 import { Navbar } from '@/components/shared/Navbar';
+import { Footer } from '@/components/shared/Footer';
 import { TopProgressBar } from '@/components/shared/TopProgressBar';
 
 export const metadata: Metadata = {
-  title: "Mahallu & Village Management System | Al-Huda Jama'ath",
+  title: "Mahallu & Village Management System | Kunjikkulam Juma Masjid",
   description:
     'Comprehensive digital governance, household registry, monthly dues tracking, and double-entry financial ledger for Mahallu Jamaath.',
 };
@@ -27,6 +28,7 @@ export default function RootLayout({
             <TopProgressBar />
             <Navbar />
             <main className="flex-1 flex flex-col">{children}</main>
+            <Footer />
           </ToastProvider>
         </AuthProvider>
       </body>

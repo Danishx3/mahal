@@ -32,13 +32,14 @@ function cleanPhoneNumber(phone?: string | null): string {
   return clean;
 }
 
-function getReminderMessage(houseName: string, regNo: string, month: string, upiId = 'alhudamahallu@upi'): string {
-  return `Assalamu Alaikum. This is a gentle reminder from Al-Huda Mahallu Jama'ath for ${houseName} (${regNo}) regarding monthly membership dues of ₹100 for the period ${month}. Kindly transfer via UPI to ${upiId} and submit your UTR reference on the portal. Jazakallahu Khair.`;
+function getReminderMessage(houseName: string, regNo: string, month: string, upiId = 'alhudamahallu@upi', amount?: number): string {
+  const dueAmt = amount ?? DataService.getMonthlyDueAmount(month);
+  return `Assalamu Alaikum. This is a gentle reminder from Kunjikkulam Juma Masjid for ${houseName} (${regNo}) regarding monthly membership dues of ₹${dueAmt} for the period ${month}. Kindly transfer via UPI to ${upiId} and submit your UTR reference on the portal. Jazakallahu Khair.`;
 }
 
-function getWhatsAppUrl(phone: string, houseName: string, regNo: string, month: string, upiId?: string): string {
+function getWhatsAppUrl(phone: string, houseName: string, regNo: string, month: string, upiId?: string, amount?: number): string {
   const cleanPhone = cleanPhoneNumber(phone);
-  const msg = getReminderMessage(houseName, regNo, month, upiId);
+  const msg = getReminderMessage(houseName, regNo, month, upiId, amount);
   if (!cleanPhone) return '';
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
 }
@@ -107,8 +108,10 @@ export default function PaymentDefaultersPage() {
   // All houses data for selected month & division
   const [allHousesData, setAllHousesData] = useState<{ house: HouseWithDetails; due: any }[]>([]);
 
-  // Action states
-  const [markingPaidHouseId, setMarkingPaidHouseId] = useState<string | null>(null);
+  // Action & confirmation modal states
+  const [confirmHouse, setConfirmHouse] = useState<HouseWithDetails | null>(null);
+  const [batchConfirmOpen, setBatchConfirmOpen] = useState(false);
+  const [isConfirmingPaid, setIsConfirmingPaid] = useState(false);
   const [isBatchMarking, setIsBatchMarking] = useState(false);
 
   // Batch reminder modal state
@@ -164,12 +167,14 @@ export default function PaymentDefaultersPage() {
   }, []);
 
   useEffect(() => {
+    const dueAmount = DataService.getMonthlyDueAmount(selectedMonth);
     setReminderMessage(
-      `Assalamu Alaikum. This is a gentle reminder from Al-Huda Mahallu Jama'ath regarding monthly membership dues of ₹100 for period ${selectedMonth}. Kindly transfer via UPI to ${activeUpiId} and submit your UTR reference on the portal. Jazakallahu Khair.`
+      `Assalamu Alaikum. This is a gentle reminder from Kunjikkulam Juma Masjid regarding monthly membership dues of ₹${dueAmount} for period ${selectedMonth}. Kindly transfer via UPI to ${activeUpiId} and submit your UTR reference on the portal. Jazakallahu Khair.`
     );
   }, [selectedMonth, activeUpiId]);
 
-  // Derived counts
+  // Derived counts & balances
+  const monthlyRate = DataService.getMonthlyDueAmount(selectedMonth);
   const unpaidHouses = allHousesData.filter(
     (d) => !d.due || d.due.status === 'pending' || d.due.status === 'failed'
   );
@@ -179,8 +184,12 @@ export default function PaymentDefaultersPage() {
   const unpaidCount = unpaidHouses.length;
   const underReviewCount = underReviewHouses.length;
   const verifiedCount = verifiedHouses.length;
-  const totalOutstanding = (unpaidCount + underReviewCount) * 100;
-  const totalCollected = verifiedCount * 100;
+  const totalOutstanding = allHousesData
+    .filter((d) => !d.due || d.due.status !== 'verified')
+    .reduce((sum, d) => sum + (d.due?.amount ?? monthlyRate), 0);
+  const totalCollected = allHousesData
+    .filter((d) => d.due?.status === 'verified')
+    .reduce((sum, d) => sum + (d.due?.amount ?? monthlyRate), 0);
 
   // Filter by selected status
   const statusFilteredList = allHousesData.filter((d) => {
@@ -234,21 +243,23 @@ export default function PaymentDefaultersPage() {
     }
   };
 
-  // Mark a single house as paid
-  const handleMarkAsPaid = async (house: HouseWithDetails) => {
-    setMarkingPaidHouseId(house.id);
+  // Execute single house payment confirmation
+  const handleConfirmMarkAsPaid = async () => {
+    if (!confirmHouse) return;
+    setIsConfirmingPaid(true);
     try {
       const ok = await DataService.markHouseDueAsPaidAsync(
-        house.id,
+        confirmHouse.id,
         selectedMonth,
         user?.id || 'admin',
         'Cash / Offline'
       );
       if (ok) {
         toast(
-          `Payment for ${house.house_name} (${house.mahallu_reg_no}) marked as Paid! Credit posted to Financial Ledger.`,
+          `Payment for ${confirmHouse.house_name} (${confirmHouse.mahallu_reg_no}) marked as Paid! Credit posted to Financial Ledger.`,
           'success'
         );
+        setConfirmHouse(null);
         await loadHouses();
       } else {
         toast('Failed to record payment', 'error');
@@ -256,18 +267,19 @@ export default function PaymentDefaultersPage() {
     } catch (err: any) {
       toast(err.message || 'Error recording payment', 'error');
     } finally {
-      setMarkingPaidHouseId(null);
+      setIsConfirmingPaid(false);
     }
   };
 
-  // Batch mark selected unpaid houses as paid
-  const handleBatchMarkAsPaid = async () => {
+  // Execute batch payment confirmation
+  const handleConfirmBatchMarkAsPaid = async () => {
     const toMark = filteredList
       .filter((d) => selectedHouseIds.includes(d.house.id) && d.due?.status !== 'verified')
       .map((d) => d.house);
 
     if (toMark.length === 0) {
       toast('No unpaid households selected to mark as paid', 'info');
+      setBatchConfirmOpen(false);
       return;
     }
 
@@ -287,6 +299,7 @@ export default function PaymentDefaultersPage() {
         `Successfully marked ${count} household(s) as Paid! Automatic credits posted to Financial Ledger.`,
         'success'
       );
+      setBatchConfirmOpen(false);
       await loadHouses();
     } catch (err: any) {
       toast(err.message || 'Error marking batch payments', 'error');
@@ -324,7 +337,7 @@ export default function PaymentDefaultersPage() {
               houseName: house.house_name,
               regNo: house.mahallu_reg_no,
               email,
-              amount: 100,
+              amount: allHousesData.find((d) => d.house.id === house.id)?.due?.amount ?? monthlyRate,
             },
           ],
         }),
@@ -358,7 +371,7 @@ export default function PaymentDefaultersPage() {
         houseName: d.house.house_name,
         regNo: d.house.mahallu_reg_no,
         email: d.house.profile!.email!,
-        amount: 100,
+        amount: d.due?.amount ?? monthlyRate,
       }));
 
     if (recipients.length === 0) {
@@ -429,12 +442,12 @@ export default function PaymentDefaultersPage() {
           {unpaidSelectedCount > 0 && (
             <Button
               variant="outline"
-              onClick={handleBatchMarkAsPaid}
+              onClick={() => setBatchConfirmOpen(true)}
               disabled={isBatchMarking}
               className="gap-1.5 border-emerald-600 text-emerald-800 hover:bg-emerald-50 text-xs font-bold"
             >
               <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              {isBatchMarking ? 'Marking Paid...' : `Mark Selected as Paid (${unpaidSelectedCount})`}
+              {isBatchMarking ? 'Processing...' : `Mark Selected as Paid (${unpaidSelectedCount})`}
             </Button>
           )}
 
@@ -460,7 +473,7 @@ export default function PaymentDefaultersPage() {
             <Calendar className="h-6 w-6 text-emerald-700" />
             {selectedMonth}
           </div>
-          <p className="text-xs text-slate-500 mt-1">Standard ₹100/mo per household</p>
+          <p className="text-xs text-slate-500 mt-1">Tier: {formatCurrency(monthlyRate)}/mo per household</p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
@@ -623,7 +636,7 @@ export default function PaymentDefaultersPage() {
                   const isVerified = due?.status === 'verified';
                   const isUnderReview = due?.status === 'under_review';
                   const hasReminded = remindedHouseIds.has(house.id);
-                  const isMarkingThis = markingPaidHouseId === house.id;
+                  const isMarkingThis = confirmHouse?.id === house.id && isConfirmingPaid;
 
                   return (
                     <tr
@@ -684,7 +697,7 @@ export default function PaymentDefaultersPage() {
                         {isVerified ? (
                           <span className="text-emerald-700 font-semibold text-[11px]">₹0.00 (Cleared)</span>
                         ) : (
-                          <span>₹100.00</span>
+                          <span>{formatCurrency(due?.amount ?? monthlyRate)}</span>
                         )}
                       </td>
 
@@ -693,13 +706,12 @@ export default function PaymentDefaultersPage() {
                           {/* Option to Mark as Paid */}
                           {!isVerified ? (
                             <button
-                              onClick={() => handleMarkAsPaid(house)}
-                              disabled={isMarkingThis}
+                              onClick={() => setConfirmHouse(house)}
                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-[11px] transition-colors shadow-xs"
                               title={`Mark dues as paid for ${house.house_name}`}
                             >
                               <CheckCircle2 className="h-3 w-3" />
-                              {isMarkingThis ? 'Saving...' : 'Mark as Paid'}
+                              Mark as Paid
                             </button>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold text-[11px]">
@@ -893,6 +905,142 @@ export default function PaymentDefaultersPage() {
                 Send Automated Reminders ({selectedEmails.length})
               </Button>
             </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal for Single Mark as Paid */}
+      <Modal
+        isOpen={Boolean(confirmHouse)}
+        onClose={() => {
+          if (!isConfirmingPaid) setConfirmHouse(null);
+        }}
+        title="Confirm Mark as Paid"
+        description={`Record verified offline/cash payment for ${confirmHouse?.house_name || ''}`}
+        maxWidth="md"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+              <span className="text-slate-500 font-medium">Household</span>
+              <span className="font-bold text-slate-900">{confirmHouse?.house_name}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+              <span className="text-slate-500 font-medium">Mahallu Reg No</span>
+              <span className="font-mono font-bold text-emerald-800">{confirmHouse?.mahallu_reg_no}</span>
+            </div>
+            <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+              <span className="text-slate-500 font-medium">Billing Period</span>
+              <span className="font-bold text-slate-900 flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5 text-emerald-700" />
+                {selectedMonth}
+              </span>
+            </div>
+            <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+              <span className="text-slate-500 font-medium">Payment Mode</span>
+              <span className="font-semibold text-slate-800">Cash / Direct Collection</span>
+            </div>
+            <div className="flex justify-between items-center pt-1">
+              <span className="text-slate-700 font-bold">Total Amount</span>
+              <span className="text-base font-extrabold text-emerald-800">₹100.00</span>
+            </div>
+          </div>
+
+          <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl text-emerald-900 text-[11px] leading-relaxed flex items-start gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
+            <p>
+              Confirming this payment will mark the dues for <strong>{selectedMonth}</strong> as verified and automatically post a credit of <strong>₹100.00</strong> to the Mahallu Financial Ledger.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setConfirmHouse(null)}
+              disabled={isConfirmingPaid}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={handleConfirmMarkAsPaid}
+              isLoading={isConfirmingPaid}
+              className="gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-xs font-bold"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Confirm & Mark as Paid
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Confirmation Modal for Batch Mark as Paid */}
+      <Modal
+        isOpen={batchConfirmOpen}
+        onClose={() => {
+          if (!isBatchMarking) setBatchConfirmOpen(false);
+        }}
+        title="Confirm Batch Mark as Paid"
+        description={`Record verified offline payments for ${unpaidSelectedCount} selected household(s)`}
+        maxWidth="md"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+              <span className="text-slate-500 font-medium">Selected Households</span>
+              <span className="font-bold text-slate-900">{unpaidSelectedCount} Houses</span>
+            </div>
+            <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+              <span className="text-slate-500 font-medium">Billing Period</span>
+              <span className="font-bold text-slate-900 flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5 text-emerald-700" />
+                {selectedMonth}
+              </span>
+            </div>
+            <div className="flex justify-between items-center pb-2 border-b border-slate-200">
+              <span className="text-slate-500 font-medium">Amount per House</span>
+              <span className="font-medium text-slate-800">₹100.00</span>
+            </div>
+            <div className="flex justify-between items-center pt-1">
+              <span className="text-slate-700 font-bold">Total Collection to Credit</span>
+              <span className="text-base font-extrabold text-emerald-800">
+                {formatCurrency(unpaidSelectedCount * 100)}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl text-emerald-900 text-[11px] leading-relaxed flex items-start gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0 mt-0.5" />
+            <p>
+              This will mark all {unpaidSelectedCount} selected household dues as verified and post {unpaidSelectedCount} credit entries ({formatCurrency(unpaidSelectedCount * 100)}) to the Financial Ledger.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setBatchConfirmOpen(false)}
+              disabled={isBatchMarking}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={handleConfirmBatchMarkAsPaid}
+              isLoading={isBatchMarking}
+              className="gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-xs font-bold"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Confirm All as Paid ({unpaidSelectedCount})
+            </Button>
           </div>
         </div>
       </Modal>

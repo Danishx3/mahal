@@ -23,7 +23,10 @@ import {
   RefreshCw,
   QrCode,
   Settings,
+  Coins,
+  History,
 } from 'lucide-react';
+import { DuesSettings } from '@/lib/data-service';
 
 import { UpiQrCode } from '@/components/shared/UpiQrCode';
 
@@ -44,8 +47,8 @@ export default function PaymentVerificationHub() {
     accountNumber?: string;
     ifscCode?: string;
   }>({
-    upiId: 'alhudamahallu@upi',
-    payeeName: "Al-Huda Mahallu Jama'ath",
+    upiId: 'kunjikkulam@upi',
+    payeeName: "Kunjikkulam Juma Masjid",
     bankName: 'State Bank of India',
     accountNumber: '123456789012',
     ifscCode: 'SBIN0001234',
@@ -58,11 +61,39 @@ export default function PaymentVerificationHub() {
   const [formAccountNumber, setFormAccountNumber] = useState('');
   const [formIfscCode, setFormIfscCode] = useState('');
 
+  // Monthly Due Fee Settings state
+  const [duesModalOpen, setDuesModalOpen] = useState(false);
+  const [isSavingDues, setIsSavingDues] = useState(false);
+  const [newDueAmount, setNewDueAmount] = useState('100');
+  const [duesSettings, setDuesSettings] = useState<DuesSettings>({
+    defaultAmount: 100,
+    currentAmount: 100,
+    history: [],
+    updatedAt: new Date().toISOString(),
+  });
+  const [duesSchedule, setDuesSchedule] = useState({
+    currentMonth: new Date().toISOString().slice(0, 7),
+    currentAmount: 100,
+    nextMonth: '',
+    nextAmount: 100,
+    isPendingChange: false,
+  });
+
   // Rejection modal state
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [selectedDueId, setSelectedDueId] = useState<string | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
+
+  const loadDues = async () => {
+    try {
+      const s = await DataService.getDuesSettingsAsync();
+      setDuesSettings(s);
+      const sched = DataService.getNextMonthSchedule();
+      setDuesSchedule(sched);
+      setNewDueAmount(String(sched.isPendingChange ? sched.nextAmount : sched.currentAmount));
+    } catch {}
+  };
 
   const loadUpi = async () => {
     try {
@@ -101,6 +132,7 @@ export default function PaymentVerificationHub() {
   useEffect(() => {
     loadQueue(false);
     loadUpi();
+    loadDues();
 
     const interval = setInterval(() => {
       loadQueue(false);
@@ -108,6 +140,7 @@ export default function PaymentVerificationHub() {
 
     const handleDataUpdated = () => {
       loadQueue(false);
+      loadDues();
     };
 
     const handleUpiUpdated = (e: any) => {
@@ -116,14 +149,50 @@ export default function PaymentVerificationHub() {
       }
     };
 
+    const handleDuesUpdated = (e: any) => {
+      if (e.detail) {
+        setDuesSettings(e.detail);
+        const sched = DataService.getNextMonthSchedule();
+        setDuesSchedule(sched);
+      }
+    };
+
     window.addEventListener('mahallu_data_updated', handleDataUpdated);
     window.addEventListener('mahallu_upi_updated', handleUpiUpdated);
+    window.addEventListener('mahallu_dues_updated', handleDuesUpdated);
     return () => {
       clearInterval(interval);
       window.removeEventListener('mahallu_data_updated', handleDataUpdated);
       window.removeEventListener('mahallu_upi_updated', handleUpiUpdated);
+      window.removeEventListener('mahallu_dues_updated', handleDuesUpdated);
     };
   }, []);
+
+  const handleSaveMonthlyDue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const val = Number(newDueAmount);
+    if (isNaN(val) || val <= 0) {
+      toast('Please enter a valid monthly amount greater than 0', 'error');
+      return;
+    }
+
+    setIsSavingDues(true);
+    try {
+      const updated = await DataService.saveMonthlyDueAmountAsync(val, user?.id || 'admin');
+      setDuesSettings(updated);
+      const sched = DataService.getNextMonthSchedule();
+      setDuesSchedule(sched);
+      setDuesModalOpen(false);
+      toast(
+        `Monthly due updated to ₹${val}! This will be collected starting from ${sched.nextMonth} onwards.`,
+        'success'
+      );
+    } catch (err: any) {
+      toast(err?.message || 'Failed to update monthly dues', 'error');
+    } finally {
+      setIsSavingDues(false);
+    }
+  };
 
   const handleSaveUpi = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,7 +206,7 @@ export default function PaymentVerificationHub() {
     try {
       const updated = await DataService.saveUpiSettingsAsync({
         upiId: cleanId,
-        payeeName: formPayeeName.trim() || "Al-Huda Mahallu Jama'ath",
+        payeeName: formPayeeName.trim() || "Kunjikkulam Juma Masjid",
         bankName: formBankName.trim() || undefined,
         accountNumber: formAccountNumber.trim() || undefined,
         ifscCode: formIfscCode.trim() || undefined,
@@ -243,6 +312,24 @@ export default function PaymentVerificationHub() {
           </Button>
 
           <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setNewDueAmount(String(duesSchedule.isPendingChange ? duesSchedule.nextAmount : duesSchedule.currentAmount));
+              setDuesModalOpen(true);
+            }}
+            className="gap-2 text-xs bg-white hover:bg-emerald-50 border-emerald-300 text-emerald-900 font-semibold shadow-xs cursor-pointer"
+          >
+            <Coins className="h-3.5 w-3.5 text-emerald-700" />
+            <span>Monthly Fee: ₹{duesSchedule.currentAmount}/mo</span>
+            {duesSchedule.isPendingChange && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-900 font-bold border border-amber-300">
+                ₹{duesSchedule.nextAmount} from {duesSchedule.nextMonth}
+              </span>
+            )}
+          </Button>
+
+          <Button
             variant="primary"
             size="sm"
             onClick={() => {
@@ -253,7 +340,7 @@ export default function PaymentVerificationHub() {
               setFormIfscCode(upiSettings.ifscCode || '');
               setUpiModalOpen(true);
             }}
-            className="gap-2 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold shadow-xs"
+            className="gap-2 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold shadow-xs cursor-pointer"
           >
             <QrCode className="h-3.5 w-3.5" />
             Mahallu UPI Settings
@@ -261,59 +348,108 @@ export default function PaymentVerificationHub() {
         </div>
       </div>
 
-      {/* Active Mahallu UPI Account & QR Banner */}
-      <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="p-3 rounded-xl bg-white/10 text-emerald-300 border border-white/10 shrink-0">
-            <QrCode className="h-6 w-6" />
+      {/* Configuration Cards: UPI Receiving Account + Monthly Fee Schedule */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Active Mahallu UPI Account & QR Banner */}
+        <div className="lg:col-span-2 bg-gradient-to-r from-emerald-900 via-emerald-800 to-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 rounded-xl bg-white/10 text-emerald-300 border border-white/10 shrink-0">
+              <QrCode className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-emerald-200 uppercase tracking-wider">
+                  Official Mahallu Receiving Account
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/20">
+                  Active
+                </span>
+              </div>
+              <div className="text-base sm:text-lg font-mono font-bold text-white mt-0.5 flex items-center gap-2">
+                <span>{upiSettings.upiId}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(upiSettings.upiId);
+                    toast(`Copied UPI ID: ${upiSettings.upiId}`, 'success');
+                  }}
+                  className="p-1 hover:bg-white/10 rounded transition-colors text-emerald-300 hover:text-white cursor-pointer"
+                  title="Copy UPI ID"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <p className="text-[11px] text-emerald-100/70 mt-0.5">
+                Payee: <strong>{upiSettings.payeeName}</strong>
+                {upiSettings.bankName && ` • ${upiSettings.bankName}`}
+                {upiSettings.accountNumber && ` (A/C: ${upiSettings.accountNumber})`}
+              </p>
+            </div>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-emerald-200 uppercase tracking-wider">
-                Official Mahallu Receiving Account
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/20">
-                Active
-              </span>
-            </div>
-            <div className="text-base sm:text-lg font-mono font-bold text-white mt-0.5 flex items-center gap-2">
-              <span>{upiSettings.upiId}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(upiSettings.upiId);
-                  toast(`Copied UPI ID: ${upiSettings.upiId}`, 'success');
-                }}
-                className="p-1 hover:bg-white/10 rounded transition-colors text-emerald-300 hover:text-white"
-                title="Copy UPI ID"
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <p className="text-[11px] text-emerald-100/70 mt-0.5">
-              Payee: <strong>{upiSettings.payeeName}</strong>
-              {upiSettings.bankName && ` • ${upiSettings.bankName}`}
-              {upiSettings.accountNumber && ` (A/C: ${upiSettings.accountNumber})`}
-            </p>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setFormUpiId(upiSettings.upiId);
+                setFormPayeeName(upiSettings.payeeName);
+                setFormBankName(upiSettings.bankName || '');
+                setFormAccountNumber(upiSettings.accountNumber || '');
+                setFormIfscCode(upiSettings.ifscCode || '');
+                setUpiModalOpen(true);
+              }}
+              className="w-full sm:w-auto text-xs bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5 cursor-pointer"
+            >
+              <Settings className="h-3.5 w-3.5" />
+              Configure UPI ID & QR
+            </Button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        {/* Monthly Due Policy Card */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Coins className="h-3.5 w-3.5 text-emerald-700" />
+                Monthly Due Rate
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                Active Tier
+              </span>
+            </div>
+            <div className="flex items-baseline gap-2 pt-1">
+              <span className="text-2xl font-black text-slate-900">
+                ₹{duesSchedule.currentAmount}
+              </span>
+              <span className="text-xs text-slate-500 font-medium">/ house / month</span>
+            </div>
+            <div className="text-[11px] text-slate-500 pt-0.5">
+              {duesSchedule.isPendingChange ? (
+                <span className="text-amber-800 font-semibold flex items-center gap-1">
+                  <Clock className="h-3 w-3 text-amber-600 shrink-0" />
+                  Scheduled: ₹{duesSchedule.nextAmount} from {duesSchedule.nextMonth} onwards
+                </span>
+              ) : (
+                <span className="text-slate-500">
+                  Updates submitted this month apply from next month onwards
+                </span>
+              )}
+            </div>
+          </div>
+
           <Button
             variant="outline"
             size="sm"
             onClick={() => {
-              setFormUpiId(upiSettings.upiId);
-              setFormPayeeName(upiSettings.payeeName);
-              setFormBankName(upiSettings.bankName || '');
-              setFormAccountNumber(upiSettings.accountNumber || '');
-              setFormIfscCode(upiSettings.ifscCode || '');
-              setUpiModalOpen(true);
+              setNewDueAmount(String(duesSchedule.isPendingChange ? duesSchedule.nextAmount : duesSchedule.currentAmount));
+              setDuesModalOpen(true);
             }}
-            className="w-full sm:w-auto text-xs bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5"
+            className="w-full text-xs font-semibold border-slate-300 text-slate-800 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-300 gap-1.5 cursor-pointer"
           >
-            <Settings className="h-3.5 w-3.5" />
-            Configure UPI ID & QR
+            <Coins className="h-3.5 w-3.5 text-emerald-700" />
+            Update Monthly Fee
           </Button>
         </div>
       </div>
@@ -510,7 +646,7 @@ export default function PaymentVerificationHub() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Al-Huda Mahallu Jama'ath"
+                  placeholder="e.g. Kunjikkulam Juma Masjid"
                   value={formPayeeName}
                   onChange={(e) => setFormPayeeName(e.target.value)}
                   className="w-full p-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
@@ -571,7 +707,7 @@ export default function PaymentVerificationHub() {
               <div className="py-2">
                 <UpiQrCode
                   upiId={formUpiId.trim() || 'alhudamahallu@upi'}
-                  payeeName={formPayeeName.trim() || "Al-Huda Mahallu Jama'ath"}
+                  payeeName={formPayeeName.trim() || "Kunjikkulam Juma Masjid"}
                   amount={100}
                   note="Mahallu Monthly Dues Preview"
                   size={140}
@@ -602,6 +738,131 @@ export default function PaymentVerificationHub() {
               className="bg-emerald-700 hover:bg-emerald-800"
             >
               Save UPI Settings
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Monthly Due Fee Configuration Modal */}
+      <Modal
+        isOpen={duesModalOpen}
+        onClose={() => setDuesModalOpen(false)}
+        title="Configure Monthly Household Due"
+        maxWidth="md"
+      >
+        <form onSubmit={handleSaveMonthlyDue} className="space-y-4 text-xs">
+          {/* Policy Notice Callout */}
+          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-900 space-y-1.5">
+            <div className="flex items-center gap-1.5 font-bold text-xs text-amber-950">
+              <AlertCircle className="h-4 w-4 text-amber-700 shrink-0" />
+              <span>Next-Month Collection Policy</span>
+            </div>
+            <p className="text-[11px] leading-relaxed text-amber-900">
+              Fee updates submitted during this month (<strong>{duesSchedule.currentMonth}</strong>) will be collected starting from <strong>{duesSchedule.nextMonth} onwards</strong>.
+              Dues for current and past months remain locked at their original rate.
+            </p>
+          </div>
+
+          {/* Rate Comparison Box */}
+          <div className="grid grid-cols-2 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="p-2.5 rounded-lg bg-white border border-slate-200/60 text-center">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                Current Month ({duesSchedule.currentMonth})
+              </span>
+              <span className="text-lg font-black text-slate-800 block mt-0.5">
+                ₹{duesSchedule.currentAmount}
+              </span>
+              <span className="text-[10px] text-slate-400">Locked rate</span>
+            </div>
+            <div className="p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200 text-center">
+              <span className="text-[10px] uppercase font-bold text-emerald-700 block">
+                Next Month ({duesSchedule.nextMonth})
+              </span>
+              <span className="text-lg font-black text-emerald-800 block mt-0.5">
+                ₹{Number(newDueAmount) > 0 ? newDueAmount : duesSchedule.currentAmount}
+              </span>
+              <span className="text-[10px] text-emerald-600 font-semibold">Effective rate</span>
+            </div>
+          </div>
+
+          {/* Amount input */}
+          <div>
+            <label className="block font-bold text-slate-800 mb-1">
+              New Monthly Amount (₹) *
+            </label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">
+                ₹
+              </span>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={newDueAmount}
+                onChange={(e) => setNewDueAmount(e.target.value)}
+                placeholder="e.g. 100"
+                required
+                className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm font-bold bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              />
+            </div>
+            {/* Quick preset amounts */}
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              <span className="text-[11px] text-slate-500 font-medium mr-1">Quick select:</span>
+              {[50, 100, 150, 200, 250, 500].map((amt) => (
+                <button
+                  key={amt}
+                  type="button"
+                  onClick={() => setNewDueAmount(String(amt))}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${
+                    newDueAmount === String(amt)
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                  }`}
+                >
+                  ₹{amt}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1.5">
+              Standard recurring membership due assessed to every approved household.
+            </p>
+          </div>
+
+          {/* Adjustment History if available */}
+          {duesSettings.history && duesSettings.history.length > 0 && (
+            <div className="pt-2 border-t border-slate-100">
+              <p className="font-bold text-[11px] text-slate-700 mb-1.5 flex items-center gap-1">
+                <History className="h-3 w-3 text-slate-400" />
+                Adjustment History
+              </p>
+              <div className="max-h-28 overflow-y-auto space-y-1 text-[11px] text-slate-600 pr-1">
+                {duesSettings.history.map((h, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-1.5 rounded bg-slate-50 border border-slate-100">
+                    <span>Effective: <strong>{h.effectiveFromMonth}</strong></span>
+                    <span className="font-bold text-slate-900">₹{h.amount} / mo</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDuesModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              isLoading={isSavingDues}
+              className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer"
+            >
+              Confirm & Schedule
             </Button>
           </div>
         </form>

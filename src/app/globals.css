@@ -49,21 +49,50 @@ body {
 
 /* Print Receipt Styles */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+  html, body {
+    overflow: visible !important;
+    height: auto !important;
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
   body * {
     visibility: hidden;
   }
   #printable-receipt, #printable-receipt * {
     visibility: visible;
   }
-  #printable-receipt {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 24px;
+  /* Remove modal constraints during print */
+  .fixed, .overflow-y-auto, .overflow-hidden, [class*="max-h-"] {
+    position: static !important;
+    overflow: visible !important;
+    max-height: none !important;
     box-shadow: none !important;
-    border: 1px solid #e2e8f0 !important;
+    background: transparent !important;
+    border: none !important;
+    transform: none !important;
+    display: block !important;
+  }
+  #printable-receipt {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 680px !important;
+    margin: 0 auto !important;
+    padding: 28px 32px !important;
+    box-shadow: none !important;
+    border: 1.5px solid #cbd5e1 !important;
+    border-radius: 16px !important;
+    background: #ffffff !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
   .no-print {
     display: none !important;

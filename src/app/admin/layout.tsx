@@ -29,11 +29,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const loadCounts = async () => {
     try {
-      const [pendingProfiles, pendingPayments] = await Promise.all([
+      const [pendingProfiles, pendingPayments, pendingUpdates] = await Promise.all([
         DataService.getPendingProfilesAsync(),
         DataService.getPaymentsUnderReviewAsync(),
+        DataService.getPendingProfileUpdatesAsync(),
       ]);
-      setPendingCount(pendingProfiles.length);
+      setPendingCount(pendingProfiles.length + pendingUpdates.length);
       setPaymentsReviewCount(pendingPayments.length);
     } catch {
       // Fallback
@@ -44,7 +45,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     loadCounts();
     const interval = setInterval(() => {
       loadCounts();
-    }, 12000);
+    }, 3000);
 
     const handleLocalUpdate = () => {
       loadCounts();

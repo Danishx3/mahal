@@ -34,6 +34,7 @@ export default function HousesDirectoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [divisionFilter, setDivisionFilter] = useState<Division | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<ProfileStatus | 'all'>('all');
+  const [memberCountFilter, setMemberCountFilter] = useState<string>('all');
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,21 +44,43 @@ export default function HousesDirectoryPage() {
   const [selectedHouse, setSelectedHouse] = useState<HouseWithDetails | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const isFiltered =
+    searchQuery.trim() !== '' ||
+    divisionFilter !== 'all' ||
+    statusFilter !== 'all' ||
+    memberCountFilter !== 'all';
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setDivisionFilter('all');
+    setStatusFilter('all');
+    setMemberCountFilter('all');
+    setCurrentPage(1);
+  };
+
   const loadData = async () => {
     const list = await DataService.getHousesAsync({
       division: divisionFilter,
       search: searchQuery,
       status: statusFilter,
+      memberCount: memberCountFilter,
     });
     setHouses(list);
-    setStats(DataService.getSystemStats());
+    setStats(DataService.getSystemStats(list));
   };
 
   useEffect(() => {
     loadData();
+    const interval = setInterval(() => {
+      loadData();
+    }, 4000);
+
     window.addEventListener('mahallu_data_updated', loadData);
-    return () => window.removeEventListener('mahallu_data_updated', loadData);
-  }, [divisionFilter, searchQuery, statusFilter]);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('mahallu_data_updated', loadData);
+    };
+  }, [divisionFilter, searchQuery, statusFilter, memberCountFilter]);
 
   const handleBlockHouse = async (houseId: string) => {
     if (confirm('Are you sure you want to block this household from accessing portal services?')) {
@@ -95,95 +118,202 @@ export default function HousesDirectoryPage() {
             Houses Directory & Census Registry
           </h1>
           <p className="text-xs text-slate-500">
-            Comprehensive registry of 250+ households across all 6 local administrative divisions.
+            Comprehensive registry of {isFiltered ? `${houses.length} matching` : '250+'} households across {divisionFilter !== 'all' ? DIVISION_LABELS[divisionFilter] : 'all 6 local administrative divisions'}.
           </p>
         </div>
       </div>
 
       {/* Summary Statistics Bar */}
       {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
-            <span className="text-[11px] font-semibold text-slate-400 block uppercase">Total Houses</span>
-            <span className="text-xl font-extrabold text-slate-900">{stats.totalHouses}</span>
-          </div>
+        <div className="space-y-2">
+          {isFiltered && (
+            <div className="flex items-center justify-between text-xs text-slate-600 bg-emerald-50/70 border border-emerald-200/80 rounded-xl px-4 py-2">
+              <span className="flex items-center gap-2 font-medium text-emerald-950">
+                <Filter className="h-3.5 w-3.5 text-emerald-600" />
+                Filtered View: Showing metrics for <strong className="font-bold">{stats.totalHouses}</strong> {stats.totalHouses === 1 ? 'house' : 'houses'}
+                {memberCountFilter !== 'all' && (
+                  <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                    {memberCountFilter.includes('-') || memberCountFilter.endsWith('+')
+                      ? `${memberCountFilter} members`
+                      : `${memberCountFilter} ${memberCountFilter === '1' ? 'member' : 'members'}`}
+                  </span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer"
+              >
+                Reset filters
+              </button>
+            </div>
+          )}
 
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
-            <span className="text-[11px] font-semibold text-slate-400 block uppercase">Active (Approved)</span>
-            <span className="text-xl font-extrabold text-emerald-800">{stats.approvedHouses}</span>
-          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
+              <span className="text-[11px] font-semibold text-slate-400 block uppercase">
+                Total Houses {isFiltered && <span className="text-emerald-600 font-bold">*</span>}
+              </span>
+              <span className="text-xl font-extrabold text-slate-900">{stats.totalHouses}</span>
+            </div>
 
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
-            <span className="text-[11px] font-semibold text-slate-400 block uppercase">Pending Review</span>
-            <span className="text-xl font-extrabold text-amber-700">{stats.pendingHouses}</span>
-          </div>
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
+              <span className="text-[11px] font-semibold text-slate-400 block uppercase">Active (Approved)</span>
+              <span className="text-xl font-extrabold text-emerald-800">{stats.approvedHouses}</span>
+            </div>
 
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
-            <span className="text-[11px] font-semibold text-slate-400 block uppercase">Total Population</span>
-            <span className="text-xl font-extrabold text-slate-900">{stats.totalPopulation}</span>
-          </div>
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
+              <span className="text-[11px] font-semibold text-slate-400 block uppercase">Pending Review</span>
+              <span className="text-xl font-extrabold text-amber-700">{stats.pendingHouses}</span>
+            </div>
 
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
-            <span className="text-[11px] font-semibold text-slate-400 block uppercase">Abroad / NRI</span>
-            <span className="text-xl font-extrabold text-sky-700">{stats.totalAbroad}</span>
-          </div>
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
+              <span className="text-[11px] font-semibold text-slate-400 block uppercase">Total Population</span>
+              <span className="text-xl font-extrabold text-slate-900">{stats.totalPopulation}</span>
+            </div>
 
-          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
-            <span className="text-[11px] font-semibold text-slate-400 block uppercase">Blocked</span>
-            <span className="text-xl font-extrabold text-rose-700">{stats.blockedHouses}</span>
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
+              <span className="text-[11px] font-semibold text-slate-400 block uppercase">Abroad / NRI</span>
+              <span className="text-xl font-extrabold text-sky-700">{stats.totalAbroad}</span>
+            </div>
+
+            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs">
+              <span className="text-[11px] font-semibold text-slate-400 block uppercase">Blocked</span>
+              <span className="text-xl font-extrabold text-rose-700">{stats.blockedHouses}</span>
+            </div>
           </div>
         </div>
       )}
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center gap-3">
-        {/* Search Input */}
-        <div className="relative flex-1 w-full">
-          <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search by House Name, Reg No (e.g. MHL-ALU-001), Ward No, or Member Name..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-          />
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+        <div className="flex flex-col md:flex-row items-center gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1 w-full">
+            <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search by House Name, Reg No (e.g. MHL-ALU-001), Ward No, or Member Name..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+            />
+          </div>
+
+          {/* Division Filter */}
+          <div className="flex items-center gap-2 w-full md:w-auto flex-wrap sm:flex-nowrap">
+            <select
+              value={divisionFilter}
+              onChange={(e) => {
+                setDivisionFilter(e.target.value as any);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none w-full sm:w-auto font-medium text-slate-700"
+            >
+              <option value="all">All Divisions (6)</option>
+              {divisions.map((div) => (
+                <option key={div} value={div}>
+                  {DIVISION_LABELS[div]}
+                </option>
+              ))}
+            </select>
+
+            {/* Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as any);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none w-full sm:w-auto font-medium text-slate-700"
+            >
+              <option value="all">All Statuses</option>
+              <option value="approved">Approved</option>
+              <option value="pending_verification">Pending</option>
+              <option value="blocked">Blocked</option>
+            </select>
+
+            {/* Member Count Dropdown Filter */}
+            <select
+              id="member-count-filter"
+              value={memberCountFilter}
+              onChange={(e) => {
+                setMemberCountFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none w-full sm:w-auto font-medium text-slate-700"
+            >
+              <option value="all">All Members Count</option>
+              <option value="1">1 Member</option>
+              <option value="2">2 Members</option>
+              <option value="3">3 Members</option>
+              <option value="4">4 Members</option>
+              <option value="5">5 Members</option>
+              <option value="6">6 Members</option>
+              <option value="7">7 Members</option>
+              <option value="8">8 Members</option>
+              <option value="9">9 Members</option>
+              <option value="10">10 Members</option>
+              <option value="11">11 Members</option>
+              <option value="12">12 Members</option>
+              <option value="13">13 Members</option>
+              <option value="14">14 Members</option>
+              <option value="15">15 Members</option>
+              <option value="1-3">1–3 Members (Small)</option>
+              <option value="4-6">4–6 Members (Medium)</option>
+            </select>
+          </div>
         </div>
 
-        {/* Division Filter */}
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <select
-            value={divisionFilter}
-            onChange={(e) => {
-              setDivisionFilter(e.target.value as any);
-              setCurrentPage(1);
-            }}
-            className="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none w-full md:w-auto"
-          >
-            <option value="all">All Divisions (6)</option>
-            {divisions.map((div) => (
-              <option key={div} value={div}>
-                {DIVISION_LABELS[div]}
-              </option>
-            ))}
-          </select>
+        {/* Quick Member Count Filter Buttons */}
+        <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100 text-xs">
+          <span className="text-slate-400 font-semibold text-[11px] flex items-center gap-1 mr-1">
+            <Users className="w-3.5 h-3.5 text-slate-400" />
+            Filter by Members:
+          </span>
+          {[
+            { label: 'All', value: 'all' },
+            { label: '1', value: '1' },
+            { label: '2', value: '2' },
+            { label: '3', value: '3' },
+            { label: '4', value: '4' },
+            { label: '5', value: '5' },
+            { label: '6', value: '6' },
+            { label: '7+', value: '7+' },
+            { label: '1–3 (Small)', value: '1-3' },
+            { label: '4–6 (Medium)', value: '4-6' },
+          ].map((btn) => {
+            const isActive = memberCountFilter === btn.value;
+            return (
+              <button
+                key={btn.value}
+                type="button"
+                onClick={() => {
+                  setMemberCountFilter(btn.value);
+                  setCurrentPage(1);
+                }}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${isActive
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+                  }`}
+              >
+                {btn.label}
+              </button>
+            );
+          })}
 
-          {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value as any);
-              setCurrentPage(1);
-            }}
-            className="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none w-full md:w-auto"
-          >
-            <option value="all">All Statuses</option>
-            <option value="approved">Approved</option>
-            <option value="pending_verification">Pending</option>
-            <option value="blocked">Blocked</option>
-          </select>
+          {isFiltered && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="ml-auto text-xs text-rose-600 hover:text-rose-800 font-semibold px-2 py-1 rounded hover:bg-rose-50 transition-colors"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -197,7 +327,7 @@ export default function HousesDirectoryPage() {
                 <th className="py-3 px-4">House Name</th>
                 <th className="py-3 px-4">Ward / Door</th>
                 <th className="py-3 px-4">Division</th>
-                <th className="py-3 px-4">Head of Household</th>
+                <th className="py-3 px-4">Head of Household & Members</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-6 text-right">Controls</th>
               </tr>
@@ -234,7 +364,13 @@ export default function HousesDirectoryPage() {
 
                       <td className="py-3 px-4">
                         <div className="font-semibold text-slate-800">{head?.name || '—'}</div>
-                        <div className="text-[11px] text-slate-400">{h.phone}</div>
+                        <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
+                          <span>{h.phone}</span>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+                            <Users className="w-2.5 h-2.5 text-slate-500" />
+                            {h.family_members?.length || 0} {h.family_members?.length === 1 ? 'member' : 'members'}
+                          </span>
+                        </div>
                       </td>
 
                       <td className="py-3 px-4">
@@ -334,9 +470,8 @@ export default function HousesDirectoryPage() {
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title={selectedHouse?.house_name || 'House Details'}
-        description={`Mahallu Reg No: ${selectedHouse?.mahallu_reg_no} • Division: ${
-          selectedHouse ? DIVISION_LABELS[selectedHouse.division] : ''
-        }`}
+        description={`Mahallu Reg No: ${selectedHouse?.mahallu_reg_no} • Division: ${selectedHouse ? DIVISION_LABELS[selectedHouse.division] : ''
+          }`}
         maxWidth="2xl"
       >
         {selectedHouse && (

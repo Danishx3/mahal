@@ -46,7 +46,7 @@ export function getSmtpStatus(): SmtpStatus {
     user: process.env.SMTP_USER ? process.env.SMTP_USER.replace(/(.{2})(.*)(@.*)/, '$1***$3') : null,
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: Number(process.env.SMTP_PORT) || 465,
-    from: process.env.SMTP_FROM || 'Al-Huda Mahallu Jama\'ath <alhudamahallu@gmail.com>',
+    from: process.env.SMTP_FROM || 'Kunjikkulam Juma Masjid <kunjikkulammasjid@gmail.com>',
   };
 }
 
@@ -150,7 +150,7 @@ export function generateReminderEmailHtml(payload: ReminderEmailPayload): string
     <!-- Header -->
     <div class="header">
       <div class="emblem">🕌</div>
-      <h1 class="title">Al-Huda Mahallu Jama'ath</h1>
+      <h1 class="title">Kunjikkulam Juma Masjid</h1>
       <div class="subtitle">Official Membership Dues Notice • മാസവരി കുടിശ്ശിക അറിയിപ്പ്</div>
     </div>
 
@@ -195,21 +195,6 @@ export function generateReminderEmailHtml(payload: ReminderEmailPayload): string
       : ''
     }
 
-      <!-- Payment Instructions -->
-      <div class="upi-box">
-        <div style="font-weight: 700; font-size: 14px; color: #0f172a; margin-bottom: 8px;">
-          How to Pay via UPI or Bank Transfer:
-        </div>
-        <p style="font-size: 13px; color: #475569; margin: 0 0 10px 0;">
-          Transfer ₹${amount} directly using any UPI App (GPay, PhonePe, Paytm):
-        </p>
-        <div>
-          <span class="upi-id">${upiId}</span>
-        </div>
-        <p style="font-size: 12px; color: #64748b; margin-top: 10px; margin-bottom: 0;">
-          After completing the transaction, please submit your 12-digit UTR/Transaction Reference on the Mahallu Portal for instant verification and receipt generation.
-        </p>
-      </div>
 
       <!-- Action Button -->
       <a href="${paymentLink}" class="cta-btn" target="_blank">
@@ -219,7 +204,7 @@ export function generateReminderEmailHtml(payload: ReminderEmailPayload): string
 
     <!-- Footer -->
     <div class="footer">
-      <div><strong>Al-Huda Mahallu Jama'ath Central Office</strong></div>
+      <div><strong>Kunjikkulam Juma Masjid Central Office</strong></div>
       <div style="margin-top: 4px;">Main Road, Mahallu Complex • Contact: +91 98470 12345</div>
       <div class="dua">
         "May Allah bless your household with peace, prosperity, and barakah."
@@ -240,11 +225,11 @@ export function generateReminderEmailHtml(payload: ReminderEmailPayload): string
 export async function sendReminderEmail(payload: ReminderEmailPayload): Promise<EmailSendResult> {
   const { to, houseName, regNo, month, amount = 100 } = payload;
   const upiId = payload.upiId || 'alhudamahallu@upi';
-  const from = process.env.SMTP_FROM || 'Al-Huda Mahallu Jama\'ath <alhudamahallu@gmail.com>';
+  const from = process.env.SMTP_FROM || 'Kunjikkulam Juma Masjid <kunjikkulammasjid@gmail.com>';
   const formattedMonth = formatMonthName(month);
-  const subject = `Al-Huda Mahallu: Payment Due Reminder (${formattedMonth}) - ${houseName}`;
+  const subject = `Kunjikkulam Juma Masjid: Payment Due Reminder (${formattedMonth}) - ${houseName}`;
   const html = generateReminderEmailHtml(payload);
-  const text = `Assalamu Alaikum. This is a reminder from Al-Huda Mahallu Jama'ath for ${houseName} (${regNo}) regarding monthly membership dues of ₹${amount} for ${formattedMonth}. Kindly transfer to ${upiId} and submit your UTR on the portal: ${payload.siteUrl || 'http://localhost:3000'}/dashboard/payments. Jazakallahu Khair.`;
+  const text = `Assalamu Alaikum. This is a reminder from Kunjikkulam Juma Masjid for ${houseName} (${regNo}) regarding monthly membership dues of ₹${amount} for ${formattedMonth}. Kindly transfer to ${upiId} and submit your UTR on the portal: ${payload.siteUrl || 'http://localhost:3000'}/dashboard/payments. Jazakallahu Khair.`;
 
   const transporter = getMailTransporter();
 

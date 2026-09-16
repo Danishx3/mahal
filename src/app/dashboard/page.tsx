@@ -3,9 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { DataService } from '@/lib/data-service';
-import { HouseWithDetails, DIVISION_LABELS } from '@/lib/supabase/types';
-import { formatCurrency } from '@/lib/utils';
+import { DataService, ProfileUpdateRequest } from '@/lib/data-service';
+import { HouseWithDetails, DIVISION_LABELS, Division, FamilyMember, MaritalStatus } from '@/lib/supabase/types';
+import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
@@ -30,9 +30,76 @@ import {
   BookOpen,
   Loader2,
   ArrowRight,
+  Pencil,
+  Lock,
+  Send,
+  Plus,
+  Trash2,
+  UserCheck,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { LoadingScreen } from '@/components/ui/LoadingAnimation';
+
+const RELATIONSHIP_OPTIONS = [
+  'Self',
+  'Wife',
+  'Husband',
+  'Son',
+  'Daughter',
+  'Father',
+  'Mother',
+  'Brother',
+  'Sister',
+  'Grandfather',
+  'Grandmother',
+  'Grandson',
+  'Granddaughter',
+  'Son-in-law',
+  'Daughter-in-law',
+  'Other Relative',
+];
+
+const MARITAL_STATUS_OPTIONS: { value: MaritalStatus; label: string }[] = [
+  { value: 'single', label: 'Single' },
+  { value: 'married', label: 'Married' },
+  { value: 'widowed', label: 'Widowed' },
+  { value: 'divorced', label: 'Divorced' },
+];
+
+const JOB_STATUS_OPTIONS = [
+  'Employed',
+  'Business',
+  'Abroad',
+  'Homemaker',
+  'Student',
+  'Agriculture',
+  'Retired',
+  'Unemployed',
+  'Other',
+];
+
+const GENERAL_EDUCATION_OPTIONS = [
+  'Below SSLC',
+  'SSLC',
+  'Plus Two',
+  'Diploma',
+  'Degree',
+  'PG',
+  'Professional',
+  'Other',
+];
+
+const RELIGIOUS_EDUCATION_OPTIONS = [
+  'Basic',
+  'Madrasa 5th',
+  'Madrasa 7th',
+  'Madrasa 10th',
+  'Madrasa +2',
+  'Dars',
+  'Islamic Scholar',
+  'Hafiz',
+  'Other',
+];
 
 export default function ResidentDashboard() {
   const router = useRouter();
@@ -40,8 +107,18 @@ export default function ResidentDashboard() {
   const { user, profile, house: authHouse, isLoading } = useAuth();
   const [house, setHouse] = useState<HouseWithDetails | null>(null);
   const [membersExpanded, setMembersExpanded] = useState(true);
-  const [editRequestModalOpen, setEditRequestModalOpen] = useState(false);
+
+  // Edit Profile / Dwelling Verification State
+  const [pendingUpdate, setPendingUpdate] = useState<ProfileUpdateRequest | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [activeEditTab, setActiveEditTab] = useState<'dwelling' | 'members'>('dwelling');
+  const [editHouseName, setEditHouseName] = useState('');
+  const [editHouseNumber, setEditHouseNumber] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editDivision, setEditDivision] = useState<Division>('alungal');
   const [editNote, setEditNote] = useState('');
+  const [editMembers, setEditMembers] = useState<FamilyMember[]>([]);
+  const [isSubmittingUpdate, setIsSubmittingUpdate] = useState(false);
 
   const loadData = async () => {
     if (!user) return;
@@ -67,6 +144,13 @@ export default function ResidentDashboard() {
         };
 
         setHouse(targetHouse);
+
+        try {
+          const update = await DataService.getProfileUpdateForHouseAsync(userHouse.id);
+          setPendingUpdate(update);
+        } catch {
+          // Non-blocking
+        }
       } else {
         setHouse(null);
       }
@@ -77,8 +161,16 @@ export default function ResidentDashboard() {
 
   useEffect(() => {
     loadData();
+    // High-frequency sync with admin updates (approval / rejection / payment status)
+    const interval = setInterval(() => {
+      loadData();
+    }, 3500);
+
     window.addEventListener('mahallu_data_updated', loadData);
-    return () => window.removeEventListener('mahallu_data_updated', loadData);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('mahallu_data_updated', loadData);
+    };
   }, [user?.id]);
 
   if (isLoading) {
@@ -111,12 +203,196 @@ export default function ResidentDashboard() {
   const pendingAmount = pendingDues.reduce((acc, d) => acc + Number(d.amount), 0);
   const failedDuesCount = house.payment_dues.filter((d) => d.status === 'failed').length;
 
-  const handleSendEditRequest = (e: React.FormEvent) => {
+  const handleOpenEditModal = (targetTab: 'dwelling' | 'members' = 'dwelling') => {
+    if (!house) return;
+    setActiveEditTab(targetTab);
+    if (pendingUpdate && pendingUpdate.status === 'pending') {
+      setEditHouseName(pendingUpdate.requested_details.house_name);
+      setEditHouseNumber(pendingUpdate.requested_details.house_number);
+      setEditPhone(pendingUpdate.requested_details.phone);
+      setEditDivision(pendingUpdate.requested_details.division);
+      setEditNote(pendingUpdate.note || '');
+      if (
+        pendingUpdate.requested_members &&
+        Array.isArray(pendingUpdate.requested_members) &&
+        pendingUpdate.requested_members.length > 0
+      ) {
+        setEditMembers(pendingUpdate.requested_members.map((m) => ({ ...m })));
+      } else {
+        setEditMembers((house.family_members || []).map((m) => ({ ...m })));
+      }
+    } else {
+      setEditHouseName(house.house_name);
+      setEditHouseNumber(house.house_number);
+      setEditPhone(house.phone);
+      setEditDivision(house.division);
+      setEditNote('');
+      setEditMembers((house.family_members || []).map((m) => ({ ...m })));
+    }
+    setEditModalOpen(true);
+  };
+
+  const handleAddMember = () => {
+    const isFirst = editMembers.length === 0;
+    const newMember: FamilyMember = {
+      id: `mem-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      house_id: house?.id || '',
+      name: '',
+      is_head_of_family: isFirst,
+      relationship: isFirst ? 'Self' : 'Son',
+      marital_status: 'single',
+      job_status: 'Student',
+      general_education: 'SSLC',
+      religious_education: 'Madrasa 7th',
+      age: 18,
+      phone: null,
+    };
+    setEditMembers((prev) => [...prev, newMember]);
+  };
+
+  const handleUpdateMember = (index: number, field: keyof FamilyMember, value: any) => {
+    setEditMembers((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const handleSetHeadOfFamily = (index: number) => {
+    setEditMembers((prev) =>
+      prev.map((m, i) => ({
+        ...m,
+        is_head_of_family: i === index,
+        relationship:
+          i === index
+            ? m.relationship === 'Self'
+              ? m.relationship
+              : 'Self'
+            : m.relationship === 'Self'
+            ? 'Other Relative'
+            : m.relationship,
+      }))
+    );
+  };
+
+  const handleRemoveMember = (index: number) => {
+    if (editMembers.length <= 1) {
+      toast('At least one family member is required in the household roster', 'error');
+      return;
+    }
+    const wasHead = editMembers[index].is_head_of_family;
+    const filtered = editMembers.filter((_, i) => i !== index);
+    if (wasHead && filtered.length > 0) {
+      filtered[0].is_head_of_family = true;
+      if (filtered[0].relationship !== 'Self') filtered[0].relationship = 'Self';
+    }
+    setEditMembers(filtered);
+  };
+
+  const handleSubmitProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editNote.trim()) return;
-    toast('Update request forwarded to Mahallu Secretary for verification.', 'success');
-    setEditRequestModalOpen(false);
-    setEditNote('');
+    if (!house || !user) return;
+
+    if (!editHouseName.trim()) {
+      setActiveEditTab('dwelling');
+      toast('Please enter your official house name', 'error');
+      return;
+    }
+    if (!editHouseNumber.trim()) {
+      setActiveEditTab('dwelling');
+      toast('Please enter your ward / door number', 'error');
+      return;
+    }
+    const cleanPhone = editPhone.trim().replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      setActiveEditTab('dwelling');
+      toast('Please enter a valid 10-digit primary phone number', 'error');
+      return;
+    }
+
+    if (editMembers.length === 0) {
+      setActiveEditTab('members');
+      toast('Household must have at least one family member', 'error');
+      return;
+    }
+
+    for (let i = 0; i < editMembers.length; i++) {
+      const m = editMembers[i];
+      if (!m.name || m.name.trim().length < 2) {
+        setActiveEditTab('members');
+        toast(`Please enter a valid full name for member #${i + 1}`, 'error');
+        return;
+      }
+    }
+
+    // Ensure exactly one head
+    const heads = editMembers.filter((m) => m.is_head_of_family);
+    let finalMembers = [...editMembers];
+    if (heads.length === 0) {
+      finalMembers[0] = { ...finalMembers[0], is_head_of_family: true };
+    } else if (heads.length > 1) {
+      setActiveEditTab('members');
+      toast('Please select only one Head of Family', 'error');
+      return;
+    }
+
+    const formattedMembers: FamilyMember[] = finalMembers.map((m) => {
+      const parsedAge = typeof m.age === 'number' ? m.age : Number(m.age);
+      return {
+        ...m,
+        name: m.name.trim(),
+        relationship: m.relationship || 'Relative',
+        marital_status: m.marital_status || 'single',
+        job_status: m.job_status || 'Other',
+        general_education: m.general_education || 'SSLC',
+        religious_education: m.religious_education || 'Basic',
+        age: !isNaN(parsedAge) && parsedAge >= 0 ? parsedAge : null,
+        phone: m.phone && m.phone.trim() !== '' ? m.phone.trim() : null,
+      };
+    });
+
+    setIsSubmittingUpdate(true);
+    try {
+      const submitted = await DataService.submitProfileUpdateRequestAsync({
+        house_id: house.id,
+        user_id: user.id,
+        mahallu_reg_no: house.mahallu_reg_no,
+        current_details: {
+          house_name: house.house_name,
+          house_number: house.house_number,
+          phone: house.phone,
+          division: house.division,
+        },
+        requested_details: {
+          house_name: editHouseName.trim(),
+          house_number: editHouseNumber.trim(),
+          phone: cleanPhone,
+          division: editDivision,
+        },
+        current_members: house.family_members || [],
+        requested_members: formattedMembers,
+        note: editNote.trim() || undefined,
+      });
+
+      setPendingUpdate(submitted);
+      setEditModalOpen(false);
+      toast('Household details & family census submitted to Profile Verification! Admin will review and verify.', 'success');
+    } catch (err: any) {
+      toast(err?.message || 'Failed to submit profile update', 'error');
+    } finally {
+      setIsSubmittingUpdate(false);
+    }
+  };
+
+  const handleCancelProfileUpdate = async () => {
+    if (!pendingUpdate) return;
+    try {
+      await DataService.cancelProfileUpdateRequestAsync(pendingUpdate.id);
+      setPendingUpdate(null);
+      toast('Profile update request cancelled.', 'info');
+    } catch (err: any) {
+      toast(err?.message || 'Failed to cancel update request', 'error');
+    }
   };
 
   return (
@@ -228,7 +504,7 @@ export default function ResidentDashboard() {
 
         {/* House Overview Card */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
             <div className="flex items-center gap-2.5">
               <Home className="h-4 w-4 text-emerald-700" />
               <h2 className="text-sm font-bold text-slate-900">Dwelling & Contact Records</h2>
@@ -236,15 +512,92 @@ export default function ResidentDashboard() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setEditRequestModalOpen(true)}
-              className="gap-1.5"
+              onClick={() => handleOpenEditModal('dwelling')}
+              className="gap-1.5 font-semibold text-emerald-800 border-emerald-300 hover:bg-emerald-50 cursor-pointer self-start sm:self-auto"
             >
-              <Edit3 className="h-3.5 w-3.5" />
-              Request Edit
+              <Pencil className="h-3.5 w-3.5" />
+              {pendingUpdate && pendingUpdate.status === 'pending' ? 'Edit / Modify Changes' : 'Edit Details'}
             </Button>
           </div>
 
-          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-xs">
+          {/* Pending Update Notice */}
+          {pendingUpdate && pendingUpdate.status === 'pending' && (
+            <div className="mx-6 mt-5 p-4 rounded-xl bg-amber-50 border border-amber-200/90 text-amber-950 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 font-bold text-xs">
+                  <Clock className="h-4 w-4 text-amber-700 shrink-0" />
+                  <span>Profile Update Submitted for Admin Verification</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/80 text-amber-900">
+                    Pending Review
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-900 leading-relaxed">
+                  Submitted on <strong>{formatDateTime(pendingUpdate.submitted_at)}</strong>. Mahallu Administration will verify your changes shortly.
+                </p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-amber-900 font-medium pt-1">
+                  {pendingUpdate.requested_details.house_name !== house.house_name && (
+                    <span>House Name: <strong className="text-amber-950 underline decoration-amber-400">{pendingUpdate.requested_details.house_name}</strong></span>
+                  )}
+                  {pendingUpdate.requested_details.house_number !== house.house_number && (
+                    <span>Ward / Door: <strong className="text-amber-950 underline decoration-amber-400">{pendingUpdate.requested_details.house_number}</strong></span>
+                  )}
+                  {pendingUpdate.requested_details.phone !== house.phone && (
+                    <span>Phone: <strong className="text-amber-950 underline decoration-amber-400">{pendingUpdate.requested_details.phone}</strong></span>
+                  )}
+                  {pendingUpdate.requested_details.division !== house.division && (
+                    <span>Division: <strong className="text-amber-950 underline decoration-amber-400">{DIVISION_LABELS[pendingUpdate.requested_details.division]}</strong></span>
+                  )}
+                  {pendingUpdate.requested_members && pendingUpdate.requested_members.length > 0 && (
+                    <span>Family Census: <strong className="text-amber-950 underline decoration-amber-400">{pendingUpdate.requested_members.length} member(s) ({pendingUpdate.requested_members.length !== house.family_members.length ? `${house.family_members.length} → ${pendingUpdate.requested_members.length}` : 'roster updated'})</strong></span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleOpenEditModal('dwelling')}
+                  className="text-xs bg-white text-amber-950 border-amber-300 hover:bg-amber-100/70 cursor-pointer"
+                >
+                  <Pencil className="h-3 w-3 mr-1" />
+                  Modify
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelProfileUpdate}
+                  className="text-xs text-amber-800 hover:bg-amber-100 cursor-pointer"
+                >
+                  Cancel Request
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Rejection Notice */}
+          {pendingUpdate && pendingUpdate.status === 'rejected' && (
+            <div className="mx-6 mt-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block">Previous Edit Request Rejected</span>
+                  <span className="text-rose-800 text-[11px]">
+                    Reason: <em>"{pendingUpdate.rejection_reason || 'Information could not be verified'}"</em>. You may edit and resubmit corrected records.
+                  </span>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleOpenEditModal('dwelling')}
+                className="text-xs bg-white text-rose-900 border-rose-300 hover:bg-rose-100/70 shrink-0 cursor-pointer"
+              >
+                Resubmit Changes
+              </Button>
+            </div>
+          )}
+
+          <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 text-xs">
             <div>
               <span className="text-slate-400 block mb-1">Official House Name</span>
               <span className="font-bold text-sm text-slate-900">{house.house_name}</span>
@@ -266,25 +619,66 @@ export default function ResidentDashboard() {
               <span className="text-slate-400 block mb-1">Registered Phone</span>
               <span className="font-semibold text-slate-800">{house.phone}</span>
             </div>
+
+            <div>
+              <span className="text-slate-400 block mb-1">Mahallu Division</span>
+              <span className="font-semibold text-slate-800">
+                {DIVISION_LABELS[house.division as Division] || house.division}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Family Members Section */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
             <div className="flex items-center gap-2.5">
               <Users className="h-4 w-4 text-emerald-700" />
               <h2 className="text-sm font-bold text-slate-900">
                 Family Members Census ({house.family_members.length})
               </h2>
             </div>
-            <button
-              onClick={() => setMembersExpanded(!membersExpanded)}
-              className="text-slate-500 hover:text-slate-800 p-1 rounded-lg hover:bg-slate-100 transition-colors"
-            >
-              {membersExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleOpenEditModal('members')}
+                className="gap-1.5 font-semibold text-emerald-800 border-emerald-300 hover:bg-emerald-50 cursor-pointer text-xs"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                {pendingUpdate && pendingUpdate.status === 'pending' ? 'Edit / Modify Members' : 'Edit Members'}
+              </Button>
+              <button
+                onClick={() => setMembersExpanded(!membersExpanded)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+                title={membersExpanded ? 'Collapse Census' : 'Expand Census'}
+              >
+                {membersExpanded ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
+
+          {/* Pending Members Verification Notice */}
+          {pendingUpdate && pendingUpdate.status === 'pending' && pendingUpdate.requested_members && pendingUpdate.requested_members.length > 0 && (
+            <div className="bg-amber-50/80 border-b border-amber-200/80 px-6 py-2.5 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-amber-700 shrink-0" />
+                <span>
+                  Census changes submitted for verification: <strong>{pendingUpdate.requested_members.length} member(s)</strong> awaiting admin approval.
+                </span>
+              </div>
+              <button
+                onClick={() => handleOpenEditModal('members')}
+                className="text-amber-900 font-bold underline hover:text-amber-950 cursor-pointer text-left sm:text-right"
+              >
+                Review / Modify Roster
+              </button>
+            </div>
+          )}
 
           {membersExpanded && (
             <div className="overflow-x-auto">
@@ -296,24 +690,19 @@ export default function ResidentDashboard() {
                     <th className="py-3 px-4">Age</th>
                     <th className="py-3 px-4">Marital Status</th>
                     <th className="py-3 px-4">Occupation</th>
-                    <th className="py-3 px-4">General Education</th>
-                    <th className="py-3 px-4">Religious Education</th>
+                    <th className="py-3 px-4">Education</th>
+                    <th className="py-3 px-4">Religious Ed</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {house.family_members.map((member) => (
-                    <tr
-                      key={member.id}
-                      className={`hover:bg-slate-50/60 transition-colors ${
-                        member.is_head_of_family ? 'bg-emerald-50/20 font-medium' : ''
-                      }`}
-                    >
-                      <td className="py-3.5 px-6">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900">{member.name}</span>
+                    <tr key={member.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-3.5 px-6 font-semibold text-slate-900">
+                        <div className="flex items-center gap-1.5">
+                          {member.name}
                           {member.is_head_of_family && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                              <Crown className="h-2.5 w-2.5 text-amber-500" />
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              <Crown className="h-3 w-3" />
                               Head
                             </span>
                           )}
@@ -354,39 +743,429 @@ export default function ResidentDashboard() {
         </div>
       </div>
 
-      {/* Edit Request Modal */}
+      {/* Edit Household Profile & Family Census Modal */}
       <Modal
-        isOpen={editRequestModalOpen}
-        onClose={() => setEditRequestModalOpen(false)}
-        title="Request Household Information Update"
-        description="Notify the Mahallu Admin of changes to address, contact phone, or new family members."
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        title="Edit Household Profile & Census"
+        description="Update your household dwelling records and family members census. Submitted changes will be forwarded to Mahallu Admin for verification."
+        maxWidth="4xl"
       >
-        <form onSubmit={handleSendEditRequest} className="space-y-4 text-xs">
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1.5">
-              Describe the required updates or modifications
-            </label>
-            <textarea
-              rows={4}
-              value={editNote}
-              onChange={(e) => setEditNote(e.target.value)}
-              placeholder="e.g. Addition of newborn child, change in employment status of son Mohammad Bilal to Abroad, or updated phone number..."
-              className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-              required
-            />
+        <form onSubmit={handleSubmitProfileUpdate} className="space-y-4 text-xs">
+          {/* Tabs Switcher */}
+          <div className="flex border-b border-slate-200 gap-1">
+            <button
+              type="button"
+              onClick={() => setActiveEditTab('dwelling')}
+              className={`flex items-center gap-2 pb-2.5 px-3.5 font-bold text-xs border-b-2 transition-colors cursor-pointer ${
+                activeEditTab === 'dwelling'
+                  ? 'border-emerald-700 text-emerald-800'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Home className="h-4 w-4" />
+              <span>Dwelling & Contact Details</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveEditTab('members')}
+              className={`flex items-center gap-2 pb-2.5 px-3.5 font-bold text-xs border-b-2 transition-colors cursor-pointer ${
+                activeEditTab === 'members'
+                  ? 'border-emerald-700 text-emerald-800'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              <span>Family Members Census</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                activeEditTab === 'members'
+                  ? 'bg-emerald-100 text-emerald-900'
+                  : 'bg-slate-100 text-slate-600'
+              }`}>
+                {editMembers.length}
+              </span>
+            </button>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setEditRequestModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary">
-              Send Edit Request
-            </Button>
+          {/* Tab 1: Dwelling & Contact Records */}
+          {activeEditTab === 'dwelling' && (
+            <div className="space-y-4">
+              {/* Permanent Mahallu Reg ID pill */}
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                    Permanent Mahallu Registration No
+                  </span>
+                  <span className="font-mono font-bold text-sm text-emerald-800">
+                    {house.mahallu_reg_no}
+                  </span>
+                </div>
+                <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-white px-2 py-1 rounded border border-slate-200">
+                  <Lock className="h-3 w-3 text-slate-400" />
+                  Locked by Mahallu
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* House Name */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Official House Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={editHouseName}
+                    onChange={(e) => setEditHouseName(e.target.value)}
+                    placeholder="e.g. Cherickode house"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                {/* Ward / Door Number */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Ward / Door Number *
+                  </label>
+                  <input
+                    type="text"
+                    value={editHouseNumber}
+                    onChange={(e) => setEditHouseNumber(e.target.value)}
+                    placeholder="e.g. Ward 3 / Door 142"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                {/* Registered Phone */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Registered Contact Phone *
+                  </label>
+                  <input
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="10-digit mobile number"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                {/* Mahallu Division */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Mahallu Ward / Division *
+                  </label>
+                  <select
+                    value={editDivision}
+                    onChange={(e) => setEditDivision(e.target.value as Division)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                    required
+                  >
+                    {(Object.keys(DIVISION_LABELS) as Division[]).map((key) => (
+                      <option key={key} value={key}>
+                        {DIVISION_LABELS[key]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Reason / Notes */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Reason or Explanation for Changes (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                  placeholder="e.g. Updating contact number to head of family, door number revision as per local body records..."
+                  className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Tab 2: Family Members Census */}
+          {activeEditTab === 'members' && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-emerald-50/50 border border-emerald-200/70">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-xs">
+                    Household Census Roster ({editMembers.length} Members)
+                  </h3>
+                  <p className="text-[11px] text-slate-600">
+                    Add, remove, or edit member profiles. Designate one member as the official Head of Family.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddMember}
+                  className="gap-1.5 font-bold text-emerald-800 border-emerald-300 hover:bg-emerald-100/60 cursor-pointer text-xs shrink-0 self-start sm:self-auto"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Member
+                </Button>
+              </div>
+
+              {/* Scrollable Members List */}
+              <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                {editMembers.map((member, index) => {
+                  return (
+                    <div
+                      key={member.id || `member-${index}`}
+                      className={`p-4 rounded-xl border transition-all ${
+                        member.is_head_of_family
+                          ? 'border-amber-300 bg-amber-50/25 shadow-2xs'
+                          : 'border-slate-200 bg-white'
+                      }`}
+                    >
+                      {/* Member Header */}
+                      <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <span className="h-5 w-5 rounded-full bg-slate-800 text-white text-[10px] font-bold flex items-center justify-center">
+                            {index + 1}
+                          </span>
+                          <span className="font-bold text-xs text-slate-900">
+                            {member.name || `Member #${index + 1}`}
+                          </span>
+                          {member.is_head_of_family ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200 font-bold text-[10px]">
+                              <Crown className="h-3 w-3 text-amber-600" />
+                              Head of Family
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleSetHeadOfFamily(index)}
+                              className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer ml-1"
+                            >
+                              Make Head
+                            </button>
+                          )}
+                        </div>
+
+                        {editMembers.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMember(index)}
+                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                            title="Remove Member"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Fields Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                        {/* Name */}
+                        <div>
+                          <label className="block font-semibold text-slate-700 mb-1">
+                            Full Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={member.name}
+                            onChange={(e) => handleUpdateMember(index, 'name', e.target.value)}
+                            placeholder="Full name as per official ID"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                            required
+                          />
+                        </div>
+
+                        {/* Relationship */}
+                        <div>
+                          <label className="block font-semibold text-slate-700 mb-1">
+                            Relationship to Head *
+                          </label>
+                          <select
+                            value={member.relationship}
+                            onChange={(e) => handleUpdateMember(index, 'relationship', e.target.value)}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                          >
+                            {RELATIONSHIP_OPTIONS.map((rel) => (
+                              <option key={rel} value={rel}>
+                                {rel}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Age */}
+                        <div>
+                          <label className="block font-semibold text-slate-700 mb-1">
+                            Age (Years)
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={125}
+                            value={member.age ?? ''}
+                            onChange={(e) =>
+                              handleUpdateMember(
+                                index,
+                                'age',
+                                e.target.value === '' ? null : Number(e.target.value)
+                              )
+                            }
+                            placeholder="e.g. 35"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                          />
+                        </div>
+
+                        {/* Marital Status */}
+                        <div>
+                          <label className="block font-semibold text-slate-700 mb-1">
+                            Marital Status *
+                          </label>
+                          <select
+                            value={member.marital_status}
+                            onChange={(e) =>
+                              handleUpdateMember(index, 'marital_status', e.target.value as MaritalStatus)
+                            }
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                          >
+                            {MARITAL_STATUS_OPTIONS.map((ms) => (
+                              <option key={ms.value} value={ms.value}>
+                                {ms.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Employment Status */}
+                        <div>
+                          <label className="block font-semibold text-slate-700 mb-1">
+                            Job / Employment *
+                          </label>
+                          <select
+                            value={member.job_status}
+                            onChange={(e) => handleUpdateMember(index, 'job_status', e.target.value)}
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                          >
+                            {JOB_STATUS_OPTIONS.map((job) => (
+                              <option key={job} value={job}>
+                                {job}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* General Education */}
+                        <div>
+                          <label className="block font-semibold text-slate-700 mb-1">
+                            General Education *
+                          </label>
+                          <select
+                            value={member.general_education}
+                            onChange={(e) =>
+                              handleUpdateMember(index, 'general_education', e.target.value)
+                            }
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                          >
+                            {GENERAL_EDUCATION_OPTIONS.map((edu) => (
+                              <option key={edu} value={edu}>
+                                {edu}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Religious Education */}
+                        <div>
+                          <label className="block font-semibold text-slate-700 mb-1">
+                            Religious Education *
+                          </label>
+                          <select
+                            value={member.religious_education}
+                            onChange={(e) =>
+                              handleUpdateMember(index, 'religious_education', e.target.value)
+                            }
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                          >
+                            {RELIGIOUS_EDUCATION_OPTIONS.map((redu) => (
+                              <option key={redu} value={redu}>
+                                {redu}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Contact Phone */}
+                        <div>
+                          <label className="block font-semibold text-slate-700 mb-1">
+                            Personal Phone (Optional)
+                          </label>
+                          <input
+                            type="tel"
+                            value={member.phone || ''}
+                            onChange={(e) => handleUpdateMember(index, 'phone', e.target.value)}
+                            placeholder="10-digit mobile number"
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Modal Bottom Actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+            <div>
+              {activeEditTab === 'dwelling' ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActiveEditTab('members')}
+                  className="gap-1 text-slate-700 cursor-pointer"
+                >
+                  <span>Edit Family Members ({editMembers.length})</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActiveEditTab('dwelling')}
+                  className="gap-1 text-slate-700 cursor-pointer"
+                >
+                  <span>← Back to Dwelling Details</span>
+                </Button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditModalOpen(false)}
+                disabled={isSubmittingUpdate}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                isLoading={isSubmittingUpdate}
+                className="bg-emerald-700 hover:bg-emerald-800 gap-1.5 cursor-pointer"
+              >
+                <Send className="h-3.5 w-3.5" />
+                Submit to Profile Verification
+              </Button>
+            </div>
           </div>
         </form>
       </Modal>

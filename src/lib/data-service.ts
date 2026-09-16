@@ -8,13 +8,74 @@ import {
   ProfileStatus,
   Profile,
   DIVISION_LABELS,
+  FamilyMember,
 } from './supabase/types';
 import { OnboardingInput } from './schemas';
 import { createClient, hasSupabaseConfig } from './supabase/client';
 
+export interface FeeHistoryItem {
+  amount: number;
+  effectiveFromMonth: string; // 'YYYY-MM'
+  createdAt: string;
+  updatedBy?: string;
+  notes?: string;
+}
+
+export interface ProfileUpdateRequest {
+  id: string;
+  house_id: string;
+  user_id: string;
+  mahallu_reg_no: string;
+  current_details: {
+    house_name: string;
+    house_number: string;
+    phone: string;
+    division: Division;
+  };
+  requested_details: {
+    house_name: string;
+    house_number: string;
+    phone: string;
+    division: Division;
+  };
+  current_members?: FamilyMember[];
+  requested_members?: FamilyMember[];
+  note?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string | null;
+  submitted_at: string;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+}
+
+export interface DuesSettings {
+  defaultAmount: number;
+  currentAmount: number;
+  scheduledAmount?: number;
+  scheduledEffectiveMonth?: string;
+  history: FeeHistoryItem[];
+  updatedAt: string;
+}
+
+function calculateDueAmountForMonth(settings: DuesSettings, billingMonth: string): number {
+  if (!settings || !Array.isArray(settings.history) || settings.history.length === 0) {
+    return settings?.defaultAmount || 100;
+  }
+  const sorted = [...settings.history].sort((a, b) =>
+    b.effectiveFromMonth.localeCompare(a.effectiveFromMonth)
+  );
+  for (const rule of sorted) {
+    if (billingMonth >= rule.effectiveFromMonth) {
+      return rule.amount;
+    }
+  }
+  return settings.defaultAmount || 100;
+}
+
 // In-memory runtime state (No localStorage for database models; Supabase is single source of truth)
 let memoryHouses: HouseWithDetails[] = [];
 let memoryLedger: FinancialLedger[] = [];
+let memoryProfileUpdates: ProfileUpdateRequest[] = [];
 
 // One-time purge of legacy local database caches (preserves onboarding draft form key: mahallu_onboarding_draft_v1)
 if (typeof window !== 'undefined') {
@@ -40,7 +101,118 @@ if (typeof window !== 'undefined') {
   }
 }
 
+let syncBroadcastChannel: BroadcastChannel | null = null;
+if (typeof window !== 'undefined') {
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      syncBroadcastChannel = new BroadcastChannel('mahallu_sync_channel');
+      syncBroadcastChannel.onmessage = (event) => {
+        if (event.data?.type === 'mahallu_data_updated') {
+          window.dispatchEvent(new CustomEvent('mahallu_data_updated', { detail: event.data }));
+        }
+      };
+    }
+  } catch (err) {
+    console.warn('Could not initialize BroadcastChannel:', err);
+  }
+
+  // Cross-tab storage event listener
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'mahallu_sync_ping') {
+      window.dispatchEvent(new CustomEvent('mahallu_data_updated'));
+    }
+  });
+}
+
+export function notifyDataUpdated(detail?: any) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent('mahallu_data_updated', { detail }));
+
+  try {
+    syncBroadcastChannel?.postMessage({
+      type: 'mahallu_data_updated',
+      timestamp: Date.now(),
+      detail,
+    });
+  } catch {
+    // Non-blocking
+  }
+
+  try {
+    localStorage.setItem('mahallu_sync_ping', String(Date.now()));
+  } catch {
+    // Non-blocking
+  }
+}
+
+let supabaseRealtimeActive = false;
+export function initSupabaseRealtimeSync() {
+  if (typeof window === 'undefined' || supabaseRealtimeActive || !hasSupabaseConfig()) return;
+  try {
+    const supabase = createClient();
+    supabase
+      .channel('mahallu_db_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'houses' },
+        () => notifyDataUpdated({ source: 'supabase_houses' })
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'family_members' },
+        () => notifyDataUpdated({ source: 'supabase_family_members' })
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'payment_dues' },
+        () => notifyDataUpdated({ source: 'supabase_payment_dues' })
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        () => notifyDataUpdated({ source: 'supabase_profiles' })
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          supabaseRealtimeActive = true;
+        }
+      });
+  } catch (err) {
+    console.warn('Supabase realtime init error:', err);
+  }
+}
+
+const LIVE_CENSUS_CACHE_KEY = 'mahallu_synced_census_cache_v1';
+
+function hydrateMemoryHouses(): HouseWithDetails[] {
+  if (memoryHouses.length > 0) return memoryHouses;
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = localStorage.getItem(LIVE_CENSUS_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          memoryHouses = parsed;
+          return memoryHouses;
+        }
+      }
+    } catch {}
+  }
+  return memoryHouses;
+}
+
+if (typeof window !== 'undefined') {
+  hydrateMemoryHouses();
+  initSupabaseRealtimeSync();
+  setTimeout(() => {
+    DataService.syncHousesFromSupabase().catch(() => {});
+  }, 0);
+}
+
 function getStoredHouses(): HouseWithDetails[] {
+  if (memoryHouses.length === 0) {
+    hydrateMemoryHouses();
+  }
   return memoryHouses;
 }
 
@@ -53,8 +225,13 @@ function saveStoredHouses(houses: HouseWithDetails[], notify: boolean = true) {
     return h;
   });
   memoryHouses = normalized;
-  if (notify && typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('mahallu_data_updated'));
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(LIVE_CENSUS_CACHE_KEY, JSON.stringify(normalized));
+    } catch {}
+  }
+  if (notify) {
+    notifyDataUpdated();
   }
 }
 
@@ -64,9 +241,7 @@ function getStoredLedger(): FinancialLedger[] {
 
 function saveStoredLedger(ledger: FinancialLedger[]) {
   memoryLedger = ledger;
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('mahallu_data_updated'));
-  }
+  notifyDataUpdated();
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -144,7 +319,12 @@ export function getHouseRegistrationMonth(house: { created_at?: string | null; p
 // Data operations for Mahallu Management System
 export const DataService = {
   // Houses & Population
-  getHouses(filter?: { division?: Division | 'all'; search?: string; status?: ProfileStatus | 'all' }): HouseWithDetails[] {
+  getHouses(filter?: {
+    division?: Division | 'all';
+    search?: string;
+    status?: ProfileStatus | 'all';
+    memberCount?: string;
+  }): HouseWithDetails[] {
     let list = getStoredHouses();
 
     if (filter?.division && filter.division !== 'all') {
@@ -155,6 +335,28 @@ export const DataService = {
       list = list.filter((h) => {
         const prof = Array.isArray(h.profile) ? (h.profile[0] as any) : h.profile;
         return prof?.status === filter.status;
+      });
+    }
+
+    if (filter?.memberCount && filter.memberCount !== 'all') {
+      const mc = filter.memberCount;
+      list = list.filter((h) => {
+        const count = h.family_members?.length || 0;
+        if (mc === '1-3') return count >= 1 && count <= 3;
+        if (mc === '4-6') return count >= 4 && count <= 6;
+        if (mc.endsWith('+')) {
+          const min = parseInt(mc.replace('+', ''), 10);
+          return !isNaN(min) ? count >= min : true;
+        }
+        if (mc.includes('-')) {
+          const [min, max] = mc.split('-').map((v) => parseInt(v, 10));
+          return (!isNaN(min) && !isNaN(max)) ? count >= min && count <= max : true;
+        }
+        const exact = parseInt(mc, 10);
+        if (!isNaN(exact)) {
+          return count === exact;
+        }
+        return true;
       });
     }
 
@@ -274,7 +476,7 @@ export const DataService = {
     return this.getHouseById(id) || null;
   },
 
-  async getHousesAsync(filter?: { division?: Division | 'all'; search?: string; status?: ProfileStatus | 'all' }): Promise<HouseWithDetails[]> {
+  async getHousesAsync(filter?: { division?: Division | 'all'; search?: string; status?: ProfileStatus | 'all'; memberCount?: string }): Promise<HouseWithDetails[]> {
     await this.syncHousesFromSupabase();
     return this.getHouses(filter);
   },
@@ -509,7 +711,7 @@ export const DataService = {
         const duesToInsert = requiredMonths.map((m) => ({
           house_id: realHouseId,
           billing_month: m,
-          amount: 100,
+          amount: this.getMonthlyDueAmount(m),
           status: 'pending',
         }));
         const { data: duesData } = await (supabase.from('payment_dues') as any)
@@ -528,7 +730,7 @@ export const DataService = {
             id: `due-${realHouseId}-${m}`,
             house_id: realHouseId,
             billing_month: m,
-            amount: 100,
+            amount: this.getMonthlyDueAmount(m),
             transaction_ref: null,
             status: 'pending',
             submitted_at: null,
@@ -601,7 +803,7 @@ export const DataService = {
         id: `due-${houseId}-${m}`,
         house_id: houseId,
         billing_month: m,
-        amount: 100,
+        amount: this.getMonthlyDueAmount(m),
         transaction_ref: null,
         status: 'pending',
         submitted_at: null,
@@ -810,6 +1012,157 @@ export const DataService = {
     return true;
   },
 
+  async getProfileUpdatesAsync(): Promise<ProfileUpdateRequest[]> {
+    try {
+      const res = await fetch('/api/profile-updates', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.updates)) {
+          memoryProfileUpdates = data.updates;
+          return data.updates;
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching profile updates:', err);
+    }
+    return memoryProfileUpdates;
+  },
+
+  async getPendingProfileUpdatesAsync(): Promise<ProfileUpdateRequest[]> {
+    const list = await this.getProfileUpdatesAsync();
+    return list.filter((u) => u.status === 'pending');
+  },
+
+  async getProfileUpdateForHouseAsync(houseId: string): Promise<ProfileUpdateRequest | null> {
+    const list = await this.getProfileUpdatesAsync();
+    return list.find((u) => u.house_id === houseId || u.user_id === houseId) || null;
+  },
+
+  async submitProfileUpdateRequestAsync(params: {
+    house_id: string;
+    user_id: string;
+    mahallu_reg_no: string;
+    current_details: {
+      house_name: string;
+      house_number: string;
+      phone: string;
+      division: Division;
+    };
+    requested_details: {
+      house_name: string;
+      house_number: string;
+      phone: string;
+      division: Division;
+    };
+    current_members?: FamilyMember[];
+    requested_members?: FamilyMember[];
+    note?: string;
+  }): Promise<ProfileUpdateRequest> {
+    const res = await fetch('/api/profile-updates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Failed to submit profile update request');
+    }
+
+    const data = await res.json();
+    const updatedRequest = data.update;
+
+    const idx = memoryProfileUpdates.findIndex((u) => u.id === updatedRequest.id);
+    if (idx >= 0) {
+      memoryProfileUpdates[idx] = updatedRequest;
+    } else {
+      memoryProfileUpdates.unshift(updatedRequest);
+    }
+
+    notifyDataUpdated({ type: 'profile_update_submitted', house_id: params.house_id });
+
+    return updatedRequest;
+  },
+
+  async approveProfileUpdateAsync(updateId: string, adminId?: string): Promise<boolean> {
+    const res = await fetch('/api/profile-updates', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ update_id: updateId, action: 'approve', admin_id: adminId }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to approve update request');
+    }
+
+    const data = await res.json();
+    const approvedUpdate: ProfileUpdateRequest = data.update;
+
+    const idx = memoryProfileUpdates.findIndex((u) => u.id === updateId);
+    if (idx >= 0) memoryProfileUpdates[idx] = approvedUpdate;
+
+    // Apply changes to memory houses cache
+    const houses = getStoredHouses();
+    const house = houses.find((h) => h.id === approvedUpdate.house_id || h.user_id === approvedUpdate.user_id);
+    if (house) {
+      house.house_name = approvedUpdate.requested_details.house_name;
+      house.house_number = approvedUpdate.requested_details.house_number;
+      house.phone = approvedUpdate.requested_details.phone;
+      house.division = approvedUpdate.requested_details.division;
+      if (approvedUpdate.requested_members && Array.isArray(approvedUpdate.requested_members)) {
+        house.family_members = approvedUpdate.requested_members;
+      }
+      saveStoredHouses(houses, false);
+    }
+
+    notifyDataUpdated({ type: 'profile_update_approved', updateId });
+
+    return true;
+  },
+
+  async rejectProfileUpdateAsync(updateId: string, reason: string, adminId?: string): Promise<boolean> {
+    const res = await fetch('/api/profile-updates', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ update_id: updateId, action: 'reject', rejection_reason: reason, admin_id: adminId }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to reject update request');
+    }
+
+    const data = await res.json();
+    const rejectedUpdate: ProfileUpdateRequest = data.update;
+
+    const idx = memoryProfileUpdates.findIndex((u) => u.id === updateId);
+    if (idx >= 0) memoryProfileUpdates[idx] = rejectedUpdate;
+
+    notifyDataUpdated({ type: 'profile_update_rejected', updateId });
+
+    return true;
+  },
+
+  async cancelProfileUpdateRequestAsync(updateId: string): Promise<boolean> {
+    const res = await fetch('/api/profile-updates', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ update_id: updateId, action: 'cancel' }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Failed to cancel update request');
+    }
+
+    memoryProfileUpdates = memoryProfileUpdates.filter((u) => u.id !== updateId);
+
+    notifyDataUpdated({ type: 'profile_update_cancelled', updateId });
+
+    return true;
+  },
+
   async blockHouse(houseId: string): Promise<boolean> {
     const houses = getStoredHouses();
     const house = houses.find((h) => h.id === houseId || h.user_id === houseId);
@@ -937,7 +1290,7 @@ export const DataService = {
           id: `due-${house.id}-${m}`,
           house_id: house.id,
           billing_month: m,
-          amount: 100,
+          amount: this.getMonthlyDueAmount(m),
           transaction_ref: null,
           status: 'pending',
           submitted_at: null,
@@ -979,7 +1332,7 @@ export const DataService = {
           id: `due-${house.id}-${m}`,
           house_id: house.id,
           billing_month: m,
-          amount: 100,
+          amount: this.getMonthlyDueAmount(m),
           transaction_ref: null,
           status: 'pending',
           submitted_at: null,
@@ -1012,7 +1365,7 @@ export const DataService = {
             newDuesToInsert.map((d) => ({
               house_id: house.id,
               billing_month: d.billing_month,
-              amount: 100,
+              amount: this.getMonthlyDueAmount(d.billing_month),
               status: 'pending',
             })),
             { onConflict: 'house_id,billing_month' }
@@ -1292,7 +1645,7 @@ export const DataService = {
         id: `due-${Date.now()}`,
         house_id: houseId,
         billing_month: month,
-        amount: 100,
+        amount: this.getMonthlyDueAmount(month),
         transaction_ref: null,
         status: 'pending',
         submitted_at: null,
@@ -1308,7 +1661,7 @@ export const DataService = {
         id: `due-${Date.now()}`,
         house_id: houseId,
         billing_month: month,
-        amount: 100,
+        amount: this.getMonthlyDueAmount(month),
         transaction_ref: null,
         status: 'pending',
         submitted_at: null,
@@ -1324,7 +1677,7 @@ export const DataService = {
         (supabase.from('payment_dues') as any).insert({
           house_id: houseId,
           billing_month: month,
-          amount: 100,
+          amount: this.getMonthlyDueAmount(month),
           status: 'pending',
         });
       } catch {
@@ -1733,11 +2086,12 @@ export const DataService = {
             .eq('id', due.id);
         } else {
           const transRef = `OFFLINE-${Date.now().toString().slice(-6)}`;
+          const dueAmt = this.getMonthlyDueAmount(month);
           const { data: newDue, error: insertErr } = await (supabase.from('payment_dues') as any)
             .insert({
               house_id: houseId,
               billing_month: month,
-              amount: 100,
+              amount: dueAmt,
               status: 'verified',
               transaction_ref: transRef,
               submitted_at: now,
@@ -1759,10 +2113,11 @@ export const DataService = {
             .limit(1);
 
           if (!existingLedger || existingLedger.length === 0) {
+            const dueAmt = (existingDues && existingDues[0]?.amount) || this.getMonthlyDueAmount(month);
             await (supabase.from('financial_ledger') as any).insert({
               type: 'credit',
               category: 'House Monthly Due',
-              amount: 100,
+              amount: dueAmt,
               description: `Monthly Dues (${paymentMethod}) - Month: ${month} | House: ${houseRegNo || 'N/A'} - ${houseName || 'N/A'}`,
               payment_due_id: resolvedDueId,
               created_by: verifiedByUuid,
@@ -1792,11 +2147,12 @@ export const DataService = {
           resolvedDueId = due.id;
         } else {
           const newDueId = resolvedDueId || `due-${Date.now()}`;
+          const dueAmt = this.getMonthlyDueAmount(month);
           due = {
             id: newDueId,
             house_id: houseId,
             billing_month: month,
-            amount: 100,
+            amount: dueAmt,
             transaction_ref: `OFFLINE-${Date.now().toString().slice(-6)}`,
             status: 'verified',
             submitted_at: now,
@@ -1814,11 +2170,19 @@ export const DataService = {
     const ledger = getStoredLedger();
     const alreadyInLedger = resolvedDueId && ledger.some((l) => l.payment_due_id === resolvedDueId);
     if (!alreadyInLedger) {
+      let resolvedAmount = this.getMonthlyDueAmount(month);
+      for (const h of memoryHouses) {
+        const d = h.payment_dues.find((p) => p.id === resolvedDueId || p.billing_month === month);
+        if (d && d.amount) {
+          resolvedAmount = d.amount;
+          break;
+        }
+      }
       const newEntry: FinancialLedger = {
         id: `fl-${Date.now()}`,
         type: 'credit',
         category: 'House Monthly Due',
-        amount: 100,
+        amount: resolvedAmount,
         description: `Monthly Dues (${paymentMethod}) - Month: ${month} | House: ${houseRegNo || 'N/A'} - ${houseName || 'N/A'}`,
         payment_due_id: resolvedDueId || null,
         created_by: adminId,
@@ -1977,6 +2341,101 @@ export const DataService = {
     return newEntry;
   },
 
+  async deleteLedgerEntryAsync(entryId: string, revertDue: boolean = true): Promise<boolean> {
+    let targetEntry = memoryLedger.find((item) => item.id === entryId);
+    if (!targetEntry) {
+      targetEntry = getStoredLedger().find((item) => item.id === entryId);
+    }
+
+    const paymentDueId = targetEntry?.payment_due_id;
+
+    if (hasSupabaseConfig()) {
+      try {
+        const supabase = createClient();
+        const { error: delError } = await (supabase.from('financial_ledger') as any)
+          .delete()
+          .eq('id', entryId);
+
+        if (delError) {
+          console.warn('Supabase deleteLedgerEntry error:', delError);
+        }
+
+        if (revertDue && paymentDueId && isUuid(paymentDueId)) {
+          await (supabase.from('payment_dues') as any)
+            .update({
+              status: 'pending',
+              verified_at: null,
+              verified_by: null,
+            })
+            .eq('id', paymentDueId);
+        }
+      } catch (err) {
+        console.warn('deleteLedgerEntryAsync exception:', err);
+      }
+    }
+
+    // In-memory removal from ledger
+    memoryLedger = memoryLedger.filter((item) => item.id !== entryId);
+    saveStoredLedger(memoryLedger);
+
+    // Revert due if linked by payment_due_id or via description match
+    if (revertDue) {
+      let reverted = false;
+      if (paymentDueId) {
+        for (const h of memoryHouses) {
+          const d = h.payment_dues.find((due) => due.id === paymentDueId || due.billing_month === paymentDueId);
+          if (d) {
+            d.status = 'pending';
+            d.verified_at = null;
+            d.verified_by = null;
+            reverted = true;
+            break;
+          }
+        }
+      }
+
+      if (!reverted && targetEntry?.category === 'House Monthly Due' && targetEntry?.description) {
+        const monthMatch = targetEntry.description.match(/Month:\s*([0-9]{4}-[0-9]{2})/);
+        const houseMatch = targetEntry.description.match(/House:\s*([A-Za-z0-9-]+)/);
+        if (monthMatch && houseMatch) {
+          const bMonth = monthMatch[1];
+          const hReg = houseMatch[1];
+          for (const h of memoryHouses) {
+            if (h.mahallu_reg_no === hReg) {
+              const d = h.payment_dues.find((due) => due.billing_month === bMonth);
+              if (d) {
+                d.status = 'pending';
+                d.verified_at = null;
+                d.verified_by = null;
+                if (hasSupabaseConfig() && isUuid(d.id)) {
+                  try {
+                    const supabase = createClient();
+                    (supabase.from('payment_dues') as any)
+                      .update({ status: 'pending', verified_at: null, verified_by: null })
+                      .eq('id', d.id);
+                  } catch {}
+                }
+                break;
+              }
+            }
+          }
+        }
+      }
+      saveStoredHouses(memoryHouses, false);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('mahallu_data_updated'));
+    }
+
+    return true;
+  },
+
+  deleteLedgerEntry(entryId: string, revertDue: boolean = true): boolean {
+    this.deleteLedgerEntryAsync(entryId, revertDue);
+    return true;
+  },
+
   getFinancialSummary(): { totalCredit: number; totalDebit: number; balance: number } {
     const ledger = getStoredLedger();
     let totalCredit = 0;
@@ -2018,12 +2477,21 @@ export const DataService = {
   },
 
   // Statistics
-  getSystemStats() {
-    const houses = getStoredHouses();
+  getSystemStats(customHouses?: HouseWithDetails[]) {
+    const houses = customHouses || getStoredHouses();
     const totalHouses = houses.length;
-    const approvedHouses = houses.filter((h) => h.profile?.status === 'approved').length;
-    const pendingHouses = houses.filter((h) => h.profile?.status === 'pending_verification').length;
-    const blockedHouses = houses.filter((h) => h.profile?.status === 'blocked').length;
+    const approvedHouses = houses.filter((h) => {
+      const prof = Array.isArray(h.profile) ? (h.profile[0] as any) : h.profile;
+      return prof?.status === 'approved';
+    }).length;
+    const pendingHouses = houses.filter((h) => {
+      const prof = Array.isArray(h.profile) ? (h.profile[0] as any) : h.profile;
+      return prof?.status === 'pending_verification';
+    }).length;
+    const blockedHouses = houses.filter((h) => {
+      const prof = Array.isArray(h.profile) ? (h.profile[0] as any) : h.profile;
+      return prof?.status === 'blocked';
+    }).length;
 
     let totalPopulation = 0;
     let totalChildren = 0;
@@ -2040,7 +2508,7 @@ export const DataService = {
     };
 
     for (const h of houses) {
-      const pCount = h.family_members.length;
+      const pCount = h.family_members?.length || 0;
       totalPopulation += pCount;
 
       if (divisionBreakdown[h.division]) {
@@ -2048,13 +2516,15 @@ export const DataService = {
         divisionBreakdown[h.division].population += pCount;
       }
 
-      for (const m of h.family_members) {
-        if (m.age !== null && m.age < 18) {
+      for (const m of (h.family_members || [])) {
+        const ageNum = typeof m.age === 'number' ? m.age : parseInt(String(m.age), 10);
+        if (!isNaN(ageNum) && ageNum < 18) {
           totalChildren++;
         }
-        if (m.job_status === 'Abroad') {
+        const job = (m.job_status || '').toLowerCase().trim();
+        if (job === 'abroad') {
           totalAbroad++;
-        } else if (['Employed', 'Business', 'Agriculture'].includes(m.job_status)) {
+        } else if (['employed', 'business', 'agriculture'].includes(job)) {
           totalEmployed++;
         }
       }
@@ -2070,12 +2540,109 @@ export const DataService = {
       totalAbroad,
       totalEmployed,
       divisionBreakdown,
+      monthlyDueAmount: this.getMonthlyDueAmount(),
+      nextMonthSchedule: this.getNextMonthSchedule(),
     };
   },
 
-  async getSystemStatsAsync() {
-    await this.syncHousesFromSupabase();
-    return this.getSystemStats();
+  async getSystemStatsAsync(customHouses?: HouseWithDetails[]) {
+    if (!customHouses) {
+      await this.syncHousesFromSupabase();
+    }
+    return this.getSystemStats(customHouses);
+  },
+
+  getDuesSettings(): DuesSettings {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = (window as any).__mahallu_dues_settings;
+        if (cached) return cached;
+      } catch {}
+    }
+    return {
+      defaultAmount: 100,
+      currentAmount: 100,
+      history: [],
+      updatedAt: new Date().toISOString(),
+    };
+  },
+
+  async getDuesSettingsAsync(): Promise<DuesSettings> {
+    try {
+      const res = await fetch('/api/settings/dues', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.settings) {
+          if (typeof window !== 'undefined') {
+            (window as any).__mahallu_dues_settings = data.settings;
+          }
+          return data.settings;
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching dues settings from API:', err);
+    }
+    return this.getDuesSettings();
+  },
+
+  async saveMonthlyDueAmountAsync(amount: number, updatedBy?: string): Promise<DuesSettings> {
+    const res = await fetch('/api/settings/dues', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, updatedBy }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Failed to update monthly due amount');
+    }
+
+    const data = await res.json();
+    const updated = data.settings;
+    if (typeof window !== 'undefined') {
+      (window as any).__mahallu_dues_settings = updated;
+      window.dispatchEvent(new CustomEvent('mahallu_data_updated'));
+      window.dispatchEvent(new CustomEvent('mahallu_dues_updated', { detail: updated }));
+    }
+    return updated;
+  },
+
+  getMonthlyDueAmount(billingMonth?: string): number {
+    const month = billingMonth || new Date().toISOString().slice(0, 7);
+    const settings = this.getDuesSettings();
+    return calculateDueAmountForMonth(settings, month);
+  },
+
+  getNextMonthSchedule(): {
+    currentMonth: string;
+    currentAmount: number;
+    nextMonth: string;
+    nextAmount: number;
+    isPendingChange: boolean;
+  } {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonthNum = now.getMonth() + 1;
+    const currentMonth = `${currentYear}-${String(currentMonthNum).padStart(2, '0')}`;
+
+    let nextY = currentYear;
+    let nextM = currentMonthNum + 1;
+    if (nextM > 12) {
+      nextM = 1;
+      nextY += 1;
+    }
+    const nextMonth = `${nextY}-${String(nextM).padStart(2, '0')}`;
+
+    const currentAmount = this.getMonthlyDueAmount(currentMonth);
+    const nextAmount = this.getMonthlyDueAmount(nextMonth);
+
+    return {
+      currentMonth,
+      currentAmount,
+      nextMonth,
+      nextAmount,
+      isPendingChange: nextAmount !== currentAmount,
+    };
   },
 
   getUpiSettings(): {
@@ -2093,8 +2660,8 @@ export const DataService = {
       } catch {}
     }
     return {
-      upiId: 'alhudamahallu@upi',
-      payeeName: "Al-Huda Mahallu Jama'ath",
+      upiId: 'kunjikkulam@upi',
+      payeeName: "Kunjikkulam Juma Masjid",
       bankName: 'State Bank of India',
       accountNumber: '123456789012',
       ifscCode: 'SBIN0001234',

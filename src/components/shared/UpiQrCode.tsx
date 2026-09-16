@@ -22,7 +22,7 @@ export function buildUpiUri(params: {
   amount?: number;
   note?: string;
 }): string {
-  const { upiId, payeeName = "Al-Huda Mahallu Jama'ath", amount, note = 'Mahallu Monthly Dues' } = params;
+  const { upiId, payeeName = "Kunjikkulam Juma Masjid", amount, note = 'Mahallu Monthly Dues' } = params;
   const query = new URLSearchParams();
   query.set('pa', upiId.trim());
   query.set('pn', payeeName.trim());
@@ -38,7 +38,7 @@ export function buildUpiUri(params: {
 
 export const UpiQrCode: React.FC<UpiQrCodeProps> = ({
   upiId,
-  payeeName = "Al-Huda Mahallu Jama'ath",
+  payeeName = "Kunjikkulam Juma Masjid",
   amount,
   note = 'Mahallu Monthly Dues',
   size = 170,

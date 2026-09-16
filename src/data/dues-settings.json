@@ -1,0 +1,13 @@
+{
+  "defaultAmount": 100,
+  "currentAmount": 100,
+  "history": [
+    {
+      "amount": 100,
+      "effectiveFromMonth": "2026-10",
+      "createdAt": "2026-09-15T15:46:04.899Z",
+      "updatedBy": "e25f3e83-92f9-471d-bbc0-0e37f41f8a4d"
+    }
+  ],
+  "updatedAt": "2026-09-15T15:46:04.901Z"
+}

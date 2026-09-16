@@ -12,8 +12,8 @@ export interface UpiSettings {
 }
 
 const DEFAULT_UPI_SETTINGS: UpiSettings = {
-  upiId: 'alhudamahallu@upi',
-  payeeName: "Al-Huda Mahallu Jama'ath",
+  upiId: 'kunjikkulam@upi',
+  payeeName: "Kunjikkulam Juma Masjid",
   bankName: 'State Bank of India',
   accountNumber: '123456789012',
   ifscCode: 'SBIN0001234',
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     }
 
     const cleanUpiId = upiId.trim().toLowerCase();
-    const cleanPayeeName = payeeName?.trim() || "Al-Huda Mahallu Jama'ath";
+    const cleanPayeeName = payeeName?.trim() || "Kunjikkulam Juma Masjid";
 
     const updated = writeUpiSettingsToDisk({
       upiId: cleanUpiId,

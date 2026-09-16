@@ -43,8 +43,8 @@ export default function ResidentPaymentCenter() {
     accountNumber?: string;
     ifscCode?: string;
   }>({
-    upiId: 'alhudamahallu@upi',
-    payeeName: "Al-Huda Mahallu Jama'ath",
+    upiId: 'kunjikkulam@upi',
+    payeeName: "Kunjikkulam Juma Masjid",
   });
   const [showHeroQr, setShowHeroQr] = useState(false);
 

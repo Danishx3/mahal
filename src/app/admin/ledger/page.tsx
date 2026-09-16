@@ -20,6 +20,8 @@ import {
   Filter,
   ArrowUpRight,
   ArrowDownLeft,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 
 export default function FinancialLedgerPage() {
@@ -39,6 +41,12 @@ export default function FinancialLedgerPage() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Delete Transaction Modal State
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<FinancialLedger | null>(null);
+  const [revertDueStatus, setRevertDueStatus] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadLedger = async () => {
     const list = await DataService.getLedgerAsync();
@@ -101,6 +109,28 @@ export default function FinancialLedgerPage() {
       toast('Failed to record transaction', 'error');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenDelete = (item: FinancialLedger) => {
+    setItemToDelete(item);
+    setRevertDueStatus(true);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    try {
+      setIsDeleting(true);
+      await DataService.deleteLedgerEntryAsync(itemToDelete.id, revertDueStatus);
+      toast(`Deleted ${itemToDelete.category} transaction (${formatCurrency(itemToDelete.amount)}) from ledger`, 'success');
+      setDeleteModalOpen(false);
+      setItemToDelete(null);
+      await loadLedger();
+    } catch (err: any) {
+      toast(err?.message || 'Failed to delete ledger entry', 'error');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -226,25 +256,22 @@ export default function FinancialLedgerPage() {
         <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-full md:w-auto">
           <button
             onClick={() => setTypeFilter('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-              typeFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${typeFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
           >
             All Types
           </button>
           <button
             onClick={() => setTypeFilter('credit')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-              typeFilter === 'credit' ? 'bg-emerald-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${typeFilter === 'credit' ? 'bg-emerald-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
           >
             Credits Only
           </button>
           <button
             onClick={() => setTypeFilter('debit')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-              typeFilter === 'debit' ? 'bg-rose-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-            }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${typeFilter === 'debit' ? 'bg-rose-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              }`}
           >
             Debits Only
           </button>
@@ -288,12 +315,13 @@ export default function FinancialLedgerPage() {
                 <th className="py-3.5 px-4">Category</th>
                 <th className="py-3.5 px-4">Description / Reference</th>
                 <th className="py-3.5 px-6 text-right">Amount</th>
+                <th className="py-3.5 px-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredLedger.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-slate-400">
+                  <td colSpan={6} className="py-10 text-center text-slate-400">
                     No ledger transactions matching your criteria.
                   </td>
                 </tr>
@@ -319,11 +347,21 @@ export default function FinancialLedgerPage() {
                     </td>
 
                     <td
-                      className={`py-3.5 px-6 text-right font-extrabold text-sm whitespace-nowrap ${
-                        item.type === 'credit' ? 'text-emerald-700' : 'text-rose-700'
-                      }`}
+                      className={`py-3.5 px-6 text-right font-extrabold text-sm whitespace-nowrap ${item.type === 'credit' ? 'text-emerald-700' : 'text-rose-700'
+                        }`}
                     >
                       {item.type === 'credit' ? '+' : '-'} {formatCurrency(item.amount)}
+                    </td>
+
+                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDelete(item)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        title="Delete this transaction entry"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -353,11 +391,10 @@ export default function FinancialLedgerPage() {
                   setEntryType('credit');
                   if (category === 'Electricity' || category === 'Maintenance') setCategory('Donation');
                 }}
-                className={`py-2.5 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                  entryType === 'credit'
-                    ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-100'
-                    : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
-                }`}
+                className={`py-2.5 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${entryType === 'credit'
+                  ? 'bg-emerald-50 border-emerald-500 text-emerald-800 ring-2 ring-emerald-100'
+                  : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
+                  }`}
               >
                 <ArrowDownLeft className="h-4 w-4 text-emerald-600" />
                 Credit (Income / Inflow)
@@ -369,11 +406,10 @@ export default function FinancialLedgerPage() {
                   setEntryType('debit');
                   if (category === 'House Monthly Due' || category === 'Donation') setCategory('Maintenance');
                 }}
-                className={`py-2.5 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                  entryType === 'debit'
-                    ? 'bg-rose-50 border-rose-500 text-rose-800 ring-2 ring-rose-100'
-                    : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
-                }`}
+                className={`py-2.5 px-4 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${entryType === 'debit'
+                  ? 'bg-rose-50 border-rose-500 text-rose-800 ring-2 ring-rose-100'
+                  : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
+                  }`}
               >
                 <ArrowUpRight className="h-4 w-4 text-rose-600" />
                 Debit (Expense / Outflow)
@@ -395,7 +431,7 @@ export default function FinancialLedgerPage() {
                   <option value="House Monthly Due">House Monthly Due (Offline Cash)</option>
                   <option value="Madrasa Collection">Madrasa Education Fund</option>
                   <option value="Friday Collection">Friday Jumua Collection</option>
-                  <option value="Sponsorship">Special Ward Sponsorship</option>
+                  <option value="Other">Other (Will mention in description)</option>
                 </>
               ) : (
                 <>
@@ -404,7 +440,7 @@ export default function FinancialLedgerPage() {
                   <option value="Relief Aid">Medical & Relief Financial Aid</option>
                   <option value="Salaries">Staff / Imam / Muazzin Stipend</option>
                   <option value="Sound System">Azaan Speaker & Sound Repair</option>
-                  <option value="Cleaning">Sanitation & Hygiene Supplies</option>
+                  <option value="Other">Other (Will mention in description)</option>
                 </>
               )}
             </select>
@@ -453,6 +489,113 @@ export default function FinancialLedgerPage() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Transaction / Payment Confirmation Modal */}
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setDeleteModalOpen(false);
+            setItemToDelete(null);
+          }
+        }}
+        title="Delete Ledger Transaction"
+        description="Are you sure you want to delete this payment or transaction from the financial ledger?"
+        maxWidth="md"
+      >
+        {itemToDelete && (
+          <div className="space-y-4 text-xs">
+            {/* Warning Callout */}
+            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-rose-950">
+                <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+                <span>Financial Ledger Audit Notice</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-rose-800">
+                Deleting this record will immediately update the Mahallu accounts, recalculate total inflow, outflow, and treasury balance.
+              </p>
+            </div>
+
+            {/* Transaction Details Box */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant={itemToDelete.type} size="sm">
+                    {itemToDelete.type}
+                  </Badge>
+                  <span className="font-bold text-slate-900 text-sm">{itemToDelete.category}</span>
+                </div>
+                <span
+                  className={`font-black text-base ${
+                    itemToDelete.type === 'credit' ? 'text-emerald-700' : 'text-rose-700'
+                  }`}
+                >
+                  {itemToDelete.type === 'credit' ? '+' : '-'} {formatCurrency(itemToDelete.amount)}
+                </span>
+              </div>
+
+              <div className="text-[11px] text-slate-600 pt-1.5 border-t border-slate-200 flex items-center justify-between">
+                <span>Transaction Date:</span>
+                <strong className="text-slate-800">{formatDateTime(itemToDelete.created_at)}</strong>
+              </div>
+
+              {itemToDelete.description && (
+                <div className="text-[11px] text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200">
+                  <span className="font-semibold text-slate-400 block text-[10px] uppercase tracking-wider mb-0.5">
+                    Description & Reference
+                  </span>
+                  {itemToDelete.description}
+                </div>
+              )}
+            </div>
+
+            {/* Household Due Reversion Toggle */}
+            {(itemToDelete.payment_due_id || itemToDelete.category === 'House Monthly Due') && (
+              <label className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200/80 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={revertDueStatus}
+                  onChange={(e) => setRevertDueStatus(e.target.checked)}
+                  className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4 border-slate-300 cursor-pointer"
+                />
+                <div className="text-[11px] text-amber-950">
+                  <span className="font-bold block">Revert linked household due to Pending (Unpaid)</span>
+                  <span className="text-amber-800">
+                    Marks the household's monthly fee as pending/unpaid again so it is accurately reflected on the defaulters and payment records.
+                  </span>
+                </div>
+              </label>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setDeleteModalOpen(false);
+                  setItemToDelete(null);
+                }}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={handleConfirmDelete}
+                isLoading={isDeleting}
+                className="gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Transaction
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
