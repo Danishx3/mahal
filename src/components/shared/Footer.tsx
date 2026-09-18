@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   Landmark,
@@ -57,8 +58,14 @@ export function Footer() {
           {/* Column 1: Brand & Identity */}
           <div className="sm:col-span-2 lg:col-span-1 space-y-4">
             <Link href="/" className="inline-flex items-center gap-3 group">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-lg shadow-emerald-600/20 group-hover:scale-105 transition-transform duration-200 ring-1 ring-white/10">
-                <Landmark className="h-5 w-5" />
+              <div className="h-10 w-10 rounded-xl overflow-hidden shadow-lg shadow-emerald-600/20 group-hover:scale-105 transition-transform duration-200 ring-1 ring-emerald-400/30 bg-white p-0.5">
+                <Image
+                  src="/logo.jpg"
+                  alt="Kunjikkulam Juma Masjid Logo"
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover rounded-[10px]"
+                />
               </div>
               <div className="leading-tight">
                 <p className="font-bold text-white text-base tracking-tight group-hover:text-emerald-300 transition-colors">

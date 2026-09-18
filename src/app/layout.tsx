@@ -10,6 +10,17 @@ export const metadata: Metadata = {
   title: "Mahallu & Village Management System | Kunjikkulam Juma Masjid",
   description:
     'Comprehensive digital governance, household registry, monthly dues tracking, and double-entry financial ledger for Mahallu Jamaath.',
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/favicon.png', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-icon.png' },
+      { url: '/apple-touch-icon.png' },
+    ],
+  },
 };
 
 export default function RootLayout({

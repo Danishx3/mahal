@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   Landmark,
@@ -153,8 +154,15 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo */}
           <Link href={getHomeRedirect()} className="flex items-center gap-3 group cursor-pointer">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shadow-md shadow-emerald-700/20 group-hover:scale-105 group-hover:shadow-emerald-600/30 transition-all duration-200 ring-1 ring-white/10">
-              <Landmark className="h-5 w-5" />
+            <div className="h-10 w-10 rounded-xl overflow-hidden shadow-md shadow-emerald-700/20 group-hover:scale-105 group-hover:shadow-emerald-600/30 transition-all duration-200 ring-1 ring-emerald-600/30 bg-white flex items-center justify-center p-0.5">
+              <Image
+                src="/logo.jpg"
+                alt="Kunjikkulam Juma Masjid Logo"
+                width={40}
+                height={40}
+                className="w-full h-full object-cover rounded-[10px]"
+                priority
+              />
             </div>
             <div className="leading-tight">
               <span className={`text-base font-bold tracking-tight block transition-colors duration-200 ${theme.brandTitle}`}>

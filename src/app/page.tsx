@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   ShieldCheck,
   CreditCard,
@@ -232,6 +233,28 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
             {/* Left: Text content */}
             <div className="space-y-8 text-center lg:text-left">
+
+              {/* Header Icon Badge */}
+              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/[0.07] border border-white/10 backdrop-blur-md shadow-xl shadow-emerald-950/30">
+                <div className="h-10 w-10 rounded-xl overflow-hidden ring-2 ring-emerald-400/40 bg-white p-0.5 shrink-0 shadow-md">
+                  <Image
+                    src="/logo.jpg"
+                    alt="Kunjikkulam Juma Masjid Logo"
+                    width={40}
+                    height={40}
+                    className="w-full h-full object-cover rounded-[10px]"
+                    priority
+                  />
+                </div>
+                <div className="text-left leading-tight">
+                  <span className="text-xs font-bold text-white tracking-tight block">
+                    Kunjikkulam Juma Masjid
+                  </span>
+                  <span className="text-[10px] font-semibold text-emerald-400 tracking-wider uppercase block">
+                    Official Mahallu Portal
+                  </span>
+                </div>
+              </div>
 
               {/* Heading */}
               <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-extrabold tracking-tight leading-[1.1]">

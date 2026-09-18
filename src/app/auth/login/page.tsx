@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, Suspense } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient, hasSupabaseConfig } from '@/lib/supabase/client';
 import { Landmark, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -48,9 +49,16 @@ function LoginFormContent() {
   return (
     <div className="w-full max-w-md bg-white text-slate-900 rounded-3xl shadow-2xl p-6 sm:p-8 border border-slate-100 space-y-6">
       {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="h-16 w-16 rounded-2xl bg-emerald-800 text-emerald-100 flex items-center justify-center mx-auto shadow-md">
-          <Landmark className="h-8 w-8" />
+      <div className="text-center space-y-3">
+        <div className="h-20 w-20 rounded-2xl overflow-hidden shadow-lg shadow-emerald-900/10 mx-auto ring-2 ring-emerald-600/20 bg-white p-1">
+          <Image
+            src="/logo.jpg"
+            alt="Kunjikkulam Juma Masjid Logo"
+            width={80}
+            height={80}
+            className="w-full h-full object-cover rounded-xl"
+            priority
+          />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           Mahallu Portal Access
