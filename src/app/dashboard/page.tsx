@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DataService, ProfileUpdateRequest } from '@/lib/data-service';
-import { HouseWithDetails, DIVISION_LABELS, Division, FamilyMember, MaritalStatus } from '@/lib/supabase/types';
+import { HouseWithDetails, DIVISION_LABELS, Division, FamilyMember, MaritalStatus, PaymentRequestItem } from '@/lib/supabase/types';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -36,6 +36,7 @@ import {
   Plus,
   Trash2,
   UserCheck,
+  HandCoins,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { LoadingScreen } from '@/components/ui/LoadingAnimation';
@@ -107,6 +108,9 @@ export default function ResidentDashboard() {
   const { user, profile, house: authHouse, isLoading } = useAuth();
   const [house, setHouse] = useState<HouseWithDetails | null>(null);
   const [membersExpanded, setMembersExpanded] = useState(true);
+  const [activePaymentRequests, setActivePaymentRequests] = useState<PaymentRequestItem[]>([]);
+  const [specialPaidTotal, setSpecialPaidTotal] = useState(0);
+  const [specialPaidCount, setSpecialPaidCount] = useState(0);
 
   // Edit Profile / Dwelling Verification State
   const [pendingUpdate, setPendingUpdate] = useState<ProfileUpdateRequest | null>(null);
@@ -154,6 +158,27 @@ export default function ResidentDashboard() {
       } else {
         setHouse(null);
       }
+
+      // Load active payment requests (only active requests awaiting household fulfillment)
+      try {
+        const reqData = await DataService.getPaymentRequestsAsync();
+        const activeOnly = (reqData.requests || []).filter((r) => r.status === 'active');
+        const houseContributions = (reqData.contributions || []).filter((c) => c.house_id === userHouse?.id);
+        const verifiedContributions = houseContributions.filter((c) => c.status === 'verified');
+        const totalSplPaid = verifiedContributions.reduce((sum, c) => sum + Number(c.amount), 0);
+        setSpecialPaidTotal(totalSplPaid);
+        setSpecialPaidCount(verifiedContributions.length);
+
+        const housePaidRequestIds = new Set(
+          houseContributions
+            .filter((c) => c.status === 'verified' || c.status === 'under_review')
+            .map((c) => c.request_id)
+        );
+        const unfulfilledActive = activeOnly.filter((r) => !housePaidRequestIds.has(r.id));
+        setActivePaymentRequests(unfulfilledActive);
+      } catch (e) {
+        console.warn('Failed to load active payment requests in dashboard:', e);
+      }
     } catch (err) {
       console.warn('loadData resident dashboard error:', err);
     }
@@ -166,10 +191,16 @@ export default function ResidentDashboard() {
       loadData();
     }, 3500);
 
+    const handleRequestsUpdated = () => {
+      loadData();
+    };
+
     window.addEventListener('mahallu_data_updated', loadData);
+    window.addEventListener('mahallu_requests_updated', handleRequestsUpdated);
     return () => {
       clearInterval(interval);
       window.removeEventListener('mahallu_data_updated', loadData);
+      window.removeEventListener('mahallu_requests_updated', handleRequestsUpdated);
     };
   }, [user?.id]);
 
@@ -424,6 +455,56 @@ export default function ResidentDashboard() {
           </div>
         </div>
 
+        {/* Active Payment Requests & Campaigns Banner */}
+        {activePaymentRequests.length > 0 && (
+          <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-slate-900 text-white p-5 rounded-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-emerald-700/50">
+            <div className="flex items-center gap-3.5">
+              <div className="p-3 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-400/20 shrink-0">
+                <HandCoins className="h-6 w-6" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 uppercase tracking-wide">
+                    Active Payment Request
+                  </span>
+                  <span className="text-xs font-semibold text-emerald-300">
+                    {activePaymentRequests[0].category}
+                  </span>
+                  {activePaymentRequests[0].amount_type === 'fixed' ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/30 text-blue-200 border border-blue-400/30">
+                      Amount: ₹{activePaymentRequests[0].fixed_amount}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/30 text-amber-200 border border-amber-400/30">
+                      Pay As You Wish
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-base font-bold text-white tracking-tight">
+                  {activePaymentRequests[0].title}
+                </h3>
+                <p className="text-xs text-emerald-100/80 leading-relaxed max-w-2xl">
+                  {activePaymentRequests[0].description ||
+                    (activePaymentRequests[0].amount_type === 'fixed'
+                      ? `The Mahallu Committee has requested an amount of ₹${activePaymentRequests[0].fixed_amount} from each household.`
+                      : 'The Mahallu Committee has invited community contributions for this cause.')}
+                </p>
+              </div>
+            </div>
+
+            <Link href="/dashboard/payments" className="shrink-0 w-full sm:w-auto">
+              <Button
+                variant="primary"
+                size="sm"
+                className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold border-none gap-2 shadow-sm cursor-pointer py-2.5 px-4"
+              >
+                <span>View &amp; Pay Request</span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
+        )}
+
         {/* Financial KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Pending Dues */}
@@ -457,7 +538,7 @@ export default function ResidentDashboard() {
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Total Dues Paid
+                Total Paid (Reconciled)
               </span>
               <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
                 <CheckCircle2 className="h-4 w-4" />
@@ -465,10 +546,10 @@ export default function ResidentDashboard() {
             </div>
             <div className="mt-3">
               <div className="text-2xl font-extrabold text-emerald-800">
-                {formatCurrency(paidTotal)}
+                {formatCurrency(paidTotal + specialPaidTotal)}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                {verifiedDues.length} verified monthly contributions
+                {verifiedDues.length} dues + {specialPaidCount} special payment(s) verified
               </p>
               <Link
                 href="/dashboard/payments"

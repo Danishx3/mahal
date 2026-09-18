@@ -3,12 +3,19 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { DataService } from '@/lib/data-service';
-import { HouseWithDetails, PaymentDue, PaymentStatus } from '@/lib/supabase/types';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
+import {
+  HouseWithDetails,
+  PaymentDue,
+  PaymentStatus,
+  PaymentRequestItem,
+  PaymentRequestContribution,
+} from '@/lib/supabase/types';
+import { formatCurrency, formatDateTime, getHouseHeadName } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { DigitalReceipt } from '@/components/resident/DigitalReceipt';
+import { SpecialCollectionReceipt } from '@/components/resident/SpecialCollectionReceipt';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/lib/context/AuthContext';
 import {
@@ -24,6 +31,10 @@ import {
   Info,
   Loader2,
   Home,
+  HandCoins,
+  Coins,
+  Check,
+  Sparkles,
 } from 'lucide-react';
 
 import { LoadingScreen } from '@/components/ui/LoadingAnimation';
@@ -34,6 +45,7 @@ export default function ResidentPaymentCenter() {
   const { user, profile, house: authHouse, isLoading } = useAuth();
   const [house, setHouse] = useState<HouseWithDetails | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'under_review' | 'verified' | 'failed'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'monthly' | 'special'>('all');
 
   // Dynamic UPI Settings
   const [upiSettings, setUpiSettings] = useState<{
@@ -48,13 +60,35 @@ export default function ResidentPaymentCenter() {
   });
   const [showHeroQr, setShowHeroQr] = useState(false);
 
-  // Submit payment modal state
+  // Special Payment Requests & Contributions state
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequestItem[]>([]);
+  const [contributions, setContributions] = useState<PaymentRequestContribution[]>([]);
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [selectedReq, setSelectedReq] = useState<PaymentRequestItem | null>(null);
+  const [contribAmount, setContribAmount] = useState('');
+  const [contribUtr, setContribUtr] = useState('');
+  const [isSubmittingContrib, setIsSubmittingContrib] = useState(false);
+  const [splReceiptModalOpen, setSplReceiptModalOpen] = useState(false);
+  const [splReceiptContrib, setSplReceiptContrib] = useState<PaymentRequestContribution | null>(null);
+  const [splReceiptReq, setSplReceiptReq] = useState<PaymentRequestItem | null>(null);
+
+  // Active requests published by Mahallu Admin (strictly status === 'active')
+  const activeRequests = paymentRequests.filter((r) => r.status === 'active');
+
+  // Closed / completed / archived campaigns where this household participated (has a contribution)
+  const completedParticipated = paymentRequests.filter(
+    (r) =>
+      (r.status === 'completed' || r.status === 'cancelled') &&
+      contributions.some((c) => c.request_id === r.id && c.house_id === house?.id)
+  );
+
+  // Submit payment modal state (monthly dues)
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [selectedDue, setSelectedDue] = useState<PaymentDue | null>(null);
   const [transactionRef, setTransactionRef] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Digital Receipt modal state
+  // Digital Receipt modal state (monthly dues)
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [receiptDue, setReceiptDue] = useState<PaymentDue | null>(null);
 
@@ -90,6 +124,11 @@ export default function ResidentPaymentCenter() {
       if (upi && upi.upiId) {
         setUpiSettings(upi);
       }
+
+      // 3. Load active payment requests & contributions
+      const reqData = await DataService.getPaymentRequestsAsync();
+      setPaymentRequests(reqData.requests || []);
+      setContributions(reqData.contributions || []);
     } catch (err) {
       console.warn('loadData exception in resident payments:', err);
     }
@@ -97,17 +136,29 @@ export default function ResidentPaymentCenter() {
 
   useEffect(() => {
     loadData();
+    // High-frequency sync with admin updates (status completions / verifications)
+    const interval = setInterval(() => {
+      loadData();
+    }, 3500);
+
     const handleUpiUpdated = (e: any) => {
       if (e.detail && e.detail.upiId) {
         setUpiSettings(e.detail);
       }
     };
 
+    const handleRequestsUpdated = () => {
+      loadData();
+    };
+
     window.addEventListener('mahallu_data_updated', loadData);
     window.addEventListener('mahallu_upi_updated', handleUpiUpdated);
+    window.addEventListener('mahallu_requests_updated', handleRequestsUpdated);
     return () => {
+      clearInterval(interval);
       window.removeEventListener('mahallu_data_updated', loadData);
       window.removeEventListener('mahallu_upi_updated', handleUpiUpdated);
+      window.removeEventListener('mahallu_requests_updated', handleRequestsUpdated);
     };
   }, [user?.id]);
 
@@ -137,10 +188,108 @@ export default function ResidentPaymentCenter() {
     house.payment_dues.find((d) => d.status === 'under_review') ||
     house.payment_dues[0];
 
-  // Filter dues by tab
-  const filteredDues = house.payment_dues.filter((d) => {
+  // User's special payment contributions
+  const mySpecialContributions = contributions.filter((c) => c.house_id === house.id);
+  const verifiedSpecialContribs = mySpecialContributions.filter((c) => c.status === 'verified');
+  const underReviewSpecialContribs = mySpecialContributions.filter((c) => c.status === 'under_review');
+  const rejectedSpecialContribs = mySpecialContributions.filter((c) => c.status === 'rejected');
+
+  const verifiedSpecialTotal = verifiedSpecialContribs.reduce((sum, c) => sum + Number(c.amount), 0);
+  const totalPaidReconciled = paidTotal + verifiedSpecialTotal;
+  const totalUnderReviewCount = underReviewDues.length + underReviewSpecialContribs.length;
+  const totalFailedCount = failedDues.length + rejectedSpecialContribs.length;
+
+  type UnifiedTransaction = {
+    id: string;
+    sourceType: 'monthly_due' | 'special_payment';
+    title: string;
+    subtext: string;
+    categoryBadge: string;
+    amount: number;
+    transactionRef?: string | null;
+    status: 'pending' | 'under_review' | 'verified' | 'failed';
+    displayStatus: string;
+    submittedAt?: string | null;
+    verifiedAt?: string | null;
+    rejectionReason?: string | null;
+    dateForSorting: number;
+    rawDue?: PaymentDue;
+    rawContrib?: PaymentRequestContribution;
+    rawReq?: PaymentRequestItem;
+  };
+
+  const dueTransactions: UnifiedTransaction[] = house.payment_dues.map((due) => {
+    const dateStr = due.verified_at || due.submitted_at;
+    const sortTime = dateStr ? new Date(dateStr).getTime() : 0;
+    return {
+      id: `due-${due.id}`,
+      sourceType: 'monthly_due',
+      title: due.billing_month,
+      subtext: 'Monthly Mahallu Maintenance',
+      categoryBadge: 'Monthly Due',
+      amount: Number(due.amount),
+      transactionRef: due.transaction_ref,
+      status: due.status,
+      displayStatus: due.status.replace('_', ' '),
+      submittedAt: due.submitted_at,
+      verifiedAt: due.verified_at,
+      rejectionReason: due.rejection_reason,
+      dateForSorting: sortTime,
+      rawDue: due,
+    };
+  });
+
+  const specialTransactions: UnifiedTransaction[] = mySpecialContributions.map((contrib) => {
+    const req = paymentRequests.find((r) => r.id === contrib.request_id);
+    const dateStr = contrib.verified_at || contrib.submitted_at || contrib.created_at;
+    const sortTime = dateStr ? new Date(dateStr).getTime() : 0;
+    const normalizedStatus: 'pending' | 'under_review' | 'verified' | 'failed' =
+      contrib.status === 'rejected' ? 'failed' : (contrib.status as any);
+
+    return {
+      id: `spl-${contrib.id}`,
+      sourceType: 'special_payment',
+      title: req?.title || 'Special Collection',
+      subtext: `Special Appeal • ${req?.category || 'Contribution'}`,
+      categoryBadge: req?.category || 'Special Fund',
+      amount: Number(contrib.amount),
+      transactionRef: contrib.transaction_ref,
+      status: normalizedStatus,
+      displayStatus: contrib.status === 'rejected' ? 'Rejected' : contrib.status.replace('_', ' '),
+      submittedAt: contrib.submitted_at,
+      verifiedAt: contrib.verified_at,
+      rejectionReason: contrib.rejection_reason,
+      dateForSorting: sortTime,
+      rawContrib: contrib,
+      rawReq: req || {
+        id: contrib.request_id,
+        title: 'Special Collection',
+        description: '',
+        category: 'Special Fund',
+        amount_type: 'custom',
+        target_audience: 'all',
+        status: 'completed',
+        created_at: contrib.created_at,
+      },
+    };
+  });
+
+  // Combined and sorted: recent activity first, then unsubmitted pending dues
+  const allTransactions: UnifiedTransaction[] = [...dueTransactions, ...specialTransactions].sort((a, b) => {
+    if (a.dateForSorting && b.dateForSorting) {
+      return b.dateForSorting - a.dateForSorting;
+    }
+    if (a.dateForSorting && !b.dateForSorting) return -1;
+    if (!a.dateForSorting && b.dateForSorting) return 1;
+    return 0;
+  });
+
+  // Filter transactions by tab and by type
+  const filteredTransactions = allTransactions.filter((tx) => {
+    if (typeFilter === 'monthly' && tx.sourceType !== 'monthly_due') return false;
+    if (typeFilter === 'special' && tx.sourceType !== 'special_payment') return false;
     if (activeTab === 'all') return true;
-    return d.status === activeTab;
+    return tx.status === activeTab;
   });
 
   const handleOpenSubmitModal = (due: PaymentDue) => {
@@ -207,6 +356,73 @@ export default function ResidentPaymentCenter() {
     setReceiptModalOpen(true);
   };
 
+  const handleOpenReqModal = (req: PaymentRequestItem, existingContrib?: PaymentRequestContribution) => {
+    setSelectedReq(req);
+    if (existingContrib) {
+      setContribAmount(String(existingContrib.amount || ''));
+    } else if (req.amount_type === 'fixed') {
+      setContribAmount(String(req.fixed_amount || ''));
+    } else {
+      // Custom / flexible amount: do NOT preselect any amount
+      setContribAmount('');
+    }
+    setContribUtr(existingContrib?.transaction_ref || '');
+    setRequestModalOpen(true);
+  };
+
+  const handleReqPaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReq || !house) return;
+
+    const amt = Number(contribAmount);
+    if (isNaN(amt) || amt <= 0) {
+      toast('Please enter a valid contribution amount', 'error');
+      return;
+    }
+    if (selectedReq.min_amount && amt < selectedReq.min_amount) {
+      toast(`Minimum contribution amount is ₹${selectedReq.min_amount}`, 'error');
+      return;
+    }
+
+    const cleanRef = contribUtr.trim();
+    if (!cleanRef || cleanRef.length < 6) {
+      toast('Please enter a valid UPI / Bank UTR Reference (minimum 6 characters)', 'error');
+      return;
+    }
+
+    setIsSubmittingContrib(true);
+    try {
+      const contrib = await DataService.submitRequestContributionAsync({
+        requestId: selectedReq.id,
+        houseId: house.id,
+        userId: user?.id,
+        amount: amt,
+        transactionRef: cleanRef,
+      });
+
+      // Optimistic update
+      setContributions((prev) => {
+        const filtered = prev.filter((c) => c.request_id !== selectedReq.id || c.house_id !== house.id);
+        return [contrib, ...filtered];
+      });
+
+      toast(`Contribution of ₹${amt} submitted successfully for "${selectedReq.title}"! Sent to Admin queue for verification.`, 'success');
+      setRequestModalOpen(false);
+      setContribUtr('');
+      await loadData();
+    } catch (err: any) {
+      toast(err?.message || 'Failed to submit contribution reference', 'error');
+    } finally {
+      setIsSubmittingContrib(false);
+    }
+  };
+
+  const handleOpenSplReceipt = (contrib: PaymentRequestContribution, req: PaymentRequestItem) => {
+    setSplReceiptContrib(contrib);
+    setSplReceiptReq(req);
+    setSplReceiptModalOpen(true);
+  };
+
   const handleCopyUpi = () => {
     navigator.clipboard.writeText(upiSettings.upiId);
     toast(`UPI ID copied to clipboard: ${upiSettings.upiId}`, 'success');
@@ -270,10 +486,10 @@ export default function ResidentPaymentCenter() {
             </div>
             <div className="mt-3">
               <div className="text-2xl font-extrabold text-emerald-800">
-                {formatCurrency(paidTotal)}
+                {formatCurrency(totalPaidReconciled)}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                {verifiedDues.length} month(s) verified by Admin
+                {verifiedDues.length} dues + {verifiedSpecialContribs.length} special payment(s) verified
               </p>
             </div>
           </div>
@@ -290,10 +506,10 @@ export default function ResidentPaymentCenter() {
             </div>
             <div className="mt-3">
               <div className="text-2xl font-extrabold text-rose-900">
-                {failedDues.length}
+                {totalFailedCount}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                {failedDues.length > 0 ? 'Requires re-submission of valid UTR' : 'All submissions in good standing'}
+                {totalFailedCount > 0 ? 'Requires re-submission of valid UTR' : 'All submissions in good standing'}
               </p>
             </div>
           </div>
@@ -385,41 +601,395 @@ export default function ResidentPaymentCenter() {
           </div>
         )}
 
-        {/* Tabbed Dues Table */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          {/* Tabs Navigation */}
-          <div className="px-6 pt-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
-            <h2 className="text-sm font-bold text-slate-900">Dues Records & Transaction History</h2>
+        {/* Special Collections & Payment Requests from Mahallu Admin (Active Drives Only) */}
+        {activeRequests.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <HandCoins className="h-5 w-5 text-emerald-600" />
+                  Special Collections &amp; Payment Requests
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Community fundraising drives, mosque projects, charity appeals, and specific collections requested by the administration.
+                </p>
+              </div>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 self-start sm:self-auto">
+                {activeRequests.length} Active Request(s)
+              </span>
+            </div>
 
-            <div className="flex items-center gap-1">
-              {[
-                { id: 'all', label: 'All Records' },
-                { id: 'pending', label: 'Pending' },
-                { id: 'under_review', label: 'Under Review' },
-                { id: 'verified', label: 'Paid / Verified' },
-                { id: 'failed', label: 'Failed' },
-              ].map((tab) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {activeRequests.map((req) => {
+                const myContrib = contributions.find(
+                  (c) => c.request_id === req.id && c.house_id === house.id
+                );
+                const isVerified = myContrib?.status === 'verified';
+                const isUnderReview = myContrib?.status === 'under_review';
+                const isRejected = myContrib?.status === 'rejected';
+
+                const allVerified = contributions.filter(
+                  (c) => c.request_id === req.id && c.status === 'verified'
+                );
+                const totalRaised = allVerified.reduce((s, c) => s + c.amount, 0);
+                const pct =
+                  req.target_total && req.target_total > 0
+                    ? Math.min(100, Math.round((totalRaised / req.target_total) * 100))
+                    : null;
+
+                return (
+                  <div
+                    key={req.id}
+                    className={`bg-white rounded-2xl border p-5 shadow-xs flex flex-col justify-between transition-all ${isVerified
+                        ? 'border-emerald-300 ring-1 ring-emerald-500/20 bg-emerald-50/20'
+                        : isUnderReview
+                          ? 'border-amber-300 ring-1 ring-amber-500/20 bg-amber-50/10'
+                          : isRejected
+                            ? 'border-rose-300 ring-1 ring-rose-500/20 bg-rose-50/10'
+                            : 'border-slate-200 hover:border-emerald-400'
+                      }`}
+                  >
+                    <div className="space-y-3">
+                      {/* Category & Status badges */}
+                      <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                            {req.category}
+                          </span>
+                          {req.amount_type === 'fixed' ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
+                              Fixed: ₹{req.fixed_amount}
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                              Pay as you wish
+                            </span>
+                          )}
+                        </div>
+
+                        {req.due_date && (
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            Due: {req.due_date}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Title & Description */}
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-base tracking-tight">
+                          {req.title}
+                        </h3>
+                        {req.description && (
+                          <p className="text-xs text-slate-600 mt-1 leading-relaxed line-clamp-3">
+                            {req.description}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Progress if goal set */}
+                      {pct !== null && (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex justify-between text-[11px] font-semibold text-slate-600">
+                            <span>{pct}% Collected</span>
+                            <span>
+                              ₹{totalRaised.toLocaleString('en-IN')} / ₹{req.target_total?.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-600 rounded-full transition-all duration-500"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Household Contribution Status Card */}
+                    <div className="mt-4 pt-3 border-t border-slate-100">
+                      {isVerified ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-100/70 border border-emerald-300 text-emerald-950">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
+                              <div>
+                                <span className="font-bold text-xs block">
+                                  Paid: {formatCurrency(myContrib.amount)}
+                                </span>
+                                <span className="text-[10px] text-emerald-800 font-mono block">
+                                  UTR: {myContrib.transaction_ref}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-700 text-white uppercase">
+                              Verified
+                            </span>
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenSplReceipt(myContrib, req)}
+                            className="w-full text-xs font-semibold border-emerald-400 text-emerald-800 hover:bg-emerald-50 gap-1.5 cursor-pointer"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                            View Digital Receipt
+                          </Button>
+                        </div>
+                      ) : isUnderReview ? (
+                        <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-xs flex items-center gap-1.5 text-amber-900">
+                              <Clock className="h-3.5 w-3.5 text-amber-600" />
+                              Submitted: {formatCurrency(myContrib.amount)}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900">
+                              Under Review
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 font-mono">
+                            UTR: {myContrib.transaction_ref}
+                          </p>
+                          <p className="text-[11px] text-slate-500">
+                            Awaiting admin bank reconciliation.
+                          </p>
+                        </div>
+                      ) : isRejected ? (
+                        <div className="space-y-2">
+                          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-950 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-xs text-rose-900">
+                                Verification Disputed / Rejected
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-200 text-rose-900">
+                                Failed
+                              </span>
+                            </div>
+                            {myContrib.rejection_reason && (
+                              <p className="text-[11px] text-rose-700 font-medium">
+                                Reason: {myContrib.rejection_reason}
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleOpenReqModal(req, myContrib)}
+                            className="w-full text-xs font-bold gap-1.5 cursor-pointer"
+                          >
+                            <CreditCard className="h-3.5 w-3.5" />
+                            Re-submit Payment Reference
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleOpenReqModal(req)}
+                          className="w-full text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white gap-2 shadow-xs cursor-pointer py-2.5"
+                        >
+                          {req.amount_type === 'fixed' ? (
+                            <>
+                              <CreditCard className="h-4 w-4" />
+                              <span>Pay ₹{req.fixed_amount} via UPI</span>
+                            </>
+                          ) : (
+                            <>
+                              <HandCoins className="h-4 w-4" />
+                              <span>Contribute As You Wish</span>
+                            </>
+                          )}
+                          <ArrowRight className="h-3.5 w-3.5 ml-auto" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Completed Collections & Historical Digital Receipts */}
+        {completedParticipated.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                  Completed Collections &amp; Digital Receipts
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Fundraising drives &amp; campaigns you contributed to that have concluded. Your official electronic receipts remain permanently available.
+                </p>
+              </div>
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 self-start sm:self-auto border border-slate-200">
+                {completedParticipated.length} Completed Drive(s)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {completedParticipated.map((req) => {
+                const myContrib = contributions.find(
+                  (c) => c.request_id === req.id && c.house_id === house.id
+                );
+                if (!myContrib) return null;
+
+                const isVerified = myContrib.status === 'verified';
+                const isUnderReview = myContrib.status === 'under_review';
+
+                return (
+                  <div
+                    key={req.id}
+                    className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between"
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                          {req.category}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                          Drive Concluded
+                        </span>
+                      </div>
+
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-sm tracking-tight">
+                          {req.title}
+                        </h3>
+                        {req.description && (
+                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
+                            {req.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <div>
+                            <span className="font-bold text-xs block">
+                              Contributed: {formatCurrency(myContrib.amount)}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-mono block">
+                              UTR: {myContrib.transaction_ref}
+                            </span>
+                          </div>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${isVerified
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : isUnderReview
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-rose-100 text-rose-800'
+                            }`}
+                        >
+                          {myContrib.status.replace('_', ' ')}
+                        </span>
+                      </div>
+
+                      {isVerified && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenSplReceipt(myContrib, req)}
+                          className="w-full text-xs font-semibold border-emerald-300 text-emerald-800 hover:bg-emerald-50 gap-1.5 cursor-pointer"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          View Digital Receipt
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Tabbed Transaction History Table (Monthly Dues & Special Collections) */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          {/* Tabs & Type Navigation */}
+          <div className="px-6 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <span>Dues Records &amp; Transaction History</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                  {allTransactions.length} Total
+                </span>
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Comprehensive record of regular monthly dues and special collection payments.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Type Filter Pills */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-[11px]">
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                    activeTab === tab.id
-                      ? 'bg-emerald-50 text-emerald-800'
-                      : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                  }`}
+                  type="button"
+                  onClick={() => setTypeFilter('all')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${typeFilter === 'all'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                    }`}
                 >
-                  {tab.label}
+                  All ({allTransactions.length})
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setTypeFilter('monthly')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${typeFilter === 'monthly'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                >
+                  Monthly Dues ({dueTransactions.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTypeFilter('special')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${typeFilter === 'special'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                >
+                  Special Appeals ({specialTransactions.length})
+                </button>
+              </div>
+
+              {/* Status Filter Tabs */}
+              <div className="flex items-center gap-1">
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'pending', label: 'Pending' },
+                  { id: 'under_review', label: 'Under Review' },
+                  { id: 'verified', label: 'Paid / Verified' },
+                  { id: 'failed', label: 'Failed' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${activeTab === tab.id
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                        : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                      }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Dues Table */}
+          {/* Unified Transactions Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
                 <tr>
-                  <th className="py-3 px-6">Billing Month</th>
+                  <th className="py-3 px-6">Payment / Purpose</th>
                   <th className="py-3 px-4">Amount</th>
                   <th className="py-3 px-4">Transaction UTR</th>
                   <th className="py-3 px-4">Status</th>
@@ -428,62 +998,109 @@ export default function ResidentPaymentCenter() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredDues.length === 0 ? (
+                {filteredTransactions.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-slate-400">
-                      No records found in this category.
+                      No payment or transaction records found in this category.
                     </td>
                   </tr>
                 ) : (
-                  filteredDues.map((due) => (
-                    <tr key={due.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 px-6 font-bold text-slate-900">
-                        {due.billing_month}
+                  filteredTransactions.map((tx) => (
+                    <tr key={tx.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-3.5 px-6">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-900 text-sm">{tx.title}</span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${tx.sourceType === 'special_payment'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                              }`}
+                          >
+                            {tx.categoryBadge}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-400 block mt-0.5">
+                          {tx.subtext}
+                        </span>
                       </td>
                       <td className="py-3.5 px-4 font-semibold text-slate-800">
-                        {formatCurrency(due.amount)}
+                        {formatCurrency(tx.amount)}
                       </td>
                       <td className="py-3.5 px-4 font-mono text-slate-700">
-                        {due.transaction_ref || '—'}
+                        {tx.transactionRef || '—'}
                       </td>
                       <td className="py-3.5 px-4">
-                        <Badge variant={due.status} size="sm">
-                          {due.status.replace('_', ' ')}
+                        <Badge variant={tx.status} size="sm">
+                          {tx.displayStatus}
                         </Badge>
                       </td>
                       <td className="py-3.5 px-4 text-slate-500">
-                        {due.status === 'verified' && due.verified_at ? (
-                          <span className="text-emerald-700">Verified {formatDateTime(due.verified_at)}</span>
-                        ) : due.status === 'under_review' ? (
-                          <span>Submitted {formatDateTime(due.submitted_at)}</span>
-                        ) : due.status === 'failed' && due.rejection_reason ? (
+                        {tx.status === 'verified' && tx.verifiedAt ? (
+                          <span className="text-emerald-700">Verified {formatDateTime(tx.verifiedAt)}</span>
+                        ) : tx.status === 'under_review' ? (
+                          <span>Submitted {tx.submittedAt ? formatDateTime(tx.submittedAt) : 'recently'}</span>
+                        ) : tx.status === 'failed' && tx.rejectionReason ? (
                           <span className="text-rose-600 font-medium">
-                            Reason: {due.rejection_reason}
+                            Reason: {tx.rejectionReason}
                           </span>
+                        ) : tx.status === 'failed' ? (
+                          <span className="text-rose-600 font-medium">Verification rejected</span>
                         ) : (
                           'Awaiting submission'
                         )}
                       </td>
                       <td className="py-3.5 px-6 text-right">
-                        {due.status === 'verified' ? (
+                        {tx.status === 'verified' ? (
+                          tx.sourceType === 'special_payment' && tx.rawContrib && tx.rawReq ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenSplReceipt(tx.rawContrib!, tx.rawReq!)}
+                              className="gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer"
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                              Digital Receipt
+                            </Button>
+                          ) : tx.rawDue ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenReceipt(tx.rawDue!)}
+                              className="gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer"
+                            >
+                              <FileText className="h-3.5 w-3.5" />
+                              Digital Receipt
+                            </Button>
+                          ) : null
+                        ) : tx.status === 'pending' && tx.rawDue ? (
                           <Button
-                            variant="outline"
+                            variant="primary"
                             size="sm"
-                            onClick={() => handleOpenReceipt(due)}
-                            className="gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                            onClick={() => handleOpenSubmitModal(tx.rawDue!)}
+                            className="gap-1.5 cursor-pointer"
                           >
-                            <FileText className="h-3.5 w-3.5" />
-                            Digital Receipt
+                            Pay / Enter UTR
                           </Button>
-                        ) : due.status === 'pending' || due.status === 'failed' ? (
-                          <Button
-                            variant={due.status === 'failed' ? 'destructive' : 'primary'}
-                            size="sm"
-                            onClick={() => handleOpenSubmitModal(due)}
-                            className="gap-1.5"
-                          >
-                            {due.status === 'failed' ? 'Re-submit UTR' : 'Pay / Enter UTR'}
-                          </Button>
+                        ) : tx.status === 'failed' ? (
+                          tx.sourceType === 'special_payment' && tx.rawContrib && tx.rawReq ? (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleOpenReqModal(tx.rawReq!, tx.rawContrib)}
+                              className="gap-1.5 cursor-pointer"
+                            >
+                              Re-submit UTR
+                            </Button>
+                          ) : tx.rawDue ? (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleOpenSubmitModal(tx.rawDue!)}
+                              className="gap-1.5 cursor-pointer"
+                            >
+                              Re-submit UTR
+                            </Button>
+                          ) : null
                         ) : (
                           <span className="text-slate-400 text-xs italic">In Admin Queue</span>
                         )}
@@ -580,6 +1197,165 @@ export default function ResidentPaymentCenter() {
             due={receiptDue}
             house={house}
             onClose={() => setReceiptModalOpen(false)}
+          />
+        )}
+      </Modal>
+
+      {/* Special Request Contribution & UPI Modal */}
+      <Modal
+        isOpen={requestModalOpen}
+        onClose={() => setRequestModalOpen(false)}
+        title={selectedReq ? `Contribute: ${selectedReq.title}` : 'Special Contribution'}
+        description={selectedReq?.description || 'Support this Mahallu community collection drive.'}
+        maxWidth="xl"
+      >
+        {selectedReq && house && (
+          <form onSubmit={handleReqPaymentSubmit} className="space-y-4 text-xs">
+            {/* Amount Selection / Custom input */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                  <Coins className="h-4 w-4 text-emerald-600" />
+                  {selectedReq.amount_type === 'fixed'
+                    ? 'Fixed Requested Amount'
+                    : 'Enter Contribution Amount (Pay As You Wish)'}
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                  {selectedReq.category}
+                </span>
+              </div>
+
+              {selectedReq.amount_type === 'fixed' ? (
+                <div className="flex items-baseline gap-2 pt-1">
+                  <span className="text-2xl font-black text-slate-900">
+                    ₹{selectedReq.fixed_amount}
+                  </span>
+                  <span className="text-xs text-slate-500 font-medium">per household</span>
+                </div>
+              ) : (
+                <div className="space-y-2 pt-1">
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-base">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      min={selectedReq.min_amount || 1}
+                      step="1"
+                      value={contribAmount}
+                      onChange={(e) => setContribAmount(e.target.value)}
+                      placeholder="Enter amount"
+                      required
+                      className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-300 text-base font-extrabold bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                    />
+                  </div>
+
+                  {/* Quick preset amount chips */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[11px] text-slate-500 font-medium mr-1">Quick Select:</span>
+                    {[200, 500, 1000, 2500, 5000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setContribAmount(String(amt))}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${contribAmount && contribAmount === String(amt)
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                      >
+                        ₹{amt}
+                      </button>
+                    ))}
+                  </div>
+                  {selectedReq.min_amount && (
+                    <p className="text-[11px] text-slate-500">
+                      Minimum suggested contribution: ₹{selectedReq.min_amount}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Step 1: Live QR Code for the chosen amount */}
+            <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="font-bold flex items-center gap-1.5 text-emerald-900 text-xs">
+                  <QrCode className="h-4 w-4 text-emerald-800" />
+                  {Number(contribAmount) > 0
+                    ? `Step 1: Scan & Transfer ${formatCurrency(Number(contribAmount))}`
+                    : 'Step 1: Scan QR or enter amount above'}
+                </p>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200/80 text-emerald-950 uppercase tracking-wide">
+                  Instant UPI
+                </span>
+              </div>
+
+              <div className="py-2 flex justify-center">
+                <UpiQrCode
+                  upiId={upiSettings.upiId}
+                  payeeName={upiSettings.payeeName}
+                  amount={Number(contribAmount) > 0 ? Number(contribAmount) : undefined}
+                  note={`${selectedReq.title.slice(0, 20)} - ${house.house_name.slice(0, 15)}`}
+                  size={150}
+                  showDetails={true}
+                  showOpenAppButton={true}
+                />
+              </div>
+            </div>
+
+            {/* Step 2: 12-Digit UTR Input */}
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1.5">
+                Step 2: Enter 12-Digit UPI / Bank UTR Reference Number *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. 423987123984 or UPI/20260905/4456123"
+                value={contribUtr}
+                onChange={(e) => setContribUtr(e.target.value)}
+                className="w-full p-3 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none uppercase"
+                required
+              />
+              <p className="text-[11px] text-slate-400 mt-1">
+                Obtained from your payment app (Google Pay, PhonePe, Paytm) confirmation screen.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setRequestModalOpen(false)}
+                disabled={isSubmittingContrib}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                isLoading={isSubmittingContrib}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
+              >
+                Submit Contribution Reference
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Special Contribution Electronic Receipt Modal */}
+      <Modal
+        isOpen={splReceiptModalOpen}
+        onClose={() => setSplReceiptModalOpen(false)}
+        title="Official Mahallu Electronic Receipt"
+        maxWidth="2xl"
+      >
+        {splReceiptContrib && splReceiptReq && house && (
+          <SpecialCollectionReceipt
+            contrib={splReceiptContrib}
+            request={splReceiptReq}
+            house={house}
+            onClose={() => setSplReceiptModalOpen(false)}
           />
         )}
       </Modal>

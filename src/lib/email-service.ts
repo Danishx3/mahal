@@ -112,7 +112,7 @@ function formatMonthName(monthStr: string): string {
  */
 export function generateReminderEmailHtml(payload: ReminderEmailPayload): string {
   const { houseName, regNo, month, amount = 100, customMessage, siteUrl } = payload;
-  const upiId = payload.upiId || 'alhudamahallu@upi';
+  const upiId = payload.upiId || 'kunjikkulam@upi';
   const baseUrl = siteUrl || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
   const paymentLink = `${baseUrl}/dashboard/payments`;
   const formattedMonth = formatMonthName(month);
@@ -224,7 +224,7 @@ export function generateReminderEmailHtml(payload: ReminderEmailPayload): string
  */
 export async function sendReminderEmail(payload: ReminderEmailPayload): Promise<EmailSendResult> {
   const { to, houseName, regNo, month, amount = 100 } = payload;
-  const upiId = payload.upiId || 'alhudamahallu@upi';
+  const upiId = payload.upiId || 'kunjikkulam@upi';
   const from = process.env.SMTP_FROM || 'Kunjikkulam Juma Masjid <kunjikkulammasjid@gmail.com>';
   const formattedMonth = formatMonthName(month);
   const subject = `Kunjikkulam Juma Masjid: Payment Due Reminder (${formattedMonth}) - ${houseName}`;

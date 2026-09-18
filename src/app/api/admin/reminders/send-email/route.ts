@@ -24,7 +24,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { month, recipients, customMessage } = body;
+    const { month, recipients, customMessage, upiId } = body;
 
     if (!month || !Array.isArray(recipients) || recipients.length === 0) {
       return NextResponse.json(
@@ -60,6 +60,7 @@ export async function POST(request: Request) {
       amount: typeof r.amount === 'number' ? r.amount : 100,
       customMessage: customMessage?.trim() || undefined,
       siteUrl,
+      upiId: upiId || undefined,
     }));
 
     const result = await sendBatchReminderEmails(payloads, 3);

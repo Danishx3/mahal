@@ -544,11 +544,10 @@ export default function OnboardingPage() {
             {/* Step 1 Indicator */}
             <div className="relative z-10 flex flex-col items-center gap-2">
               <div
-                className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                  currentStep >= 1
-                    ? 'bg-emerald-700 text-white shadow-md ring-4 ring-emerald-50'
-                    : 'bg-slate-200 text-slate-500'
-                }`}
+                className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${currentStep >= 1
+                  ? 'bg-emerald-700 text-white shadow-md ring-4 ring-emerald-50'
+                  : 'bg-slate-200 text-slate-500'
+                  }`}
               >
                 1
               </div>
@@ -560,11 +559,10 @@ export default function OnboardingPage() {
             {/* Step 2 Indicator */}
             <div className="relative z-10 flex flex-col items-center gap-2">
               <div
-                className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                  currentStep >= 2
-                    ? 'bg-emerald-700 text-white shadow-md ring-4 ring-emerald-50'
-                    : 'bg-slate-200 text-slate-500'
-                }`}
+                className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${currentStep >= 2
+                  ? 'bg-emerald-700 text-white shadow-md ring-4 ring-emerald-50'
+                  : 'bg-slate-200 text-slate-500'
+                  }`}
               >
                 2
               </div>
@@ -576,11 +574,10 @@ export default function OnboardingPage() {
             {/* Step 3 Indicator */}
             <div className="relative z-10 flex flex-col items-center gap-2">
               <div
-                className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                  currentStep === 3
-                    ? 'bg-emerald-700 text-white shadow-md ring-4 ring-emerald-50'
-                    : 'bg-slate-200 text-slate-500'
-                }`}
+                className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${currentStep === 3
+                  ? 'bg-emerald-700 text-white shadow-md ring-4 ring-emerald-50'
+                  : 'bg-slate-200 text-slate-500'
+                  }`}
               >
                 3
               </div>
@@ -621,9 +618,8 @@ export default function OnboardingPage() {
                   <input
                     type="text"
                     placeholder="e.g., Baitul Noor, Darul Aman, Al Rahma"
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 ${
-                      errors.house?.house_name ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
-                    }`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 ${errors.house?.house_name ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
+                      }`}
                     {...register('house.house_name')}
                   />
                   {errors.house?.house_name && (
@@ -642,9 +638,8 @@ export default function OnboardingPage() {
                   <input
                     type="text"
                     placeholder="e.g., VII/142 or Ward 4, Door 89"
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 ${
-                      errors.house?.house_number ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
-                    }`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 ${errors.house?.house_number ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
+                      }`}
                     {...register('house.house_number')}
                   />
                   {errors.house?.house_number && (
@@ -663,9 +658,8 @@ export default function OnboardingPage() {
                   <input
                     type="text"
                     placeholder="e.g., MHL-ALU-042"
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-mono uppercase transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 ${
-                      errors.house?.mahallu_reg_no ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
-                    }`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-mono uppercase transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 ${errors.house?.mahallu_reg_no ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
+                      }`}
                     {...register('house.mahallu_reg_no')}
                   />
                   <p className="text-[11px] text-slate-400 mt-1">
@@ -707,9 +701,8 @@ export default function OnboardingPage() {
                   <input
                     type="tel"
                     placeholder="e.g., +91 98471 23456"
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 ${
-                      errors.house?.phone ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
-                    }`}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 ${errors.house?.phone ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
+                      }`}
                     {...register('house.phone')}
                   />
                   {errors.house?.phone && (
@@ -783,11 +776,10 @@ export default function OnboardingPage() {
                   return (
                     <div
                       key={field.id}
-                      className={`p-5 rounded-2xl border transition-all ${
-                        isFirst
-                          ? 'border-emerald-300 bg-emerald-50/20 shadow-xs'
-                          : 'border-slate-200 bg-slate-50/40'
-                      }`}
+                      className={`p-5 rounded-2xl border transition-all ${isFirst
+                        ? 'border-emerald-300 bg-emerald-50/20 shadow-xs'
+                        : 'border-slate-200 bg-slate-50/40'
+                        }`}
                     >
                       {/* Member Card Header */}
                       <div className="flex items-center justify-between pb-3 border-b border-slate-200/60 mb-4">
@@ -915,6 +907,7 @@ export default function OnboardingPage() {
                             <option value="Agriculture">Agriculture</option>
                             <option value="Retired">Retired</option>
                             <option value="Unemployed">Unemployed</option>
+                            <option value="Other">Other</option>
                           </select>
                         </div>
 
@@ -927,13 +920,25 @@ export default function OnboardingPage() {
                             className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs"
                             {...register(`members.${index}.general_education` as const)}
                           >
-                            <option value="Below SSLC">Below SSLC</option>
-                            <option value="SSLC">SSLC</option>
-                            <option value="Plus Two">Plus Two / VHSE</option>
+
+
                             <option value="Diploma">Diploma / ITI</option>
                             <option value="Degree">Bachelor Degree (Graduate)</option>
                             <option value="PG">Post Graduate (PG)</option>
                             <option value="Professional">Professional (MBBS/B.Tech/CA)</option>
+                            <option value="Plus-Two">Plus Two</option>
+                            <option value="Plus-One">Plus One</option>
+                            <option value="SSLC">SSLC</option>
+                            <option value="9">9th</option>
+                            <option value="8">8th</option>
+                            <option value="7">7th</option>
+                            <option value="6">6th</option>
+                            <option value="5">5th</option>
+                            <option value="4">4th</option>
+                            <option value="3">3rd</option>
+                            <option value="2">2nd</option>
+                            <option value="1">1st</option>
+                            <option value="Other">Other</option>
                           </select>
                         </div>
 
@@ -947,13 +952,22 @@ export default function OnboardingPage() {
                             {...register(`members.${index}.religious_education` as const)}
                           >
                             <option value="Basic">Basic Quran Reading</option>
-                            <option value="Madrasa 5th">Madrasa 5th Standard</option>
-                            <option value="Madrasa 7th">Madrasa 7th Standard</option>
-                            <option value="Madrasa 10th">Madrasa 10th Standard</option>
-                            <option value="Madrasa +2">Madrasa Higher Secondary</option>
+                            <option value="Madrasa-1th">Madrasa 1th Standard</option>
+                            <option value="Madrasa-2th">Madrasa 2th Standard</option>
+                            <option value="Madrasa-3th">Madrasa 3th Standard</option>
+                            <option value="Madrasa-4th">Madrasa 4th Standard</option>
+                            <option value="Madrasa-5th">Madrasa 5th Standard</option>
+                            <option value="Madrasa-6th">Madrasa 6th Standard</option>
+                            <option value="Madrasa-7th">Madrasa 7th Standard</option>
+                            <option value="Madrasa-8th">Madrasa 8th Standard</option>
+                            <option value="Madrasa-9th">Madrasa 9th Standard</option>
+                            <option value="Madrasa-10th">Madrasa 10th Standard</option>
+                            <option value="Madrasa-11th">Madrasa 11th Standard</option>
+                            <option value="Madrasa-12th">Madrasa 12th Standard</option>
                             <option value="Dars">Dars Student</option>
                             <option value="Islamic Scholar">Islamic Scholar (Faizy/Baqavi/Hudawi)</option>
                             <option value="Hafiz">Hafiz-ul-Quran</option>
+                            <option value="Other">Other</option>
                           </select>
                         </div>
                       </div>

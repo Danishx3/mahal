@@ -391,3 +391,116 @@ CREATE POLICY "Residents can view ledger entries related to their dues"
               AND houses.user_id = auth.uid()
         )
     );
+
+-- ==========================================
+-- 6. Payment Requests & Campaigns
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.payment_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    category VARCHAR(100) NOT NULL DEFAULT 'Donation',
+    amount_type VARCHAR(20) NOT NULL CHECK (amount_type IN ('fixed', 'custom')),
+    fixed_amount NUMERIC(12, 2),
+    min_amount NUMERIC(12, 2),
+    suggested_amount NUMERIC(12, 2),
+    target_total NUMERIC(12, 2),
+    target_audience VARCHAR(50) DEFAULT 'all',
+    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
+    due_date TIMESTAMPTZ,
+    created_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ==========================================
+-- 7. Payment Request Contributions
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.payment_request_contributions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    request_id UUID NOT NULL REFERENCES public.payment_requests(id) ON DELETE CASCADE,
+    house_id UUID NOT NULL REFERENCES public.houses(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    amount NUMERIC(12, 2) NOT NULL,
+    transaction_ref VARCHAR(100) NOT NULL UNIQUE,
+    status VARCHAR(20) NOT NULL DEFAULT 'under_review' CHECK (status IN ('pending', 'under_review', 'verified', 'rejected')),
+    submitted_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    verified_at TIMESTAMPTZ,
+    verified_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    rejection_reason TEXT,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ==========================================
+-- 8. Profile Updates (Verification Queue)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.profile_updates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    house_id UUID NOT NULL REFERENCES public.houses(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    mahallu_reg_no VARCHAR(100) NOT NULL,
+    current_details JSONB NOT NULL DEFAULT '{}'::jsonb,
+    requested_details JSONB NOT NULL DEFAULT '{}'::jsonb,
+    current_members JSONB NOT NULL DEFAULT '[]'::jsonb,
+    requested_members JSONB NOT NULL DEFAULT '[]'::jsonb,
+    note TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    rejection_reason TEXT,
+    submitted_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL
+);
+
+-- ==========================================
+-- 9. UPI Settings (Single-Row Configuration)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.upi_settings (
+    id INT PRIMARY KEY DEFAULT 1,
+    upi_id VARCHAR(255) NOT NULL,
+    payee_name VARCHAR(255) NOT NULL,
+    bank_name VARCHAR(255),
+    account_number VARCHAR(100),
+    ifsc_code VARCHAR(50),
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ==========================================
+-- 10. Dues Settings (Single-Row Configuration)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.dues_settings (
+    id INT PRIMARY KEY DEFAULT 1,
+    default_amount NUMERIC(10, 2) NOT NULL DEFAULT 100,
+    current_amount NUMERIC(10, 2) NOT NULL DEFAULT 100,
+    scheduled_amount NUMERIC(10, 2),
+    scheduled_effective_month VARCHAR(7),
+    history JSONB NOT NULL DEFAULT '[]'::jsonb,
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_payment_requests_status ON public.payment_requests(status);
+CREATE INDEX IF NOT EXISTS idx_payment_request_contributions_req ON public.payment_request_contributions(request_id);
+CREATE INDEX IF NOT EXISTS idx_payment_request_contributions_house ON public.payment_request_contributions(house_id);
+CREATE INDEX IF NOT EXISTS idx_profile_updates_house_id ON public.profile_updates(house_id);
+CREATE INDEX IF NOT EXISTS idx_profile_updates_status ON public.profile_updates(status);
+
+-- Enable Row Level Security (RLS)
+ALTER TABLE public.payment_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.payment_request_contributions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profile_updates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.upi_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.dues_settings ENABLE ROW LEVEL SECURITY;
+
+-- Allow read access to authenticated users
+CREATE POLICY "Allow read payment_requests" ON public.payment_requests FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Allow read payment_request_contributions" ON public.payment_request_contributions FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Allow read profile_updates" ON public.profile_updates FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Allow read upi_settings" ON public.upi_settings FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Allow read dues_settings" ON public.dues_settings FOR SELECT TO authenticated USING (true);
+
+-- Allow write/modify access
+CREATE POLICY "Allow write payment_requests" ON public.payment_requests FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow write payment_request_contributions" ON public.payment_request_contributions FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow write profile_updates" ON public.profile_updates FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow write upi_settings" ON public.upi_settings FOR ALL TO authenticated USING (true);
+CREATE POLICY "Allow write dues_settings" ON public.dues_settings FOR ALL TO authenticated USING (true);
+

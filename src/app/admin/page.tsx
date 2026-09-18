@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   DataService,
 } from '@/lib/data-service';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
+import { formatCurrency, formatDateTime, getHouseHeadName } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import {
@@ -22,6 +22,7 @@ import {
   Clock,
   ShieldCheck,
   MapPin,
+  User,
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
@@ -30,20 +31,40 @@ export default function AdminDashboardPage() {
   const [pendingProfiles, setPendingProfiles] = useState<any[]>([]);
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
   const [recentLedger, setRecentLedger] = useState<any[]>([]);
+  const [houses, setHouses] = useState<any[]>([]);
 
   const loadData = async () => {
-    const [statsData, finData, profiles, payments, ledger] = await Promise.all([
+    const [statsData, finData, profiles, payments, ledger, housesList] = await Promise.all([
       DataService.getSystemStatsAsync(),
       DataService.getFinancialSummaryAsync(),
       DataService.getPendingProfilesAsync(),
       DataService.getPaymentsUnderReviewAsync(),
       DataService.getLedgerAsync(),
+      DataService.getHousesAsync(),
     ]);
     setStats(statsData);
     setFinSummary(finData);
     setPendingProfiles(profiles);
     setPendingPayments(payments);
     setRecentLedger(ledger.slice(0, 5));
+    setHouses(housesList);
+  };
+
+  const getHeadForLedgerItem = (item: any): string | null => {
+    if (item.payment_due_id) {
+      const h = houses.find((x) => x.payment_dues?.some((d: any) => d.id === item.payment_due_id));
+      if (h) return getHouseHeadName(h);
+    }
+    if (item.description) {
+      const headMatch = item.description.match(/Head:\s*([^|\n\r]+)/i);
+      if (headMatch) return headMatch[1].trim();
+      const regMatch = item.description.match(/(MHL-[A-Z0-9-]+|KL-[A-Z0-9-]+)/i);
+      if (regMatch) {
+        const h = houses.find((x) => x.mahallu_reg_no?.toUpperCase() === regMatch[1].toUpperCase());
+        if (h) return getHouseHeadName(h);
+      }
+    }
+    return null;
   };
 
   useEffect(() => {
@@ -320,8 +341,21 @@ export default function AdminDashboardPage() {
                       {item.type}
                     </Badge>
                   </td>
-                  <td className="py-3.5 px-4 font-semibold text-slate-800">{item.category}</td>
-                  <td className="py-3.5 px-4 text-slate-600 max-w-md truncate">{item.description}</td>
+                  <td className="py-3.5 px-4 text-slate-600 max-w-md">
+                    <div className="truncate">{item.description}</div>
+                    {(() => {
+                      const headName = getHeadForLedgerItem(item);
+                      if (headName && headName !== '—') {
+                        return (
+                          <div className="text-[11px] font-semibold text-emerald-800 flex items-center gap-1 mt-0.5">
+                            <User className="h-3 w-3 text-emerald-600 shrink-0" />
+                            <span>Head: {headName}</span>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </td>
                   <td
                     className={`py-3.5 px-6 text-right font-bold ${
                       item.type === 'credit' ? 'text-emerald-700' : 'text-rose-700'

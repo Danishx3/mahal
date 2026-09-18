@@ -40,3 +40,32 @@ export function formatDateTime(dateString: string | null | undefined): string {
     return dateString;
   }
 }
+
+export function getHouseHead(house?: {
+  family_members?: Array<{ is_head_of_family?: boolean; name?: string }> | null;
+} | null) {
+  if (!house || !Array.isArray(house.family_members) || house.family_members.length === 0) {
+    return null;
+  }
+  return house.family_members.find((m) => m.is_head_of_family) || house.family_members[0] || null;
+}
+
+export function getHouseHeadName(house?: {
+  family_members?: Array<{ is_head_of_family?: boolean; name?: string }> | null;
+} | null): string {
+  const head = getHouseHead(house);
+  return head?.name?.trim() || '—';
+}
+
+export function generateReceiptNumber(
+  billingMonth?: string | null,
+  mahalluRegNo?: string | null
+): string {
+  if (!billingMonth || !mahalluRegNo) return '';
+  const monthClean = billingMonth.replace(/[^0-9]/g, '').slice(0, 6);
+  const regClean = mahalluRegNo.replace(/[^A-Za-z0-9]/g, '').slice(-4);
+  if (!monthClean || !regClean) return '';
+  return `REC-${monthClean}-${regClean}`.toUpperCase();
+}
+
+

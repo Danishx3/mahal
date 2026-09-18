@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { createClient } from '@/lib/supabase/client';
 
 export interface FeeHistoryItem {
   amount: number;
@@ -25,10 +24,6 @@ const DEFAULT_DUES_SETTINGS: DuesSettings = {
   history: [],
   updatedAt: new Date().toISOString(),
 };
-
-function getSettingsFilePath(): string {
-  return path.join(process.cwd(), 'src', 'data', 'dues-settings.json');
-}
 
 export function getNextBillingMonth(baseDate: Date = new Date()): string {
   let y = baseDate.getFullYear();
@@ -65,84 +60,60 @@ export function calculateDueAmountForMonth(settings: DuesSettings, billingMonth:
   return settings.defaultAmount || 100;
 }
 
-export function readDuesSettingsFromDisk(): DuesSettings {
-  try {
-    const filePath = getSettingsFilePath();
-    if (fs.existsSync(filePath)) {
-      const raw = fs.readFileSync(filePath, 'utf-8').trim();
-      if (!raw) {
-        return DEFAULT_DUES_SETTINGS;
-      }
-      const data = JSON.parse(raw);
-      if (data && typeof data.defaultAmount === 'number') {
-        const merged: DuesSettings = {
-          ...DEFAULT_DUES_SETTINGS,
-          ...data,
-          history: Array.isArray(data.history) ? data.history : [],
-        };
-        const curMonth = getCurrentBillingMonth();
-        const nextMonth = getNextBillingMonth();
-        merged.currentAmount = calculateDueAmountForMonth(merged, curMonth);
-
-        const nextAmount = calculateDueAmountForMonth(merged, nextMonth);
-        if (nextAmount !== merged.currentAmount) {
-          merged.scheduledAmount = nextAmount;
-          merged.scheduledEffectiveMonth = nextMonth;
-        } else {
-          merged.scheduledAmount = undefined;
-          merged.scheduledEffectiveMonth = undefined;
-        }
-
-        return merged;
-      }
-    }
-  } catch (err) {
-    console.warn('Could not read dues-settings.json, using defaults:', err);
-  }
-  return DEFAULT_DUES_SETTINGS;
-}
-
-export function writeDuesSettingsToDisk(settings: Partial<DuesSettings>): DuesSettings {
-  const filePath = getSettingsFilePath();
-  const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  const existing = readDuesSettingsFromDisk();
-  const merged: DuesSettings = {
-    ...existing,
-    ...settings,
-    updatedAt: new Date().toISOString(),
-  };
-
-  const curMonth = getCurrentBillingMonth();
-  const nextMonth = getNextBillingMonth();
-  merged.currentAmount = calculateDueAmountForMonth(merged, curMonth);
-
-  const nextAmount = calculateDueAmountForMonth(merged, nextMonth);
-  if (nextAmount !== merged.currentAmount) {
-    merged.scheduledAmount = nextAmount;
-    merged.scheduledEffectiveMonth = nextMonth;
-  } else {
-    merged.scheduledAmount = undefined;
-    merged.scheduledEffectiveMonth = undefined;
-  }
-
-  fs.writeFileSync(filePath, JSON.stringify(merged, null, 2), 'utf-8');
-  return merged;
-}
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
-  const settings = readDuesSettingsFromDisk();
   const currentMonth = getCurrentBillingMonth();
   const nextMonth = getNextBillingMonth();
+
+  try {
+    const supabase = createClient();
+    const { data, error } = await (supabase.from('dues_settings') as any)
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Supabase fetch dues_settings error:', error.message);
+    }
+
+    if (data) {
+      const merged: DuesSettings = {
+        defaultAmount: Number(data.default_amount) || 100,
+        currentAmount: Number(data.current_amount) || 100,
+        scheduledAmount: data.scheduled_amount != null ? Number(data.scheduled_amount) : undefined,
+        scheduledEffectiveMonth: data.scheduled_effective_month || undefined,
+        history: Array.isArray(data.history) ? (data.history as FeeHistoryItem[]) : [],
+        updatedAt: data.updated_at,
+      };
+
+      merged.currentAmount = calculateDueAmountForMonth(merged, currentMonth);
+      const nextAmount = calculateDueAmountForMonth(merged, nextMonth);
+      if (nextAmount !== merged.currentAmount) {
+        merged.scheduledAmount = nextAmount;
+        merged.scheduledEffectiveMonth = nextMonth;
+      } else {
+        merged.scheduledAmount = undefined;
+        merged.scheduledEffectiveMonth = undefined;
+      }
+
+      return NextResponse.json({
+        success: true,
+        currentMonth,
+        nextMonth,
+        settings: merged,
+      });
+    }
+  } catch (err) {
+    console.error('Error fetching dues_settings from Supabase:', err);
+  }
 
   return NextResponse.json({
     success: true,
     currentMonth,
     nextMonth,
-    settings,
+    settings: DEFAULT_DUES_SETTINGS,
   });
 }
 
@@ -159,12 +130,23 @@ export async function POST(request: Request) {
       );
     }
 
+    const currentMonth = getCurrentBillingMonth();
     const nextMonth = getNextBillingMonth();
-    const currentSettings = readDuesSettingsFromDisk();
-    const history = [...(currentSettings.history || [])];
+    const supabase = createClient();
+
+    // Fetch existing settings from Supabase
+    const { data: existingData } = await (supabase.from('dues_settings') as any)
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+
+    const currentHistory: FeeHistoryItem[] =
+      existingData && Array.isArray(existingData.history)
+        ? [...existingData.history]
+        : [];
 
     // Check if an entry already exists for nextMonth
-    const existingIndex = history.findIndex((h) => h.effectiveFromMonth === nextMonth);
+    const existingIndex = currentHistory.findIndex((h) => h.effectiveFromMonth === nextMonth);
     const newRule: FeeHistoryItem = {
       amount: parsedAmount,
       effectiveFromMonth: nextMonth,
@@ -174,30 +156,63 @@ export async function POST(request: Request) {
     };
 
     if (existingIndex >= 0) {
-      history[existingIndex] = newRule;
+      currentHistory[existingIndex] = newRule;
     } else {
-      history.unshift(newRule);
+      currentHistory.unshift(newRule);
     }
 
     // Sort descending by effectiveFromMonth
-    history.sort((a, b) => b.effectiveFromMonth.localeCompare(a.effectiveFromMonth));
+    currentHistory.sort((a, b) => b.effectiveFromMonth.localeCompare(a.effectiveFromMonth));
 
-    const updated = writeDuesSettingsToDisk({
-      history,
+    const defaultAmount = existingData?.default_amount != null ? Number(existingData.default_amount) : 100;
+    const dummyMerged: DuesSettings = {
+      defaultAmount,
+      currentAmount: defaultAmount,
+      history: currentHistory,
       updatedAt: new Date().toISOString(),
-    });
+    };
 
-    const currentMonth = getCurrentBillingMonth();
+    const calculatedCurrent = calculateDueAmountForMonth(dummyMerged, currentMonth);
+    const calculatedNext = calculateDueAmountForMonth(dummyMerged, nextMonth);
+    const scheduledAmount = calculatedNext !== calculatedCurrent ? calculatedNext : null;
+    const scheduledEffectiveMonth = scheduledAmount ? nextMonth : null;
+    const nowIso = new Date().toISOString();
+
+    const { data: updatedRow, error: updateError } = await (supabase.from('dues_settings') as any)
+      .upsert({
+        id: 1,
+        default_amount: defaultAmount,
+        current_amount: calculatedCurrent,
+        scheduled_amount: scheduledAmount,
+        scheduled_effective_month: scheduledEffectiveMonth,
+        history: currentHistory,
+        updated_at: nowIso,
+      })
+      .select()
+      .single();
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+
+    const settings: DuesSettings = {
+      defaultAmount: Number(updatedRow.default_amount),
+      currentAmount: Number(updatedRow.current_amount),
+      scheduledAmount: updatedRow.scheduled_amount != null ? Number(updatedRow.scheduled_amount) : undefined,
+      scheduledEffectiveMonth: updatedRow.scheduled_effective_month || undefined,
+      history: Array.isArray(updatedRow.history) ? (updatedRow.history as FeeHistoryItem[]) : [],
+      updatedAt: updatedRow.updated_at,
+    };
 
     return NextResponse.json({
       success: true,
       message: `Monthly due updated successfully. ₹${parsedAmount} will take effect from ${nextMonth} onwards.`,
       currentMonth,
       nextMonth,
-      settings: updated,
+      settings,
     });
   } catch (err: any) {
-    console.error('Error saving monthly dues settings:', err);
+    console.error('Error saving monthly dues settings to Supabase:', err);
     return NextResponse.json(
       { error: err?.message || 'Failed to update monthly dues settings' },
       { status: 500 }

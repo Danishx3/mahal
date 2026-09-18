@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { createClient } from '@/lib/supabase/client';
 
 export interface UpiSettings {
   upiId: string;
@@ -20,51 +19,42 @@ const DEFAULT_UPI_SETTINGS: UpiSettings = {
   updatedAt: new Date().toISOString(),
 };
 
-function getSettingsFilePath(): string {
-  return path.join(process.cwd(), 'src', 'data', 'upi-settings.json');
-}
-
-export function readUpiSettingsFromDisk(): UpiSettings {
-  try {
-    const filePath = getSettingsFilePath();
-    if (fs.existsSync(filePath)) {
-      const raw = fs.readFileSync(filePath, 'utf-8');
-      const data = JSON.parse(raw);
-      if (data && typeof data.upiId === 'string') {
-        return {
-          ...DEFAULT_UPI_SETTINGS,
-          ...data,
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('Could not read upi-settings.json, using defaults:', err);
-  }
-  return DEFAULT_UPI_SETTINGS;
-}
-
-export function writeUpiSettingsToDisk(settings: UpiSettings): UpiSettings {
-  const filePath = getSettingsFilePath();
-  const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-
-  const merged: UpiSettings = {
-    ...DEFAULT_UPI_SETTINGS,
-    ...settings,
-    updatedAt: new Date().toISOString(),
-  };
-
-  fs.writeFileSync(filePath, JSON.stringify(merged, null, 2), 'utf-8');
-  return merged;
-}
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
-  const settings = readUpiSettingsFromDisk();
+  try {
+    const supabase = createClient();
+    const { data, error } = await (supabase.from('upi_settings') as any)
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Supabase fetch upi_settings error:', error.message);
+    }
+
+    if (data) {
+      const settings: UpiSettings = {
+        upiId: data.upi_id,
+        payeeName: data.payee_name,
+        bankName: data.bank_name || undefined,
+        accountNumber: data.account_number || undefined,
+        ifscCode: data.ifsc_code || undefined,
+        updatedAt: data.updated_at,
+      };
+      return NextResponse.json({
+        success: true,
+        settings,
+      });
+    }
+  } catch (err) {
+    console.error('Error fetching upi_settings from Supabase:', err);
+  }
+
   return NextResponse.json({
     success: true,
-    settings,
+    settings: DEFAULT_UPI_SETTINGS,
   });
 }
 
@@ -82,22 +72,42 @@ export async function POST(request: Request) {
 
     const cleanUpiId = upiId.trim().toLowerCase();
     const cleanPayeeName = payeeName?.trim() || "Kunjikkulam Juma Masjid";
+    const nowIso = new Date().toISOString();
 
-    const updated = writeUpiSettingsToDisk({
-      upiId: cleanUpiId,
-      payeeName: cleanPayeeName,
-      bankName: bankName?.trim(),
-      accountNumber: accountNumber?.trim(),
-      ifscCode: ifscCode?.trim(),
-    });
+    const supabase = createClient();
+    const { data, error } = await (supabase.from('upi_settings') as any)
+      .upsert({
+        id: 1,
+        upi_id: cleanUpiId,
+        payee_name: cleanPayeeName,
+        bank_name: bankName?.trim() || null,
+        account_number: accountNumber?.trim() || null,
+        ifsc_code: ifscCode?.trim() || null,
+        updated_at: nowIso,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const settings: UpiSettings = {
+      upiId: data.upi_id,
+      payeeName: data.payee_name,
+      bankName: data.bank_name || undefined,
+      accountNumber: data.account_number || undefined,
+      ifscCode: data.ifsc_code || undefined,
+      updatedAt: data.updated_at,
+    };
 
     return NextResponse.json({
       success: true,
       message: 'Mahallu UPI settings updated successfully.',
-      settings: updated,
+      settings,
     });
   } catch (err: any) {
-    console.error('Error saving UPI settings:', err);
+    console.error('Error saving UPI settings to Supabase:', err);
     return NextResponse.json(
       { error: err?.message || 'Failed to update UPI settings' },
       { status: 500 }

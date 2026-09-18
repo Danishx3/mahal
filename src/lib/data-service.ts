@@ -9,6 +9,8 @@ import {
   Profile,
   DIVISION_LABELS,
   FamilyMember,
+  PaymentRequestItem,
+  PaymentRequestContribution,
 } from './supabase/types';
 import { OnboardingInput } from './schemas';
 import { createClient, hasSupabaseConfig } from './supabase/client';
@@ -1798,9 +1800,11 @@ export const DataService = {
           }
         }
 
-        const { data, error } = await updateQuery.select('*, house:houses(*)');
+        const { data, error } = await updateQuery.select('*, house:houses(*, family_members(*))');
         if (!error && data && data.length > 0) {
           const row = data[0];
+          const head = row.house?.family_members?.find((m: any) => m.is_head_of_family) || row.house?.family_members?.[0];
+          const headName = head?.name || '';
           // Check if database trigger on_payment_verified already posted the credit
           if (isUuid(row.id)) {
             const { data: existingLedger } = await (supabase.from('financial_ledger') as any)
@@ -1813,7 +1817,7 @@ export const DataService = {
                 type: 'credit',
                 category: 'House Monthly Due',
                 amount: row.amount || 100,
-                description: `Monthly Dues - Month: ${row.billing_month} | House: ${row.house?.mahallu_reg_no || 'N/A'} | Ref: ${row.transaction_ref || 'N/A'}`,
+                description: `Monthly Dues - Month: ${row.billing_month} | House: ${row.house?.mahallu_reg_no || 'N/A'}${row.house?.house_name ? ` - ${row.house.house_name}` : ''}${headName ? ` | Head: ${headName}` : ''} | Ref: ${row.transaction_ref || 'N/A'}`,
                 payment_due_id: row.id,
                 created_by: verifiedByUuid,
               });
@@ -2046,6 +2050,7 @@ export const DataService = {
     let resolvedDueId: string | null = null;
     let houseRegNo = '';
     let houseName = '';
+    let houseHeadName = '';
 
     if (hasSupabaseConfig()) {
       try {
@@ -2057,13 +2062,15 @@ export const DataService = {
         }
 
         const { data: houseRow } = await (supabase.from('houses') as any)
-          .select('id, house_name, mahallu_reg_no')
+          .select('id, house_name, mahallu_reg_no, family_members(*)')
           .eq('id', houseId)
           .maybeSingle();
 
         if (houseRow) {
           houseRegNo = houseRow.mahallu_reg_no || '';
           houseName = houseRow.house_name || '';
+          const head = houseRow.family_members?.find((m: any) => m.is_head_of_family) || houseRow.family_members?.[0];
+          if (head?.name) houseHeadName = head.name;
         }
 
         const { data: existingDues } = await (supabase.from('payment_dues') as any)
@@ -2118,7 +2125,7 @@ export const DataService = {
               type: 'credit',
               category: 'House Monthly Due',
               amount: dueAmt,
-              description: `Monthly Dues (${paymentMethod}) - Month: ${month} | House: ${houseRegNo || 'N/A'} - ${houseName || 'N/A'}`,
+              description: `Monthly Dues (${paymentMethod}) - Month: ${month} | House: ${houseRegNo || 'N/A'}${houseName ? ` - ${houseName}` : ''}${houseHeadName ? ` | Head: ${houseHeadName}` : ''}`,
               payment_due_id: resolvedDueId,
               created_by: verifiedByUuid,
             });
@@ -2134,6 +2141,10 @@ export const DataService = {
       if (h.id === houseId) {
         if (!houseRegNo) houseRegNo = h.mahallu_reg_no;
         if (!houseName) houseName = h.house_name;
+        if (!houseHeadName) {
+          const head = h.family_members?.find((m) => m.is_head_of_family) || h.family_members?.[0];
+          if (head?.name) houseHeadName = head.name;
+        }
 
         let due = h.payment_dues.find((d) => d.billing_month === month);
         if (due) {
@@ -2183,7 +2194,7 @@ export const DataService = {
         type: 'credit',
         category: 'House Monthly Due',
         amount: resolvedAmount,
-        description: `Monthly Dues (${paymentMethod}) - Month: ${month} | House: ${houseRegNo || 'N/A'} - ${houseName || 'N/A'}`,
+        description: `Monthly Dues (${paymentMethod}) - Month: ${month} | House: ${houseRegNo || 'N/A'}${houseName ? ` - ${houseName}` : ''}${houseHeadName ? ` | Head: ${houseHeadName}` : ''}`,
         payment_due_id: resolvedDueId || null,
         created_by: adminId,
         created_at: now,
@@ -2720,5 +2731,255 @@ export const DataService = {
     }
     return updated;
   },
+
+  async getPaymentRequestsAsync(): Promise<{
+    requests: PaymentRequestItem[];
+    contributions: PaymentRequestContribution[];
+  }> {
+    try {
+      const res = await fetch(`/api/payment-requests?_t=${Date.now()}`, { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.requests)) {
+          return {
+            requests: data.requests,
+            contributions: Array.isArray(data.contributions) ? data.contributions : [],
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching payment requests:', err);
+    }
+    return { requests: [], contributions: [] };
+  },
+
+  async createPaymentRequestAsync(requestData: Omit<PaymentRequestItem, 'id' | 'created_at' | 'status'>): Promise<PaymentRequestItem> {
+    const res = await fetch('/api/payment-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestData),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err?.error || 'Failed to create payment request');
+    }
+
+    const data = await res.json();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mahallu_data_updated'));
+      window.dispatchEvent(new CustomEvent('mahallu_requests_updated'));
+    }
+    return data.request;
+  },
+
+  async updatePaymentRequestStatusAsync(id: string, status: 'active' | 'completed' | 'cancelled') {
+    const res = await fetch('/api/payment-requests', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err?.error || 'Failed to update payment request');
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mahallu_data_updated'));
+      window.dispatchEvent(new CustomEvent('mahallu_requests_updated'));
+    }
+    return res.json();
+  },
+
+  async deletePaymentRequestAsync(id: string) {
+    const res = await fetch(`/api/payment-requests?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err?.error || 'Failed to delete payment request');
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mahallu_data_updated'));
+      window.dispatchEvent(new CustomEvent('mahallu_requests_updated'));
+    }
+    return res.json();
+  },
+
+  async submitRequestContributionAsync(params: {
+    requestId: string;
+    houseId: string;
+    userId?: string;
+    amount: number;
+    transactionRef: string;
+  }): Promise<PaymentRequestContribution> {
+    const res = await fetch('/api/payment-requests/contribute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err?.error || 'Failed to submit contribution reference');
+    }
+
+    const data = await res.json();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mahallu_data_updated'));
+      window.dispatchEvent(new CustomEvent('mahallu_requests_updated'));
+    }
+    return data.contribution;
+  },
+
+  async verifyRequestContributionAsync(params: {
+    contributionId: string;
+    adminId?: string;
+    amount: number;
+    requestTitle: string;
+    category?: string;
+    house?: HouseWithDetails | null;
+    transactionRef: string;
+  }) {
+    const res = await fetch('/api/payment-requests/contribute', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contributionId: params.contributionId,
+        action: 'approve',
+        adminId: params.adminId || 'admin',
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err?.error || 'Failed to verify contribution');
+    }
+
+    // Auto-record credit in financial_ledger
+    const headName = params.house ? (params.house.family_members?.find(m => m.is_head_of_family)?.name || params.house.family_members?.[0]?.name || '') : '';
+    const houseDesc = params.house
+      ? ` | House: ${params.house.mahallu_reg_no || ''}${params.house.house_name ? ` - ${params.house.house_name}` : ''}${headName ? ` | Head: ${headName}` : ''}`
+      : '';
+
+    try {
+      await this.addLedgerEntryAsync({
+        type: 'credit',
+        category: params.category || 'Special Fund',
+        amount: params.amount,
+        description: `Special Collection: ${params.requestTitle} - Ref: ${params.transactionRef}${houseDesc}`,
+      });
+    } catch (e) {
+      console.warn('Ledger auto-credit warning for request contribution:', e);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mahallu_data_updated'));
+      window.dispatchEvent(new CustomEvent('mahallu_requests_updated'));
+    }
+    return res.json();
+  },
+
+  async rejectRequestContributionAsync(contributionId: string, reason?: string) {
+    const res = await fetch('/api/payment-requests/contribute', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contributionId,
+        action: 'reject',
+        rejectionReason: reason,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err?.error || 'Failed to reject contribution');
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mahallu_data_updated'));
+      window.dispatchEvent(new CustomEvent('mahallu_requests_updated'));
+    }
+    return res.json();
+  },
+
+  async markSpecialContributionAsPaidAsync(params: {
+    requestId: string;
+    houseId: string;
+    amount: number;
+    adminId?: string;
+    requestTitle: string;
+    category?: string;
+    paymentMethod?: string;
+    house?: HouseWithDetails | null;
+    existingContributionId?: string;
+  }): Promise<boolean> {
+    try {
+      if (params.existingContributionId) {
+        await this.verifyRequestContributionAsync({
+          contributionId: params.existingContributionId,
+          adminId: params.adminId,
+          amount: params.amount,
+          requestTitle: params.requestTitle,
+          category: params.category,
+          house: params.house,
+          transactionRef: `OFFLINE-${Date.now().toString().slice(-6)}`,
+        });
+        return true;
+      }
+
+      const res = await fetch('/api/payment-requests/contribute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId: params.requestId,
+          houseId: params.houseId,
+          amount: params.amount,
+          transactionRef: `OFFLINE-${Date.now().toString().slice(-6)}`,
+          isVerified: true,
+          adminId: params.adminId || 'admin',
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err?.error || 'Failed to mark special payment as paid');
+      }
+
+      const data = await res.json();
+
+      // Auto-record credit in financial_ledger if not already recorded
+      const headName = params.house
+        ? (params.house.family_members?.find((m) => m.is_head_of_family)?.name || params.house.family_members?.[0]?.name || '')
+        : '';
+      const houseDesc = params.house
+        ? ` | House: ${params.house.mahallu_reg_no || ''}${params.house.house_name ? ` - ${params.house.house_name}` : ''}${headName ? ` | Head: ${headName}` : ''}`
+        : '';
+
+      try {
+        await this.addLedgerEntryAsync({
+          type: 'credit',
+          category: params.category || 'Special Fund',
+          amount: params.amount,
+          description: `Special Collection (${params.paymentMethod || 'Cash / Offline'}): ${params.requestTitle} - Ref: ${data.contribution?.transaction_ref || 'OFFLINE'}${houseDesc}`,
+        });
+      } catch (e) {
+        console.warn('Ledger auto-credit warning for offline contribution:', e);
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('mahallu_data_updated'));
+        window.dispatchEvent(new CustomEvent('mahallu_requests_updated'));
+      }
+      return true;
+    } catch (err) {
+      console.error('Error marking special contribution as paid:', err);
+      throw err;
+    }
+  },
 };
+
 
