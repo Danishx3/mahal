@@ -218,16 +218,17 @@ export default function ProfileVerificationHub() {
       </div>
 
       {/* Verification Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200">
+      {/* Tabs Navigation */}
+      <div className="flex border-b border-slate-200 gap-1 overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => setActiveTab('registrations')}
-          className={`pb-3 px-3 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${activeTab === 'registrations'
+          className={`pb-3 px-3 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-2 whitespace-nowrap ${activeTab === 'registrations'
               ? 'border-emerald-700 text-emerald-800'
               : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
         >
-          <Users className="h-4 w-4" />
+          <UserCheck className="h-4 w-4" />
           <span>New Registrations</span>
           <span
             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${activeTab === 'registrations'
@@ -242,13 +243,13 @@ export default function ProfileVerificationHub() {
         <button
           type="button"
           onClick={() => setActiveTab('updates')}
-          className={`pb-3 px-3 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-2 ${activeTab === 'updates'
+          className={`pb-3 px-3 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-2 whitespace-nowrap ${activeTab === 'updates'
               ? 'border-emerald-700 text-emerald-800'
               : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
         >
           <Pencil className="h-4 w-4" />
-          <span>Dwelling & Contact Edit Requests</span>
+          <span>Dwelling &amp; Contact Edit Requests</span>
           <span
             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${activeTab === 'updates'
                 ? 'bg-emerald-100 text-emerald-900'
@@ -263,7 +264,8 @@ export default function ProfileVerificationHub() {
       {/* Tab 1: New Onboarding Registrations */}
       {activeTab === 'registrations' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
                 <tr>
@@ -370,17 +372,117 @@ export default function ProfileVerificationHub() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Cards View */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {pendingHouses.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-xs">
+                <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+                <p className="font-semibold text-slate-800">All Registrations Verified</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">No pending registration requests.</p>
+              </div>
+            ) : (
+              pendingHouses.map((house) => {
+                const head =
+                  house.family_members.find((m) => m.is_head_of_family) ||
+                  house.family_members[0];
+                return (
+                  <div key={house.id} className="p-4 space-y-3 hover:bg-slate-50/60 transition-colors">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-sm">{house.house_name}</h3>
+                        <p className="text-xs font-mono text-emerald-800 font-bold mt-0.5">
+                          {house.mahallu_reg_no}
+                          <span className="font-sans font-normal text-slate-400 ml-1">
+                            • Ward {house.house_number}
+                          </span>
+                        </p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200 shrink-0">
+                        Pending
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50/90 p-3 rounded-xl border border-slate-100">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block uppercase font-medium">Head of Family</span>
+                        <span className="font-semibold text-slate-800">{head?.name || '—'}</span>
+                        {house.phone && (
+                          <a
+                            href={`tel:${house.phone}`}
+                            className="text-[11px] text-emerald-700 hover:underline flex items-center gap-1 font-mono mt-0.5"
+                          >
+                            <Phone className="h-3 w-3" />
+                            {house.phone}
+                          </a>
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block uppercase font-medium">Division &amp; Census</span>
+                        <span className="font-medium text-slate-700 block">
+                          {DIVISION_LABELS[house.division as Division]}
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-semibold">
+                          {house.family_members.length} member(s)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-[11px] text-slate-400">
+                      Submitted: {formatDateTime(house.created_at)}
+                    </div>
+
+                    {/* Action Buttons: 3-column responsive touch grid */}
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenDrawer(house)}
+                        className="w-full justify-center gap-1 text-xs min-h-[40px] px-1"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span className="truncate">Details</span>
+                      </Button>
+
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleApproveRegistration(house.id)}
+                        isLoading={approvingId === house.id}
+                        disabled={approvingId !== null}
+                        className="w-full justify-center gap-1 text-xs min-h-[40px] bg-emerald-700 hover:bg-emerald-800 px-1"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span className="truncate">Approve</span>
+                      </Button>
+
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleOpenRejectRegistration(house)}
+                        className="w-full justify-center gap-1 text-xs min-h-[40px] px-1"
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        <span className="truncate">Reject</span>
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       )}
 
       {/* Tab 2: Profile & Dwelling Edit Requests */}
       {activeTab === 'updates' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
                 <tr>
-                  <th className="py-3.5 px-6">Household & Reg No</th>
+                  <th className="py-3.5 px-6">Household &amp; Reg No</th>
                   <th className="py-3.5 px-4">Requested Modifications</th>
                   <th className="py-3.5 px-4">Submitted Contact</th>
                   <th className="py-3.5 px-4">Submitted Date</th>
@@ -516,6 +618,125 @@ export default function ProfileVerificationHub() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Cards View */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {pendingUpdates.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-xs">
+                <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+                <p className="font-semibold text-slate-800">All Updates Verified</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">No dwelling update requests pending review.</p>
+              </div>
+            ) : (
+              pendingUpdates.map((update) => {
+                const changes: string[] = [];
+                if (update.requested_details.house_name !== update.current_details.house_name)
+                  changes.push('House Name');
+                if (update.requested_details.house_number !== update.current_details.house_number)
+                  changes.push('Ward / Door No');
+                if (update.requested_details.phone !== update.current_details.phone)
+                  changes.push('Phone');
+                if (update.requested_details.division !== update.current_details.division)
+                  changes.push('Division');
+
+                const curCount = update.current_members?.length || 0;
+                const reqCount = update.requested_members?.length || 0;
+                const hasMemberChanges =
+                  Boolean(update.requested_members && update.requested_members.length > 0) &&
+                  (curCount !== reqCount ||
+                    JSON.stringify(update.requested_members) !==
+                    JSON.stringify(update.current_members));
+
+                if (hasMemberChanges) {
+                  changes.push(
+                    `Census (${curCount !== reqCount ? `${curCount}→${reqCount}` : `${reqCount} members`})`
+                  );
+                }
+
+                return (
+                  <div key={update.id} className="p-4 space-y-3 hover:bg-slate-50/60 transition-colors">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-sm">
+                          {update.requested_details.house_name}
+                        </h3>
+                        <p className="text-xs font-mono text-emerald-800 font-bold mt-0.5">
+                          {update.mahallu_reg_no}
+                        </p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-200 shrink-0">
+                        Profile Update
+                      </span>
+                    </div>
+
+                    {/* Requested Changes Tags */}
+                    <div className="bg-slate-50/90 p-3 rounded-xl border border-slate-100 space-y-1.5 text-xs">
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">
+                        Changes Requested:
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {changes.map((c) => (
+                          <span
+                            key={c}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${c.startsWith('Census')
+                                ? 'bg-purple-100 text-purple-900 border-purple-200'
+                                : 'bg-amber-100 text-amber-900 border-amber-200'
+                              }`}
+                          >
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                      {update.note && (
+                        <p className="text-[11px] text-slate-600 pt-1 italic">
+                          "{update.note}"
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="text-[11px] text-slate-400">
+                      Submitted: {formatDateTime(update.submitted_at)}
+                    </div>
+
+                    {/* Mobile Action Buttons */}
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenReviewUpdate(update)}
+                        className="w-full justify-center gap-1 text-xs min-h-[40px] px-1"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span className="truncate">Review</span>
+                      </Button>
+
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleApproveUpdate(update)}
+                        isLoading={approvingUpdateId === update.id}
+                        disabled={approvingUpdateId !== null}
+                        className="w-full justify-center gap-1 text-xs min-h-[40px] bg-emerald-700 hover:bg-emerald-800 px-1"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span className="truncate">Approve</span>
+                      </Button>
+
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleOpenRejectUpdate(update)}
+                        className="w-full justify-center gap-1 text-xs min-h-[40px] px-1"
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                        <span className="truncate">Reject</span>
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       )}

@@ -107,32 +107,32 @@ export default function AdminDashboardPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Link href="/admin/verification">
-            <Button variant="outline" size="sm" className="gap-2">
+        <div className="grid grid-cols-3 gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+          <Link href="/admin/verification" className="w-full">
+            <Button variant="outline" size="sm" className="w-full justify-center gap-1.5 min-h-[40px] text-xs">
               <UserCheck className="h-4 w-4 text-emerald-700" />
-              Verifications ({pendingProfiles.length})
+              <span className="truncate">Verify ({pendingProfiles.length})</span>
             </Button>
           </Link>
-          <Link href="/admin/marriage-certificates">
-            <Button variant="outline" size="sm" className="gap-2 border-emerald-300 bg-emerald-50/50 text-emerald-800">
+          <Link href="/admin/marriage-certificates" className="w-full">
+            <Button variant="outline" size="sm" className="w-full justify-center gap-1.5 border-emerald-300 bg-emerald-50/50 text-emerald-800 min-h-[40px] text-xs">
               <FileCheck className="h-4 w-4 text-emerald-700" />
-              Certificates ({pendingCerts.length})
+              <span className="truncate">Certs ({pendingCerts.length})</span>
             </Button>
           </Link>
-          <Link href="/admin/ledger">
-            <Button variant="primary" size="sm" className="gap-2">
+          <Link href="/admin/ledger" className="w-full">
+            <Button variant="primary" size="sm" className="w-full justify-center gap-1.5 min-h-[40px] text-xs">
               <FileSpreadsheet className="h-4 w-4" />
-              Manage Ledger
+              <span className="truncate">Ledger</span>
             </Button>
           </Link>
         </div>
       </div>
 
       {/* 4 Hero KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
         {/* Total Houses */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-4.5 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
               Total Houses
@@ -337,7 +337,8 @@ export default function AdminDashboardPage() {
           </Link>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop View: Full Audit Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
               <tr>
@@ -384,7 +385,53 @@ export default function AdminDashboardPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile View: Touch-Friendly Ledger Cards */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {recentLedger.length === 0 ? (
+            <div className="p-6 text-center text-slate-400 text-xs">No recent ledger activity recorded.</div>
+          ) : (
+            recentLedger.map((item) => {
+              const headName = getHeadForLedgerItem(item);
+              const isCredit = item.type === 'credit';
+              return (
+                <div key={item.id} className="p-4 space-y-2 hover:bg-slate-50/60 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Badge variant={item.type} size="sm">
+                          {item.type}
+                        </Badge>
+                        <span className="text-xs text-slate-400 font-medium">
+                          {formatDateTime(item.created_at)}
+                        </span>
+                      </div>
+                      <p className="text-xs font-semibold text-slate-900 mt-1 leading-snug">
+                        {item.description}
+                      </p>
+                      {headName && headName !== '—' && (
+                        <p className="text-[11px] font-semibold text-emerald-800 flex items-center gap-1 mt-0.5">
+                          <User className="h-3 w-3 text-emerald-600 shrink-0" />
+                          <span>Head: {headName}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    <div
+                      className={`font-black text-sm shrink-0 ${
+                        isCredit ? 'text-emerald-700' : 'text-rose-700'
+                      }`}
+                    >
+                      {isCredit ? '+' : '-'} {formatCurrency(item.amount)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );
 }
+

@@ -869,10 +869,10 @@ export default function PaymentVerificationHub() {
           </div>
 
           {/* Queue Filter Tabs */}
-          <div className="inline-flex p-1 bg-slate-200/70 rounded-xl text-xs font-semibold">
+          <div className="flex items-center p-1 bg-slate-200/70 rounded-xl text-xs font-semibold overflow-x-auto no-scrollbar">
             <button
               onClick={() => setReviewTab('all')}
-              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                 reviewTab === 'all'
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -882,7 +882,7 @@ export default function PaymentVerificationHub() {
             </button>
             <button
               onClick={() => setReviewTab('monthly')}
-              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                 reviewTab === 'monthly'
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -892,7 +892,7 @@ export default function PaymentVerificationHub() {
             </button>
             <button
               onClick={() => setReviewTab('requests')}
-              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                 reviewTab === 'requests'
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -903,7 +903,8 @@ export default function PaymentVerificationHub() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop View: Full Queue Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
               <tr>
@@ -1095,7 +1096,7 @@ export default function PaymentVerificationHub() {
 
                           <td className="py-3.5 px-6 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <Button
+                                <Button
                                 variant="primary"
                                 size="sm"
                                 onClick={() => handleApproveContribution(contrib)}
@@ -1123,6 +1124,184 @@ export default function PaymentVerificationHub() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View: Touch-Friendly Reconciliation Cards */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {((reviewTab === 'monthly' && reviewQueue.length === 0) ||
+            (reviewTab === 'requests' && pendingContributions.length === 0) ||
+            (reviewTab === 'all' && totalPendingReviews === 0)) ? (
+            <div className="p-8 text-center text-slate-400 text-xs">
+              <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+              <p className="font-semibold text-slate-800">Queue Fully Reconciled</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">All submitted payments processed.</p>
+            </div>
+          ) : (
+            <>
+              {/* Monthly Dues Cards */}
+              {(reviewTab === 'all' || reviewTab === 'monthly') &&
+                reviewQueue.map(({ due, house }) => {
+                  const isCopied = copiedId === due.id;
+                  return (
+                    <div key={`mob-monthly-${due.id}`} className="p-4 space-y-3 hover:bg-slate-50/60 transition-colors">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="font-bold text-slate-900 text-sm">{house.house_name}</h3>
+                          <div className="text-xs font-semibold text-emerald-800 flex items-center gap-1 mt-0.5">
+                            <User className="h-3 w-3 text-emerald-600 shrink-0" />
+                            <span>Head: {getHouseHeadName(house)}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                            {house.mahallu_reg_no} • {DIVISION_LABELS[house.division as Division]}
+                          </p>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 shrink-0">
+                          {due.billing_month}
+                        </span>
+                      </div>
+
+                      {/* Amount & UTR Box */}
+                      <div className="bg-slate-50/90 p-3 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 uppercase font-medium block">Monthly Due</span>
+                          <span className="font-black text-base text-slate-900">{formatCurrency(due.amount)}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 uppercase font-medium block">UTR / Ref</span>
+                          <div className="flex items-center gap-1 font-mono font-bold text-slate-800">
+                            <span>{due.transaction_ref || 'N/A'}</span>
+                            {due.transaction_ref && (
+                              <button
+                                onClick={() => handleCopy(due.transaction_ref!, due.id)}
+                                className="p-1 text-slate-400 hover:text-emerald-700 cursor-pointer"
+                                title="Copy UTR"
+                              >
+                                {isCopied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-[11px] text-slate-400">
+                        Submitted: {formatDateTime(due.submitted_at)}
+                      </div>
+
+                      {/* Action Buttons: 2-column touch grid */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleApprove(due.id, house.mahallu_reg_no)}
+                          className="w-full justify-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 min-h-[42px] font-semibold text-xs"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span>Approve Credit</span>
+                        </Button>
+
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleOpenReject('monthly', due.id)}
+                          className="w-full justify-center gap-1.5 min-h-[42px] font-semibold text-xs"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          <span>Reject Ref</span>
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+              {/* Special Request Cards */}
+              {(reviewTab === 'all' || reviewTab === 'requests') &&
+                pendingContributions.map((contrib) => {
+                  const house = houses.find((h) => h.id === contrib.house_id);
+                  const req = paymentRequests.find((r) => r.id === contrib.request_id);
+                  const isCopied = copiedId === contrib.id;
+
+                  return (
+                    <div key={`mob-contrib-${contrib.id}`} className="p-4 space-y-3 hover:bg-emerald-50/20 transition-colors">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="font-bold text-slate-900 text-sm">
+                            {house ? house.house_name : `House ID: ${contrib.house_id}`}
+                          </h3>
+                          {house && (
+                            <div className="text-xs font-semibold text-emerald-800 flex items-center gap-1 mt-0.5">
+                              <User className="h-3 w-3 text-emerald-600 shrink-0" />
+                              <span>Head: {getHouseHeadName(house)}</span>
+                            </div>
+                          )}
+                          {house && (
+                            <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                              {house.mahallu_reg_no} • {DIVISION_LABELS[house.division as Division]}
+                            </p>
+                          )}
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 shrink-0">
+                          {req?.category || 'Special'}
+                        </span>
+                      </div>
+
+                      <p className="text-xs font-semibold text-slate-800">
+                        {req?.title || 'Special Collection'}
+                      </p>
+
+                      {/* Amount & UTR Box */}
+                      <div className="bg-emerald-50/60 p-3 rounded-xl border border-emerald-100 flex items-center justify-between text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 uppercase font-medium block">Contribution</span>
+                          <span className="font-black text-base text-emerald-800">{formatCurrency(contrib.amount)}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 uppercase font-medium block">UTR / Ref</span>
+                          <div className="flex items-center gap-1 font-mono font-bold text-slate-800">
+                            <span>{contrib.transaction_ref || 'N/A'}</span>
+                            {contrib.transaction_ref && (
+                              <button
+                                onClick={() => handleCopy(contrib.transaction_ref, contrib.id)}
+                                className="p-1 text-slate-400 hover:text-emerald-700 cursor-pointer"
+                                title="Copy UTR"
+                              >
+                                {isCopied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-[11px] text-slate-400">
+                        Submitted: {formatDateTime(contrib.submitted_at)}
+                      </div>
+
+                      {/* Action Buttons: 2-column touch grid */}
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleApproveContribution(contrib)}
+                          className="w-full justify-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 min-h-[42px] font-semibold text-xs"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span>Approve Credit</span>
+                        </Button>
+
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleOpenReject('request', contrib.id)}
+                          className="w-full justify-center gap-1.5 min-h-[42px] font-semibold text-xs"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          <span>Reject Ref</span>
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+            </>
+          )}
         </div>
       </div>
 
