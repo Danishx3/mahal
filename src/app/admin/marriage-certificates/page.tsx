@@ -556,7 +556,7 @@ export default function AdminMarriageCertificatesPage() {
                   type="text"
                   value={certNumberInput}
                   onChange={(e) => setCertNumberInput(e.target.value)}
-                  placeholder="e.g. MHL-MC-2026-042"
+                  placeholder="Certificate reference number"
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 font-mono font-bold text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-200"
                 />
                 <p className="text-[11px] text-slate-400 mt-1">
@@ -572,7 +572,7 @@ export default function AdminMarriageCertificatesPage() {
                   rows={3}
                   value={adminNotesInput}
                   onChange={(e) => setAdminNotesInput(e.target.value)}
-                  placeholder="e.g. Verified with Nikah Register Vol. 4, Page 82. Certificate ready for collection."
+                  placeholder="Committee remarks or collection instructions..."
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
                 />
               </div>
@@ -647,7 +647,7 @@ export default function AdminMarriageCertificatesPage() {
                   rows={4}
                   value={rejectionReasonInput}
                   onChange={(e) => setRejectionReasonInput(e.target.value)}
-                  placeholder="e.g. Nikah records for this date could not be found in the Mahallu register. Please submit marriage registration proof or contact the office."
+                  placeholder="Enter reason for rejection..."
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-rose-200"
                 />
               </div>

@@ -56,13 +56,23 @@ export default function MarriageCertificateDashboardPage() {
   // Active household data
   const effectiveHouse = house || (user ? DataService.getHouseByUserId(user.id) : null);
 
-  // Filter household family members age >= 21 for husband suggestions
+  // Filter household family members age >= 21 (excluding female relatives) for husband suggestions
   const eligibleGroomMembers = useMemo(() => {
     const members = (effectiveHouse as any)?.family_members;
     if (!Array.isArray(members)) return [];
+    const femaleRelations = new Set([
+      'wife',
+      'mother',
+      'daughter',
+      'sister',
+      'grandmother',
+      'granddaughter',
+      'daughter-in-law',
+    ]);
     return members.filter((m: any) => {
       const age = typeof m.age === 'number' ? m.age : Number(m.age);
-      return !isNaN(age) && age >= 21;
+      const rel = (m.relationship || '').toLowerCase().trim();
+      return !isNaN(age) && age >= 21 && !femaleRelations.has(rel);
     });
   }, [effectiveHouse]);
 
@@ -556,47 +566,41 @@ export default function MarriageCertificateDashboardPage() {
                 <span className="text-[11px] font-semibold text-slate-400">Legal Min. Age: 21</span>
               </div>
 
-              {/* Suggestions from Household Members (age >= 21) */}
-              {eligibleGroomMembers.length > 0 && (
-                <div className="bg-emerald-50/70 border border-emerald-200/70 rounded-2xl p-4 space-y-2.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900">
-                    <Users className="h-4 w-4 text-emerald-700" />
-                    Family Members (≥ 21 years old) — Click to auto-fill groom:
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {eligibleGroomMembers.map((member: FamilyMember) => (
-                      <button
-                        type="button"
-                        key={member.id}
-                        onClick={() => handleSelectMember(member)}
-                        className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                          husbandName === member.name
-                            ? 'bg-emerald-700 text-white shadow-sm ring-2 ring-emerald-600'
-                            : 'bg-white text-slate-700 hover:bg-emerald-100 hover:text-emerald-900 border border-emerald-200/80 shadow-xs'
-                        }`}
-                      >
-                        <span>{member.name}</span>
-                        <span
-                          className={`text-[10px] px-1.5 py-0.2 rounded-md ${
-                            husbandName === member.name
-                              ? 'bg-emerald-800 text-emerald-100'
-                              : 'bg-slate-100 text-slate-600'
-                          }`}
-                        >
-                          {member.relationship}, {member.age}y
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 {/* Husband Name Input */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     Husband Name (Full Name) *
                   </label>
+
+                  {/* Dropdown Suggestion from Household Members (age >= 21) */}
+                  {eligibleGroomMembers.length > 0 && (
+                    <div className="mb-2">
+                      <select
+                        value={
+                          eligibleGroomMembers.find(
+                            (m: any) => m.name.toLowerCase() === husbandName.trim().toLowerCase()
+                          )?.name || ''
+                        }
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val) {
+                            const found = eligibleGroomMembers.find((m: any) => m.name === val);
+                            if (found) handleSelectMember(found);
+                          }
+                        }}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 text-slate-800 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-600 transition-all cursor-pointer"
+                      >
+                        <option value="">Select from family members (≥ 21 yrs)</option>
+                        {eligibleGroomMembers.map((member: FamilyMember) => (
+                          <option key={member.id || member.name} value={member.name}>
+                            {member.name} ({member.relationship}, {member.age} yrs)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <input
                     type="text"
                     value={husbandName}
@@ -610,7 +614,7 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder="e.g. Muhammed Danish K.P"
+                    placeholder="Husband full name"
                     className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
                       formErrors.husband_name
                         ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
@@ -691,7 +695,7 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder="e.g. Fathima Zahra"
+                    placeholder="Wife full name"
                     className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
                       formErrors.wife_full_name
                         ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
@@ -723,7 +727,7 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder="e.g. P.K (Puthan Kulam) or K.T"
+                    placeholder="Wife initial (full form)"
                     className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
                       formErrors.wife_initial
                         ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
@@ -759,7 +763,7 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder="e.g. Abdul Khader P.K"
+                    placeholder="Wife's father full name"
                     className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
                       formErrors.wife_father_name
                         ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
@@ -827,7 +831,7 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder="House Name / Dwelling, Mahallu name, Locality, Post Office, PIN Code"
+                    placeholder="Wife permanent address"
                     className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
                       formErrors.wife_address
                         ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
