@@ -108,12 +108,28 @@ function formatMonthName(monthStr: string): string {
 }
 
 /**
+ * Returns the production base URL for email links.
+ * Prioritizes custom siteUrl or NEXT_PUBLIC_SITE_URL if not pointing to localhost;
+ * otherwise defaults to the live production domain https://mahal-rho.vercel.app.
+ */
+export function getEmailBaseUrl(customUrl?: string): string {
+  if (customUrl && !customUrl.includes('localhost') && !customUrl.includes('127.0.0.1')) {
+    return customUrl.replace(/\/$/, '');
+  }
+  const envUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+    return envUrl.replace(/\/$/, '');
+  }
+  return 'https://mahal-rho.vercel.app';
+}
+
+/**
  * Generate responsive, modern HTML email template for Mahallu monthly dues reminder
  */
 export function generateReminderEmailHtml(payload: ReminderEmailPayload): string {
   const { houseName, regNo, month, amount = 100, customMessage, siteUrl } = payload;
   const upiId = payload.upiId || 'kunjikkulam@upi';
-  const baseUrl = siteUrl || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const baseUrl = getEmailBaseUrl(siteUrl);
   const paymentLink = `${baseUrl}/dashboard/payments`;
   const formattedMonth = formatMonthName(month);
 
@@ -229,7 +245,7 @@ export async function sendReminderEmail(payload: ReminderEmailPayload): Promise<
   const formattedMonth = formatMonthName(month);
   const subject = `Kunjikkulam Juma Masjid: Payment Due Reminder (${formattedMonth}) - ${houseName}`;
   const html = generateReminderEmailHtml(payload);
-  const text = `Assalamu Alaikum. This is a reminder from Kunjikkulam Juma Masjid for ${houseName} (${regNo}) regarding monthly membership dues of ₹${amount} for ${formattedMonth}. Kindly transfer to ${upiId} and submit your UTR on the portal: ${payload.siteUrl || 'http://localhost:3000'}/dashboard/payments. Jazakallahu Khair.`;
+  const text = `Assalamu Alaikum. This is a reminder from Kunjikkulam Juma Masjid for ${houseName} (${regNo}) regarding monthly membership dues of ₹${amount} for ${formattedMonth}. Kindly transfer to ${upiId} and submit your UTR on the portal: ${getEmailBaseUrl(payload.siteUrl)}/dashboard/payments. Jazakallahu Khair.`;
 
   const transporter = getMailTransporter();
 
@@ -347,7 +363,7 @@ export async function sendMarriageApplicationSubmittedAdminEmail(
     )
   );
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const baseUrl = getEmailBaseUrl();
   const adminReviewUrl = `${baseUrl}/admin/marriage-certificates`;
   const subject = `[Mahallu Portal] New Marriage Certificate Application: ${application.husband_name} & ${application.wife_full_name} (${application.mahallu_reg_no})`;
 
@@ -505,7 +521,7 @@ export async function sendMarriageApplicationApprovedUserEmail(
   const to = application.applicant_email.trim();
   const certNumber = application.certificate_number || `MHL-MC-${new Date().getFullYear()}-001`;
   const subject = `🎉 Marriage Certificate Application Approved - Kunjikkulam Juma Masjid`;
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const baseUrl = getEmailBaseUrl();
   const portalUrl = `${baseUrl}/dashboard/marriage-certificate`;
 
   const html = `

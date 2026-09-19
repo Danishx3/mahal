@@ -51,9 +51,10 @@ async function handleCron(request: Request) {
     }
 
     const defaultersToRemind: ReminderEmailPayload[] = [];
-    const hostHeader = request.headers.get('host') || 'localhost:3000';
-    const protocol = request.headers.get('x-forwarded-proto') || 'http';
-    const siteUrl = `${protocol}://${hostHeader}`;
+    const hostHeader = request.headers.get('host') || '';
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const isLocal = !hostHeader || hostHeader.includes('localhost') || hostHeader.includes('127.0.0.1');
+    const siteUrl = isLocal ? 'https://mahal-rho.vercel.app' : `${protocol}://${hostHeader}`;
 
     for (const rawHouse of (houses || [])) {
       const house = rawHouse as unknown as HouseWithDetails;
