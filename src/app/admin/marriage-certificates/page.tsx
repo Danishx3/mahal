@@ -130,6 +130,12 @@ export default function AdminMarriageCertificatesPage() {
         certificateNumber: certNumberInput.trim(),
         adminNotes: adminNotesInput.trim(),
         adminId: user?.id,
+        applicantEmail: selectedApp.applicant_email,
+        houseName: selectedApp.house_name,
+        mahalluRegNo: selectedApp.mahallu_reg_no,
+        husbandName: selectedApp.husband_name,
+        wifeFullName: selectedApp.wife_full_name,
+        dateOfNikah: selectedApp.date_of_nikah,
       });
 
       toast(`Marriage certificate ${certNumberInput} approved. Automated email notification sent to ${selectedApp.applicant_email}.`, 'success');

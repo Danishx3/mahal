@@ -188,7 +188,20 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { application_id, action, admin_id, admin_notes, certificate_number, rejection_reason } = body;
+    const {
+      application_id,
+      action,
+      admin_id,
+      admin_notes,
+      certificate_number,
+      rejection_reason,
+      applicant_email,
+      husband_name,
+      wife_full_name,
+      date_of_nikah,
+      house_name,
+      mahallu_reg_no,
+    } = body;
 
     if (!application_id || !action || !['approve', 'reject'].includes(action)) {
       return NextResponse.json({ error: 'Valid application_id and action (approve/reject) are required.' }, { status: 400 });
@@ -239,6 +252,28 @@ export async function PATCH(request: Request) {
         };
       } else {
         finalApp = updated;
+      }
+
+      // Ensure critical email fields are populated from request body or targetApp
+      finalApp.applicant_email = finalApp.applicant_email || applicant_email || targetApp?.applicant_email || '';
+      finalApp.husband_name = finalApp.husband_name || husband_name || targetApp?.husband_name || 'Groom';
+      finalApp.wife_full_name = finalApp.wife_full_name || wife_full_name || targetApp?.wife_full_name || 'Bride';
+      finalApp.date_of_nikah = finalApp.date_of_nikah || date_of_nikah || targetApp?.date_of_nikah || '';
+      finalApp.house_name = finalApp.house_name || house_name || targetApp?.house_name || 'Household';
+      finalApp.mahallu_reg_no = finalApp.mahallu_reg_no || mahallu_reg_no || targetApp?.mahallu_reg_no || '';
+
+      // If email is still missing, attempt fallback by querying the house profile
+      if (!finalApp.applicant_email && (finalApp.house_id || targetApp?.house_id)) {
+        try {
+          const hid = finalApp.house_id || targetApp?.house_id;
+          const { data: houseRow } = await (supabase.from('houses') as any)
+            .select('*, profiles(email)')
+            .eq('id', hid)
+            .maybeSingle();
+          if (houseRow?.profiles?.email) {
+            finalApp.applicant_email = houseRow.profiles.email;
+          }
+        } catch {}
       }
 
       // Dispatch approval confirmation email to resident user

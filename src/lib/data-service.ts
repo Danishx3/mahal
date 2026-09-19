@@ -3090,6 +3090,12 @@ export const DataService = {
       adminNotes?: string;
       rejectionReason?: string;
       adminId?: string;
+      applicantEmail?: string;
+      houseName?: string;
+      mahalluRegNo?: string;
+      husbandName?: string;
+      wifeFullName?: string;
+      dateOfNikah?: string;
     } = {}
   ): Promise<MarriageCertificateApplication> {
     try {
@@ -3103,6 +3109,12 @@ export const DataService = {
           admin_notes: options.adminNotes,
           rejection_reason: options.rejectionReason,
           admin_id: options.adminId,
+          applicant_email: options.applicantEmail,
+          house_name: options.houseName,
+          mahallu_reg_no: options.mahalluRegNo,
+          husband_name: options.husbandName,
+          wife_full_name: options.wifeFullName,
+          date_of_nikah: options.dateOfNikah,
         }),
       });
 
