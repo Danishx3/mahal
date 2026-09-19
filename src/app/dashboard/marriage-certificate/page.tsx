@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/context/AuthContext';
 import { DataService } from '@/lib/data-service';
@@ -43,6 +43,14 @@ export default function MarriageCertificateDashboardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selectedAppForSlip, setSelectedAppForSlip] = useState<MarriageCertificateApplication | null>(null);
+  const formSectionRef = useRef<HTMLDivElement>(null);
+
+  const openFormAndScroll = () => {
+    setShowForm(true);
+    setTimeout(() => {
+      formSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  };
 
   // Form State
   const [husbandName, setHusbandName] = useState('');
@@ -246,7 +254,7 @@ export default function MarriageCertificateDashboardPage() {
         <div className="flex items-center gap-3 w-full md:w-auto">
           {!showForm && (
             <Button
-              onClick={() => setShowForm(true)}
+              onClick={openFormAndScroll}
               variant="primary"
               className="w-full md:w-auto flex items-center justify-center gap-2 shadow-sm"
             >
@@ -519,7 +527,7 @@ export default function MarriageCertificateDashboardPage() {
                     setWifeAddress(app.wife_address);
                     setWifeDob(app.wife_dob);
                     setDateOfNikah(app.date_of_nikah);
-                    setShowForm(true);
+                    openFormAndScroll();
                   }}
                   variant="outline"
                   size="sm"
@@ -534,7 +542,7 @@ export default function MarriageCertificateDashboardPage() {
 
       {/* ═══════════ APPLICATION FORM SECTION ═══════════ */}
       {showForm && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div ref={formSectionRef} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden scroll-mt-6">
           <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-slate-900 text-white p-6 sm:p-8">
             <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">
               <PlusCircle className="h-4 w-4" />
