@@ -75,12 +75,6 @@ export default function ResidentPaymentCenter() {
   // Active requests published by Mahallu Admin (strictly status === 'active')
   const activeRequests = paymentRequests.filter((r) => r.status === 'active');
 
-  // Closed / completed / archived campaigns where this household participated (has a contribution)
-  const completedParticipated = paymentRequests.filter(
-    (r) =>
-      (r.status === 'completed' || r.status === 'cancelled') &&
-      contributions.some((c) => c.request_id === r.id && c.house_id === house?.id)
-  );
 
   // Submit payment modal state (monthly dues)
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
@@ -813,104 +807,6 @@ export default function ResidentPaymentCenter() {
           </div>
         )}
 
-        {/* Completed Collections & Historical Digital Receipts */}
-        {completedParticipated.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                  Completed Collections &amp; Digital Receipts
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Fundraising drives &amp; campaigns you contributed to that have concluded. Your official electronic receipts remain permanently available.
-                </p>
-              </div>
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 self-start sm:self-auto border border-slate-200">
-                {completedParticipated.length} Completed Drive(s)
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {completedParticipated.map((req) => {
-                const myContrib = contributions.find(
-                  (c) => c.request_id === req.id && c.house_id === house.id
-                );
-                if (!myContrib) return null;
-
-                const isVerified = myContrib.status === 'verified';
-                const isUnderReview = myContrib.status === 'under_review';
-
-                return (
-                  <div
-                    key={req.id}
-                    className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between"
-                  >
-                    <div className="space-y-2.5">
-                      <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                          {req.category}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                          Drive Concluded
-                        </span>
-                      </div>
-
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-sm tracking-tight">
-                          {req.title}
-                        </h3>
-                        {req.description && (
-                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
-                            {req.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
-                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                          <div>
-                            <span className="font-bold text-xs block">
-                              Contributed: {formatCurrency(myContrib.amount)}
-                            </span>
-                            <span className="text-[10px] text-slate-500 font-mono block">
-                              UTR: {myContrib.transaction_ref}
-                            </span>
-                          </div>
-                        </div>
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${isVerified
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : isUnderReview
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
-                        >
-                          {myContrib.status.replace('_', ' ')}
-                        </span>
-                      </div>
-
-                      {isVerified && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenSplReceipt(myContrib, req)}
-                          className="w-full text-xs font-semibold border-emerald-300 text-emerald-800 hover:bg-emerald-50 gap-1.5 cursor-pointer"
-                        >
-                          <FileText className="h-3.5 w-3.5" />
-                          View Digital Receipt
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Tabbed Transaction History Table (Monthly Dues & Special Collections) */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
