@@ -158,7 +158,7 @@ export function getEmailBaseUrl(customUrl?: string): string {
   if (customUrl && !isInvalidDomain(customUrl)) {
     return customUrl.replace(/\/$/, '');
   }
-  const envUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const envUrl = (process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL)?.trim();
   if (envUrl && !isInvalidDomain(envUrl)) {
     return envUrl.replace(/\/$/, '');
   }
