@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   MapPin,
   User,
+  FileCheck,
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
@@ -30,22 +31,25 @@ export default function AdminDashboardPage() {
   const [finSummary, setFinSummary] = useState<any>(null);
   const [pendingProfiles, setPendingProfiles] = useState<any[]>([]);
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const [pendingCerts, setPendingCerts] = useState<any[]>([]);
   const [recentLedger, setRecentLedger] = useState<any[]>([]);
   const [houses, setHouses] = useState<any[]>([]);
 
   const loadData = async () => {
-    const [statsData, finData, profiles, payments, ledger, housesList] = await Promise.all([
+    const [statsData, finData, profiles, payments, ledger, housesList, certs] = await Promise.all([
       DataService.getSystemStatsAsync(),
       DataService.getFinancialSummaryAsync(),
       DataService.getPendingProfilesAsync(),
       DataService.getPaymentsUnderReviewAsync(),
       DataService.getLedgerAsync(),
       DataService.getHousesAsync(),
+      DataService.getMarriageCertificatesAsync(undefined, 'pending'),
     ]);
     setStats(statsData);
     setFinSummary(finData);
     setPendingProfiles(profiles);
     setPendingPayments(payments);
+    setPendingCerts(certs);
     setRecentLedger(ledger.slice(0, 5));
     setHouses(housesList);
   };
@@ -70,7 +74,11 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     loadData();
     window.addEventListener('mahallu_data_updated', loadData);
-    return () => window.removeEventListener('mahallu_data_updated', loadData);
+    window.addEventListener('mahallu_marriage_certs_updated', loadData);
+    return () => {
+      window.removeEventListener('mahallu_data_updated', loadData);
+      window.removeEventListener('mahallu_marriage_certs_updated', loadData);
+    };
   }, []);
 
   if (!stats || !finSummary) {
@@ -99,11 +107,17 @@ export default function AdminDashboardPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <Link href="/admin/verification">
             <Button variant="outline" size="sm" className="gap-2">
               <UserCheck className="h-4 w-4 text-emerald-700" />
               Verifications ({pendingProfiles.length})
+            </Button>
+          </Link>
+          <Link href="/admin/marriage-certificates">
+            <Button variant="outline" size="sm" className="gap-2 border-emerald-300 bg-emerald-50/50 text-emerald-800">
+              <FileCheck className="h-4 w-4 text-emerald-700" />
+              Certificates ({pendingCerts.length})
             </Button>
           </Link>
           <Link href="/admin/ledger">
@@ -177,12 +191,14 @@ export default function AdminDashboardPage() {
           </div>
           <div className="mt-3">
             <div className="text-3xl font-extrabold text-amber-900">
-              {pendingProfiles.length + pendingPayments.length}
+              {pendingProfiles.length + pendingPayments.length + pendingCerts.length}
             </div>
-            <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
-              <span className="text-amber-700 font-medium">{pendingProfiles.length} Profiles</span>
+            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500">
+              <span>{pendingProfiles.length} Profiles</span>
               <span>•</span>
-              <span className="text-emerald-700 font-medium">{pendingPayments.length} Payments</span>
+              <span>{pendingPayments.length} Payments</span>
+              <span>•</span>
+              <span className="text-emerald-700 font-semibold">{pendingCerts.length} Certificates</span>
             </div>
           </div>
         </div>

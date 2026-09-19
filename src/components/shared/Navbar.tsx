@@ -21,6 +21,7 @@ import {
   UserPlus,
   Sparkles,
   ArrowRight,
+  FileCheck,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { DataService } from '@/lib/data-service';
@@ -92,6 +93,7 @@ export function Navbar() {
     { label: 'Houses', href: '/admin/houses', icon: Users },
     { label: 'Payments', href: '/admin/payments', icon: CreditCard },
     { label: 'Defaulters', href: '/admin/defaulters', icon: AlertTriangle },
+    { label: 'Certificates', href: '/admin/marriage-certificates', icon: FileCheck },
     { label: 'Ledger', href: '/admin/ledger', icon: FileSpreadsheet },
   ];
 
@@ -100,6 +102,7 @@ export function Navbar() {
       ? [
           { label: 'Household', href: '/dashboard', icon: Home },
           { label: 'Pay Dues & Receipts', href: '/dashboard/payments', icon: CreditCard },
+          { label: 'Marriage Certificate', href: '/dashboard/marriage-certificate', icon: FileCheck },
         ]
       : effectiveIsPending && effectiveHouse
         ? [{ label: 'Status', href: '/onboarding/pending', icon: Clock }]

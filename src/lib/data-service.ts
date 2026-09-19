@@ -11,6 +11,8 @@ import {
   FamilyMember,
   PaymentRequestItem,
   PaymentRequestContribution,
+  MarriageCertificateApplication,
+  MarriageCertificateStatus,
 } from './supabase/types';
 import { OnboardingInput } from './schemas';
 import { createClient, hasSupabaseConfig } from './supabase/client';
@@ -2979,6 +2981,158 @@ export const DataService = {
       console.error('Error marking special contribution as paid:', err);
       throw err;
     }
+  },
+
+  getMarriageCertificates(houseId?: string, status?: string): MarriageCertificateApplication[] {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('mahallu_marriage_certificates');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            let list = [...parsed];
+            if (houseId) list = list.filter((m) => m.house_id === houseId);
+            if (status && status !== 'all') list = list.filter((m) => m.status === status);
+            return list.sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
+          }
+        }
+      } catch {}
+    }
+    return [];
+  },
+
+  getMarriageCertificateById(id: string): MarriageCertificateApplication | null {
+    const all = this.getMarriageCertificates();
+    return all.find((m) => m.id === id) || null;
+  },
+
+  saveMarriageCertificateLocal(application: MarriageCertificateApplication): MarriageCertificateApplication {
+    if (typeof window !== 'undefined') {
+      try {
+        const all = this.getMarriageCertificates();
+        const idx = all.findIndex((m) => m.id === application.id);
+        if (idx >= 0) {
+          all[idx] = application;
+        } else {
+          all.unshift(application);
+        }
+        localStorage.setItem('mahallu_marriage_certificates', JSON.stringify(all));
+        window.dispatchEvent(new CustomEvent('mahallu_marriage_certs_updated'));
+        window.dispatchEvent(new CustomEvent('mahallu_data_updated'));
+      } catch {}
+    }
+    return application;
+  },
+
+  async getMarriageCertificatesAsync(houseId?: string, status?: string): Promise<MarriageCertificateApplication[]> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (houseId) queryParams.set('house_id', houseId);
+      if (status && status !== 'all') queryParams.set('status', status);
+
+      const res = await fetch(`/api/marriage-certificates?${queryParams.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.applications && Array.isArray(data.applications)) {
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('mahallu_marriage_certificates', JSON.stringify(data.applications));
+            } catch {}
+          }
+          return data.applications;
+        }
+      }
+    } catch {}
+    return this.getMarriageCertificates(houseId, status);
+  },
+
+  async submitMarriageCertificateAsync(payload: any): Promise<MarriageCertificateApplication> {
+    try {
+      const res = await fetch('/api/marriage-certificates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err?.error || 'Failed to submit marriage certificate application');
+      }
+
+      const data = await res.json();
+      if (data.application) {
+        this.saveMarriageCertificateLocal(data.application);
+        return data.application;
+      }
+    } catch (err: any) {
+      console.warn('API submission failed, storing locally:', err?.message);
+    }
+
+    const localApp: MarriageCertificateApplication = {
+      ...payload,
+      id: `mc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      status: 'pending',
+      submitted_at: new Date().toISOString(),
+      certificate_number: null,
+      admin_notes: null,
+      rejection_reason: null,
+      reviewed_at: null,
+      reviewed_by: null,
+    };
+    return this.saveMarriageCertificateLocal(localApp);
+  },
+
+  async reviewMarriageCertificateAsync(
+    applicationId: string,
+    action: 'approve' | 'reject',
+    options: {
+      certificateNumber?: string;
+      adminNotes?: string;
+      rejectionReason?: string;
+      adminId?: string;
+    } = {}
+  ): Promise<MarriageCertificateApplication> {
+    try {
+      const res = await fetch('/api/marriage-certificates', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          application_id: applicationId,
+          action,
+          certificate_number: options.certificateNumber,
+          admin_notes: options.adminNotes,
+          rejection_reason: options.rejectionReason,
+          admin_id: options.adminId,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err?.error || 'Failed to review application');
+      }
+
+      const data = await res.json();
+      if (data.application) {
+        this.saveMarriageCertificateLocal(data.application);
+        return data.application;
+      }
+    } catch (err: any) {
+      console.warn('API review failed, updating locally:', err?.message);
+    }
+
+    const target = this.getMarriageCertificateById(applicationId);
+    if (!target) throw new Error('Application not found');
+
+    const updated: MarriageCertificateApplication = {
+      ...target,
+      status: action === 'approve' ? 'approved' : 'rejected',
+      certificate_number: action === 'approve' ? (options.certificateNumber || `MHL-MC-${new Date().getFullYear()}-001`) : target.certificate_number,
+      admin_notes: options.adminNotes || target.admin_notes,
+      rejection_reason: action === 'reject' ? (options.rejectionReason || 'Application rejected') : null,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: options.adminId || 'admin',
+    };
+    return this.saveMarriageCertificateLocal(updated);
   },
 };
 

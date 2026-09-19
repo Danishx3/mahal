@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { DataService } from '@/lib/data-service';
-import { Lock, Home, CreditCard } from 'lucide-react';
+import { Lock, Home, CreditCard, FileCheck } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { LoadingScreen } from '@/components/ui/LoadingAnimation';
 
@@ -92,6 +92,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       href: '/dashboard/payments',
       icon: CreditCard,
       badge: pendingDuesCount > 0 ? pendingDuesCount : undefined,
+    },
+    {
+      label: 'Marriage Certificate',
+      href: '/dashboard/marriage-certificate',
+      icon: FileCheck,
     },
   ];
 

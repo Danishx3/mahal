@@ -37,6 +37,7 @@ import {
   Trash2,
   UserCheck,
   HandCoins,
+  FileCheck,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { LoadingScreen } from '@/components/ui/LoadingAnimation';
@@ -111,6 +112,7 @@ export default function ResidentDashboard() {
   const [activePaymentRequests, setActivePaymentRequests] = useState<PaymentRequestItem[]>([]);
   const [specialPaidTotal, setSpecialPaidTotal] = useState(0);
   const [specialPaidCount, setSpecialPaidCount] = useState(0);
+  const [marriageCerts, setMarriageCerts] = useState<any[]>([]);
 
   // Edit Profile / Dwelling Verification State
   const [pendingUpdate, setPendingUpdate] = useState<ProfileUpdateRequest | null>(null);
@@ -176,6 +178,15 @@ export default function ResidentDashboard() {
         );
         const unfulfilledActive = activeOnly.filter((r) => !housePaidRequestIds.has(r.id));
         setActivePaymentRequests(unfulfilledActive);
+        // Load marriage certificates for this household
+        if (userHouse?.id) {
+          try {
+            const certs = await DataService.getMarriageCertificatesAsync(userHouse.id);
+            setMarriageCerts(certs);
+          } catch {
+            // Non-blocking
+          }
+        }
       } catch (e) {
         console.warn('Failed to load active payment requests in dashboard:', e);
       }
@@ -197,10 +208,12 @@ export default function ResidentDashboard() {
 
     window.addEventListener('mahallu_data_updated', loadData);
     window.addEventListener('mahallu_requests_updated', handleRequestsUpdated);
+    window.addEventListener('mahallu_marriage_certs_updated', loadData);
     return () => {
       clearInterval(interval);
       window.removeEventListener('mahallu_data_updated', loadData);
       window.removeEventListener('mahallu_requests_updated', handleRequestsUpdated);
+      window.removeEventListener('mahallu_marriage_certs_updated', loadData);
     };
   }, [user?.id]);
 
@@ -446,6 +459,12 @@ export default function ResidentDashboard() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link href="/dashboard/marriage-certificate">
+              <Button variant="outline" className="gap-2 border-slate-200">
+                <FileCheck className="h-4 w-4 text-emerald-700" />
+                Marriage Certificate
+              </Button>
+            </Link>
             <Link href="/dashboard/payments">
               <Button variant="primary" className="gap-2">
                 <CreditCard className="h-4 w-4" />
@@ -454,6 +473,38 @@ export default function ResidentDashboard() {
             </Link>
           </div>
         </div>
+
+        {/* Approved Marriage Certificate Alert Banner */}
+        {marriageCerts.find((c) => c.status === 'approved') && (
+          <div className="bg-emerald-50 border-2 border-emerald-500 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="h-10 w-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-emerald-950">
+                  Your application is accepted, contact mahal committee for certificate
+                </h3>
+                <p className="text-xs text-emerald-800 mt-0.5">
+                  Couple:{' '}
+                  <strong>{marriageCerts.find((c) => c.status === 'approved').husband_name}</strong>{' '}
+                  &amp;{' '}
+                  <strong>{marriageCerts.find((c) => c.status === 'approved').wife_full_name}</strong>{' '}
+                  • Certificate Ref:{' '}
+                  <span className="font-mono font-bold">
+                    {marriageCerts.find((c) => c.status === 'approved').certificate_number || 'Official Ref Assigned'}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <Link href="/dashboard/marriage-certificate" className="shrink-0 w-full sm:w-auto">
+              <Button size="sm" variant="primary" className="w-full sm:w-auto bg-emerald-700 hover:bg-emerald-800 text-white font-bold">
+                View Certificate
+              </Button>
+            </Link>
+          </div>
+        )}
 
         {/* Active Payment Requests & Campaigns Banner */}
         {activePaymentRequests.length > 0 && (

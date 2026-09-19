@@ -97,8 +97,41 @@ export const adminRejectionSchema = z.object({
   reason: z.string().min(5, 'Please provide a clear reason (minimum 5 characters)'),
 });
 
+export const marriageCertificateSchema = z.object({
+  husband_name: z
+    .string()
+    .min(2, 'Husband name must be at least 2 characters')
+    .max(100, 'Husband name cannot exceed 100 characters'),
+  husband_dob: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Date of Birth required (YYYY-MM-DD)'),
+  wife_full_name: z
+    .string()
+    .min(2, 'Wife full name must be at least 2 characters')
+    .max(100, 'Wife name cannot exceed 100 characters'),
+  wife_initial: z
+    .string()
+    .min(1, 'Wife initial (full form) is required, e.g. P.K (Puthan Kulam)')
+    .max(100, 'Wife initial cannot exceed 100 characters'),
+  wife_father_name: z
+    .string()
+    .min(2, "Wife's father's full name must be at least 2 characters")
+    .max(100, "Father's name cannot exceed 100 characters"),
+  wife_address: z
+    .string()
+    .min(5, 'Please provide the complete residential address of wife (minimum 5 characters)')
+    .max(500, 'Address cannot exceed 500 characters'),
+  wife_dob: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Date of Birth required (YYYY-MM-DD)'),
+  date_of_nikah: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Date of Nikah required (YYYY-MM-DD)'),
+});
+
 export type HouseInput = z.infer<typeof houseSchema>;
 export type FamilyMemberInput = z.infer<typeof familyMemberSchema>;
 export type OnboardingInput = z.infer<typeof onboardingSchema>;
 export type PaymentSubmissionInput = z.infer<typeof paymentSubmissionSchema>;
 export type LedgerEntryInput = z.infer<typeof ledgerEntrySchema>;
+export type MarriageCertificateInput = z.infer<typeof marriageCertificateSchema>;

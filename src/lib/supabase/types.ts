@@ -412,6 +412,80 @@ export interface Database {
           updated_at?: string;
         };
       };
+      marriage_certificates: {
+        Row: {
+          id: string;
+          house_id: string;
+          user_id: string;
+          mahallu_reg_no: string;
+          house_name: string;
+          applicant_email: string;
+          applicant_phone: string;
+          husband_name: string;
+          husband_dob: string;
+          wife_full_name: string;
+          wife_initial: string;
+          wife_father_name: string;
+          wife_address: string;
+          wife_dob: string;
+          date_of_nikah: string;
+          status: MarriageCertificateStatus;
+          certificate_number: string | null;
+          admin_notes: string | null;
+          rejection_reason: string | null;
+          submitted_at: string;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          house_id: string;
+          user_id: string;
+          mahallu_reg_no: string;
+          house_name: string;
+          applicant_email: string;
+          applicant_phone: string;
+          husband_name: string;
+          husband_dob: string;
+          wife_full_name: string;
+          wife_initial: string;
+          wife_father_name: string;
+          wife_address: string;
+          wife_dob: string;
+          date_of_nikah: string;
+          status?: MarriageCertificateStatus;
+          certificate_number?: string | null;
+          admin_notes?: string | null;
+          rejection_reason?: string | null;
+          submitted_at?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          house_id?: string;
+          user_id?: string;
+          mahallu_reg_no?: string;
+          house_name?: string;
+          applicant_email?: string;
+          applicant_phone?: string;
+          husband_name?: string;
+          husband_dob?: string;
+          wife_full_name?: string;
+          wife_initial?: string;
+          wife_father_name?: string;
+          wife_address?: string;
+          wife_dob?: string;
+          date_of_nikah?: string;
+          status?: MarriageCertificateStatus;
+          certificate_number?: string | null;
+          admin_notes?: string | null;
+          rejection_reason?: string | null;
+          submitted_at?: string;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+        };
+      };
     };
   };
 }
@@ -463,9 +537,37 @@ export interface PaymentRequestContribution {
   created_at: string;
 }
 
+export type MarriageCertificateStatus = 'pending' | 'approved' | 'rejected';
+
+export interface MarriageCertificateApplication {
+  id: string;
+  house_id: string;
+  user_id: string;
+  mahallu_reg_no: string;
+  house_name: string;
+  applicant_email: string;
+  applicant_phone: string;
+  husband_name: string;
+  husband_dob: string;
+  wife_full_name: string;
+  wife_initial: string;
+  wife_father_name: string;
+  wife_address: string;
+  wife_dob: string;
+  date_of_nikah: string;
+  status: MarriageCertificateStatus;
+  certificate_number?: string | null;
+  admin_notes?: string | null;
+  rejection_reason?: string | null;
+  submitted_at: string;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+}
+
 export type PaymentRequestRow = Database['public']['Tables']['payment_requests']['Row'];
 export type PaymentRequestContributionRow = Database['public']['Tables']['payment_request_contributions']['Row'];
 export type ProfileUpdateRow = Database['public']['Tables']['profile_updates']['Row'];
 export type UpiSettingsRow = Database['public']['Tables']['upi_settings']['Row'];
 export type DuesSettingsRow = Database['public']['Tables']['dues_settings']['Row'];
+export type MarriageCertificateRow = Database['public']['Tables']['marriage_certificates']['Row'];
 

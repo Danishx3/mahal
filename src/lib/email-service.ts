@@ -312,3 +312,322 @@ export async function sendBatchReminderEmails(
     results,
   };
 }
+
+/**
+ * Send an email notification to admin(s) when a household submits a new marriage certificate application.
+ */
+export async function sendMarriageApplicationSubmittedAdminEmail(
+  application: {
+    id: string;
+    house_name: string;
+    mahallu_reg_no: string;
+    applicant_email: string;
+    applicant_phone: string;
+    husband_name: string;
+    husband_dob: string;
+    wife_full_name: string;
+    wife_initial: string;
+    wife_father_name: string;
+    wife_address: string;
+    wife_dob: string;
+    date_of_nikah: string;
+    submitted_at: string;
+  },
+  adminEmails: string[] = []
+): Promise<{ sentCount: number; recipients: string[] }> {
+  const from = process.env.SMTP_FROM || 'Kunjikkulam Juma Masjid <kunjikkulammasjid@gmail.com>';
+  const fallbackAdmin = process.env.ADMIN_NOTIFICATION_EMAIL || process.env.SMTP_USER || 'danishkpmariyad@gmail.com';
+  
+  // Deduplicate and filter recipient emails
+  const recipients = Array.from(
+    new Set(
+      [...adminEmails, fallbackAdmin]
+        .map((e) => e?.trim().toLowerCase())
+        .filter((e): e is string => Boolean(e && e.includes('@')))
+    )
+  );
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const adminReviewUrl = `${baseUrl}/admin/marriage-certificates`;
+  const subject = `[Mahallu Portal] New Marriage Certificate Application: ${application.husband_name} & ${application.wife_full_name} (${application.mahallu_reg_no})`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Marriage Certificate Application</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; color: #1e293b; }
+    .container { max-width: 600px; margin: 24px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+    .header { background: linear-gradient(135deg, #064e3b 0%, #047857 100%); padding: 30px 24px; text-align: center; color: #ffffff; }
+    .emblem { display: inline-block; width: 44px; height: 44px; line-height: 44px; border-radius: 50%; background: rgba(255,255,255,0.15); margin-bottom: 10px; font-size: 22px; }
+    .title { font-size: 20px; font-weight: 800; margin: 0; color: #ffffff; text-transform: uppercase; }
+    .subtitle { font-size: 13px; color: #a7f3d0; margin-top: 4px; }
+    .content { padding: 28px 24px; }
+    .badge { display: inline-block; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 16px; }
+    .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 16px 0; }
+    .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #e2e8f0; font-size: 13px; }
+    .row:last-child { border-bottom: none; }
+    .label { color: #64748b; font-weight: 500; }
+    .val { color: #0f172a; font-weight: 700; text-align: right; }
+    .cta-btn { display: block; box-sizing: border-box; text-align: center; background: #047857; color: #ffffff !important; text-decoration: none; padding: 14px 24px; border-radius: 10px; font-weight: 700; font-size: 14px; margin-top: 20px; }
+    .footer { background: #f8fafc; padding: 20px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="emblem">🕌</div>
+      <h1 class="title">Kunjikkulam Juma Masjid</h1>
+      <div class="subtitle">Official Administration Portal • വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ</div>
+    </div>
+    <div class="content">
+      <span class="badge">New Application Received</span>
+      <p style="font-size: 14px; color: #334155; line-height: 1.5; margin-top: 0;">
+        Assalamu Alaikum, a new online marriage certificate application has been submitted by household <strong>${application.house_name}</strong> (${application.mahallu_reg_no}) and is awaiting administrative verification.
+      </p>
+
+      <div class="card">
+        <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #047857; margin-bottom: 10px;">
+          Groom & Bride Information
+        </div>
+        <table width="100%" cellpadding="6" cellspacing="0" style="font-size: 13px;">
+          <tr>
+            <td style="color: #64748b; width: 40%;">Household Name:</td>
+            <td style="font-weight: 700; color: #0f172a;">${application.house_name}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Mahallu Reg. No:</td>
+            <td style="font-weight: 700; color: #047857; font-family: monospace;">${application.mahallu_reg_no}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Husband (Groom):</td>
+            <td style="font-weight: 700; color: #0f172a;">${application.husband_name}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Husband DOB:</td>
+            <td style="font-weight: 600; color: #334155;">${application.husband_dob}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Wife (Bride):</td>
+            <td style="font-weight: 700; color: #0f172a;">${application.wife_full_name}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Wife Initial (Full Form):</td>
+            <td style="font-weight: 600; color: #334155;">${application.wife_initial}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Wife's Father:</td>
+            <td style="font-weight: 600; color: #334155;">${application.wife_father_name}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Wife's Address:</td>
+            <td style="font-weight: 500; color: #334155;">${application.wife_address}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Wife DOB:</td>
+            <td style="font-weight: 600; color: #334155;">${application.wife_dob}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Date of Nikah:</td>
+            <td style="font-weight: 700; color: #047857;">${application.date_of_nikah}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Applicant Phone:</td>
+            <td style="font-weight: 600; color: #334155;">${application.applicant_phone}</td>
+          </tr>
+        </table>
+      </div>
+
+      <a href="${adminReviewUrl}" class="cta-btn" target="_blank">
+        Review & Approve in Admin Console →
+      </a>
+    </div>
+
+    <div class="footer">
+      Kunjikkulam Juma Masjid Mahallu Administration System • Automated Internal Alert
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const transporter = getMailTransporter();
+  let sentCount = 0;
+
+  for (const recipient of recipients) {
+    if (!transporter) {
+      console.log(`[EMAIL SIMULATED - ADMIN NOTIFICATION] To: ${recipient} | Subject: ${subject}`);
+      sentCount++;
+      continue;
+    }
+
+    try {
+      await transporter.sendMail({
+        from,
+        to: recipient,
+        subject,
+        html,
+        text: `Assalamu Alaikum. A new marriage certificate application was submitted for ${application.husband_name} and ${application.wife_full_name} (${application.mahallu_reg_no}, Nikah date: ${application.date_of_nikah}). Please review in the Admin Console: ${adminReviewUrl}`,
+      });
+      console.log(`[EMAIL SENT - ADMIN NOTIFICATION] To: ${recipient}`);
+      sentCount++;
+    } catch (err: any) {
+      console.error(`[EMAIL ERROR] Failed to send admin alert to ${recipient}:`, err?.message);
+    }
+  }
+
+  return { sentCount, recipients };
+}
+
+/**
+ * Send an email notification to user when their marriage certificate application is approved by admin.
+ */
+export async function sendMarriageApplicationApprovedUserEmail(
+  application: {
+    applicant_email: string;
+    house_name: string;
+    mahallu_reg_no: string;
+    husband_name: string;
+    wife_full_name: string;
+    date_of_nikah: string;
+    certificate_number?: string | null;
+    admin_notes?: string | null;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  if (!application.applicant_email || !application.applicant_email.includes('@')) {
+    return { success: false, error: 'No valid applicant email provided.' };
+  }
+
+  const from = process.env.SMTP_FROM || 'Kunjikkulam Juma Masjid <kunjikkulammasjid@gmail.com>';
+  const to = application.applicant_email.trim();
+  const certNumber = application.certificate_number || `MHL-MC-${new Date().getFullYear()}-001`;
+  const subject = `🎉 Marriage Certificate Application Approved - Kunjikkulam Juma Masjid`;
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const portalUrl = `${baseUrl}/dashboard/marriage-certificate`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marriage Certificate Approved</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; color: #1e293b; }
+    .container { max-width: 600px; margin: 24px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+    .header { background: linear-gradient(135deg, #064e3b 0%, #047857 100%); padding: 32px 24px; text-align: center; color: #ffffff; }
+    .emblem { display: inline-block; width: 48px; height: 48px; line-height: 48px; border-radius: 50%; background: rgba(255,255,255,0.2); margin-bottom: 10px; font-size: 24px; }
+    .title { font-size: 22px; font-weight: 800; margin: 0; color: #ffffff; text-transform: uppercase; }
+    .subtitle { font-size: 13px; color: #a7f3d0; margin-top: 4px; font-weight: 500; }
+    .content { padding: 30px 24px; }
+    .celebration-box { background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px; }
+    .celebration-title { font-size: 17px; font-weight: 800; color: #166534; margin: 0 0 6px 0; }
+    .celebration-text { font-size: 14px; font-weight: 600; color: #15803d; margin: 0; }
+    .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 16px 0; }
+    .cta-btn { display: block; box-sizing: border-box; text-align: center; background: #047857; color: #ffffff !important; text-decoration: none; padding: 14px 24px; border-radius: 10px; font-weight: 700; font-size: 14px; margin-top: 20px; }
+    .office-box { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 14px; border-radius: 6px; font-size: 13px; color: #92400e; margin: 20px 0; line-height: 1.5; }
+    .footer { background: #f8fafc; padding: 24px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #f1f5f9; }
+    .dua { font-style: italic; color: #047857; margin-top: 8px; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="emblem">✨</div>
+      <h1 class="title">Kunjikkulam Juma Masjid</h1>
+      <div class="subtitle">Official Marriage Registry • വിവാഹ സർട്ടിഫിക്കറ്റ് അംഗീകരിച്ചു</div>
+    </div>
+
+    <div class="content">
+      <div class="celebration-box">
+        <p class="celebration-title">Application Approved! 🎉</p>
+        <p class="celebration-text">
+          Your application is accepted, contact mahal committee for certificate
+        </p>
+        <p style="font-size: 12px; color: #166534; margin-top: 6px; font-style: italic;">
+          (നിങ്ങളുടെ അപേക്ഷ അംഗീകരിച്ചു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുന്നതിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.)
+        </p>
+      </div>
+
+      <div class="card">
+        <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #047857; margin-bottom: 10px;">
+          Certificate & Registry Details
+        </div>
+        <table width="100%" cellpadding="6" cellspacing="0" style="font-size: 13px; color: #334155;">
+          <tr>
+            <td style="color: #64748b; width: 42%;">Certificate Ref. No:</td>
+            <td style="font-weight: 800; color: #047857; font-family: monospace; font-size: 14px;">${certNumber}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Husband (Groom):</td>
+            <td style="font-weight: 700; color: #0f172a;">${application.husband_name}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Wife (Bride):</td>
+            <td style="font-weight: 700; color: #0f172a;">${application.wife_full_name}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Date of Nikah:</td>
+            <td style="font-weight: 700; color: #0f172a;">${application.date_of_nikah}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b;">Household Name:</td>
+            <td style="font-weight: 600; color: #0f172a;">${application.house_name} (${application.mahallu_reg_no})</td>
+          </tr>
+          ${application.admin_notes ? `
+          <tr>
+            <td style="color: #64748b;">Committee Remarks:</td>
+            <td style="font-weight: 500; color: #047857;">${application.admin_notes}</td>
+          </tr>` : ''}
+        </table>
+      </div>
+
+      <div class="office-box">
+        <strong>Office Collection Instructions:</strong><br/>
+        Please visit the Mahallu Central Office during operating hours to collect the signed and sealed physical certificate. Please bring your valid identification and reference number <strong>${certNumber}</strong>.
+      </div>
+
+      <a href="${portalUrl}" class="cta-btn" target="_blank">
+        View Application in Resident Portal →
+      </a>
+    </div>
+
+    <div class="footer">
+      <div><strong>Kunjikkulam Juma Masjid Central Office</strong></div>
+      <div style="margin-top: 4px;">Main Road, Mahallu Complex • Contact: +91 98470 12345</div>
+      <div class="dua">
+        "بارك الله لك وبارك عليك وجمع بينكما في خير"
+        <br/>"May Allah bless your union with peace, love, and righteousness."
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const transporter = getMailTransporter();
+
+  if (!transporter) {
+    console.log(`[EMAIL SIMULATED - USER APPROVAL] To: ${to} | Subject: ${subject}`);
+    return { success: true };
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from,
+      to,
+      subject,
+      html,
+      text: `Assalamu Alaikum. Your marriage certificate application for ${application.husband_name} and ${application.wife_full_name} has been approved. Your application is accepted, contact mahal committee for certificate (Certificate No: ${certNumber}). Portal link: ${portalUrl}`,
+    });
+    console.log(`[EMAIL SENT - USER APPROVAL] MessageId: ${info.messageId} | To: ${to}`);
+    return { success: true };
+  } catch (err: any) {
+    console.error(`[EMAIL ERROR] Failed to send user approval email to ${to}:`, err);
+    return { success: false, error: err?.message || 'SMTP delivery failure' };
+  }
+}
+

@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Loader2,
   Lock,
+  FileCheck,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { DataService } from '@/lib/data-service';
@@ -26,16 +27,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, profile, isAdmin, isLoading } = useAuth();
   const [pendingCount, setPendingCount] = useState(0);
   const [paymentsReviewCount, setPaymentsReviewCount] = useState(0);
+  const [pendingCertificatesCount, setPendingCertificatesCount] = useState(0);
 
   const loadCounts = async () => {
     try {
-      const [pendingProfiles, pendingPayments, pendingUpdates] = await Promise.all([
+      const [pendingProfiles, pendingPayments, pendingUpdates, pendingCerts] = await Promise.all([
         DataService.getPendingProfilesAsync(),
         DataService.getPaymentsUnderReviewAsync(),
         DataService.getPendingProfileUpdatesAsync(),
+        DataService.getMarriageCertificatesAsync(undefined, 'pending'),
       ]);
       setPendingCount(pendingProfiles.length + pendingUpdates.length);
       setPaymentsReviewCount(pendingPayments.length);
+      setPendingCertificatesCount(pendingCerts.length);
     } catch {
       // Fallback
     }
@@ -52,9 +56,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
 
     window.addEventListener('mahallu_data_updated', handleLocalUpdate);
+    window.addEventListener('mahallu_marriage_certs_updated', handleLocalUpdate);
     return () => {
       clearInterval(interval);
       window.removeEventListener('mahallu_data_updated', handleLocalUpdate);
+      window.removeEventListener('mahallu_marriage_certs_updated', handleLocalUpdate);
     };
   }, []);
 
@@ -114,6 +120,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       badge: paymentsReviewCount > 0 ? paymentsReviewCount : undefined,
     },
     { label: 'Dues Defaulters', href: '/admin/defaulters', icon: AlertTriangle },
+    {
+      label: 'Marriage Certificates',
+      href: '/admin/marriage-certificates',
+      icon: FileCheck,
+      badge: pendingCertificatesCount > 0 ? pendingCertificatesCount : undefined,
+    },
     { label: 'Financial Ledger', href: '/admin/ledger', icon: FileSpreadsheet },
   ];
 
