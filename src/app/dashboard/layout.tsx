@@ -86,15 +86,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   const residentNav = [
-    { label: 'Household Overview', href: '/dashboard', icon: Home },
+    { label: 'Household Overview', shortLabel: 'Overview', href: '/dashboard', icon: Home },
     {
       label: 'Monthly Dues & Payments',
+      shortLabel: 'Dues & Pay',
       href: '/dashboard/payments',
       icon: CreditCard,
       badge: pendingDuesCount > 0 ? pendingDuesCount : undefined,
     },
     {
       label: 'Marriage Certificate',
+      shortLabel: 'Marriage Cert',
       href: '/dashboard/marriage-certificate',
       icon: FileCheck,
     },
@@ -104,57 +106,141 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex-1 flex flex-col min-h-screen bg-slate-50">
       {/* Subheader Navigation Bar for Resident Dashboard */}
       {(effectiveIsApproved || isAdmin) && (
-        <div className="bg-white border-b border-slate-200 px-4 sm:px-8 py-2.5 overflow-x-auto no-print">
-          <div className="max-w-7xl mx-auto flex items-center justify-between min-w-max gap-4">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider pr-3 border-r border-slate-200">
-                <Home className="h-4 w-4 text-emerald-700" />
-                Resident Portal
+        <>
+          {/* Desktop / Tablet Subheader */}
+          <div className="hidden sm:block bg-white border-b border-slate-200 px-4 sm:px-8 py-2.5 no-print">
+            <div className="max-w-7xl mx-auto flex items-center justify-between min-w-max gap-4">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider pr-3 border-r border-slate-200">
+                  <Home className="h-4 w-4 text-emerald-700" />
+                  Resident Portal
+                </div>
+
+                {residentNav.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                        isActive
+                          ? 'bg-emerald-700 text-white font-semibold shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                      {item.label}
+                      {item.badge !== undefined && (
+                        <span
+                          className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                            isActive ? 'bg-white text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {item.badge} Due
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
               </div>
 
-              {residentNav.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                      isActive
-                        ? 'bg-emerald-700 text-white font-semibold shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                    {item.label}
-                    {item.badge !== undefined && (
-                      <span
-                        className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                          isActive ? 'bg-white text-emerald-800' : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        {item.badge} Due
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
+              {effectiveHouse && (
+                <div className="text-[11px] text-slate-500 font-medium flex items-center gap-2">
+                  <span>
+                    Household: <strong className="text-slate-800">{effectiveHouse.house_name}</strong>
+                  </span>
+                  <span>•</span>
+                  <span className="font-mono text-emerald-800 font-semibold">{effectiveHouse.mahallu_reg_no}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile Sleek Top Subheader */}
+          <div className="sm:hidden bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 py-2 flex items-center justify-between no-print">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-7 w-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                <Home className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-900 truncate">
+                  {effectiveHouse?.house_name || 'Resident Portal'}
+                </p>
+                {effectiveHouse?.mahallu_reg_no && (
+                  <p className="text-[10px] font-mono text-emerald-700 font-medium leading-none">
+                    ID: {effectiveHouse.mahallu_reg_no}
+                  </p>
+                )}
+              </div>
             </div>
 
-            {effectiveHouse && (
-              <div className="text-[11px] text-slate-500 font-medium flex items-center gap-2">
-                <span className="hidden sm:inline">
-                  Household: <strong className="text-slate-800">{effectiveHouse.house_name}</strong>
-                </span>
-                <span className="hidden sm:inline">•</span>
-                <span className="font-mono text-emerald-800 font-semibold">{effectiveHouse.mahallu_reg_no}</span>
-              </div>
+            {pendingDuesCount > 0 ? (
+              <Link
+                href="/dashboard/payments"
+                className="flex items-center gap-1 text-[10px] font-bold text-amber-900 bg-amber-100/90 border border-amber-300 px-2 py-0.5 rounded-full shrink-0"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                {pendingDuesCount} Due
+              </Link>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Active
+              </span>
             )}
           </div>
-        </div>
+        </>
       )}
 
-      <div className="flex-1">{children}</div>
+      {/* Main Content with Mobile Bottom Padding to clear bottom navigation dock */}
+      <div className="flex-1 pb-24 sm:pb-8">{children}</div>
+
+      {/* Mobile Sticky Bottom Navigation Dock */}
+      {(effectiveIsApproved || isAdmin) && (
+        <nav
+          aria-label="Mobile Resident Navigation"
+          className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_24px_rgba(0,0,0,0.07)] px-3 py-1.5 flex items-center justify-around no-print"
+        >
+          {residentNav.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`relative flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all min-h-[48px] ${
+                  isActive
+                    ? 'text-emerald-700 font-bold'
+                    : 'text-slate-500 hover:text-slate-800 font-medium'
+                }`}
+              >
+                <div className="relative">
+                  <div
+                    className={`p-1.5 rounded-xl transition-all ${
+                      isActive ? 'bg-emerald-50 text-emerald-700 scale-105' : 'text-slate-400'
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  {item.badge !== undefined && (
+                    <span className="absolute -top-1 -right-1.5 min-w-[18px] h-[18px] px-1 bg-amber-500 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
+                      {item.badge}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] mt-0.5 tracking-tight leading-none">
+                  {item.shortLabel}
+                </span>
+                {isActive && (
+                  <span className="absolute bottom-0.5 w-4 h-0.5 rounded-full bg-emerald-600" />
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
     </div>
   );
 }
+

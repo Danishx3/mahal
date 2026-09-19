@@ -811,7 +811,7 @@ export default function ResidentPaymentCenter() {
         {/* Tabbed Transaction History Table (Monthly Dues & Special Collections) */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
           {/* Tabs & Type Navigation */}
-          <div className="px-6 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="px-4 sm:px-6 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <span>Dues Records &amp; Transaction History</span>
@@ -824,13 +824,13 @@ export default function ResidentPaymentCenter() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
-              {/* Type Filter Pills */}
-              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-[11px]">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+              {/* Type Filter Pills with smooth mobile swipe */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-[11px] overflow-x-auto no-scrollbar">
                 <button
                   type="button"
                   onClick={() => setTypeFilter('all')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${typeFilter === 'all'
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${typeFilter === 'all'
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                     }`}
@@ -840,7 +840,7 @@ export default function ResidentPaymentCenter() {
                 <button
                   type="button"
                   onClick={() => setTypeFilter('monthly')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${typeFilter === 'monthly'
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${typeFilter === 'monthly'
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                     }`}
@@ -850,7 +850,7 @@ export default function ResidentPaymentCenter() {
                 <button
                   type="button"
                   onClick={() => setTypeFilter('special')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${typeFilter === 'special'
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${typeFilter === 'special'
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                     }`}
@@ -859,8 +859,8 @@ export default function ResidentPaymentCenter() {
                 </button>
               </div>
 
-              {/* Status Filter Tabs */}
-              <div className="flex items-center gap-1">
+              {/* Status Filter Tabs with smooth mobile swipe */}
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
                 {[
                   { id: 'all', label: 'All' },
                   { id: 'pending', label: 'Pending' },
@@ -871,8 +871,8 @@ export default function ResidentPaymentCenter() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${activeTab === tab.id
-                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${activeTab === tab.id
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold'
                         : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
                       }`}
                   >
@@ -883,8 +883,8 @@ export default function ResidentPaymentCenter() {
             </div>
           </div>
 
-          {/* Unified Transactions Table */}
-          <div className="overflow-x-auto">
+          {/* Desktop View: Full Unified Transactions Table */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
                 <tr>
@@ -935,7 +935,7 @@ export default function ResidentPaymentCenter() {
                       </td>
                       <td className="py-3.5 px-4 text-slate-500">
                         {tx.status === 'verified' && tx.verifiedAt ? (
-                          <span className="text-emerald-700">Verified {formatDateTime(tx.verifiedAt)}</span>
+                          <span className="text-emerald-700 font-medium">Verified {formatDateTime(tx.verifiedAt)}</span>
                         ) : tx.status === 'under_review' ? (
                           <span>Submitted {tx.submittedAt ? formatDateTime(tx.submittedAt) : 'recently'}</span>
                         ) : tx.status === 'failed' && tx.rejectionReason ? (
@@ -1010,8 +1010,149 @@ export default function ResidentPaymentCenter() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile View: Touch-Friendly Transaction Cards */}
+          <div className="md:hidden divide-y divide-slate-100">
+            {filteredTransactions.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-xs">
+                No payment or transaction records found in this category.
+              </div>
+            ) : (
+              filteredTransactions.map((tx) => (
+                <div key={tx.id} className="p-4 space-y-3 hover:bg-slate-50/50 transition-colors">
+                  {/* Top row: Title, Category badge, Status */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="font-bold text-slate-900 text-sm">{tx.title}</h3>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            tx.sourceType === 'special_payment'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              : 'bg-slate-100 text-slate-700 border-slate-200'
+                          }`}
+                        >
+                          {tx.categoryBadge}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400">{tx.subtext}</p>
+                    </div>
+                    <Badge variant={tx.status} size="sm">
+                      {tx.displayStatus}
+                    </Badge>
+                  </div>
+
+                  {/* Middle row: Amount & UTR */}
+                  <div className="bg-slate-50/90 p-3 rounded-xl border border-slate-200/80 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Amount</span>
+                      <span className="font-extrabold text-base text-slate-900">{formatCurrency(tx.amount)}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Transaction UTR</span>
+                      <span className="font-mono font-bold text-slate-800 text-xs">{tx.transactionRef || '—'}</span>
+                    </div>
+                  </div>
+
+                  {/* Status / Timestamp information */}
+                  <div className="text-[11px]">
+                    {tx.status === 'verified' && tx.verifiedAt ? (
+                      <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                        Verified on {formatDateTime(tx.verifiedAt)}
+                      </span>
+                    ) : tx.status === 'under_review' ? (
+                      <span className="text-amber-800 font-medium flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5 text-amber-600" />
+                        Submitted {tx.submittedAt ? formatDateTime(tx.submittedAt) : 'recently'} • Under Review
+                      </span>
+                    ) : tx.status === 'failed' && tx.rejectionReason ? (
+                      <span className="text-rose-600 font-medium flex items-start gap-1">
+                        <AlertTriangle className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" />
+                        Reason: {tx.rejectionReason}
+                      </span>
+                    ) : tx.status === 'failed' ? (
+                      <span className="text-rose-600 font-medium flex items-center gap-1">
+                        <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />
+                        Verification rejected by administration
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5 text-slate-400" />
+                        Awaiting payment &amp; reference submission
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Action Button: Touch-friendly min-height 42px */}
+                  <div>
+                    {tx.status === 'verified' ? (
+                      tx.sourceType === 'special_payment' && tx.rawContrib && tx.rawReq ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenSplReceipt(tx.rawContrib!, tx.rawReq!)}
+                          className="w-full justify-center gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer min-h-[42px] font-semibold"
+                        >
+                          <FileText className="h-4 w-4" />
+                          View Digital Receipt
+                        </Button>
+                      ) : tx.rawDue ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenReceipt(tx.rawDue!)}
+                          className="w-full justify-center gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer min-h-[42px] font-semibold"
+                        >
+                          <FileText className="h-4 w-4" />
+                          View Digital Receipt
+                        </Button>
+                      ) : null
+                    ) : tx.status === 'pending' && tx.rawDue ? (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleOpenSubmitModal(tx.rawDue!)}
+                        className="w-full justify-center gap-1.5 cursor-pointer min-h-[42px] font-semibold"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        Pay Dues &amp; Enter UTR
+                      </Button>
+                    ) : tx.status === 'failed' ? (
+                      tx.sourceType === 'special_payment' && tx.rawContrib && tx.rawReq ? (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleOpenReqModal(tx.rawReq!, tx.rawContrib)}
+                          className="w-full justify-center gap-1.5 cursor-pointer min-h-[42px] font-semibold"
+                        >
+                          <CreditCard className="h-4 w-4" />
+                          Re-submit UTR Reference
+                        </Button>
+                      ) : tx.rawDue ? (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleOpenSubmitModal(tx.rawDue!)}
+                          className="w-full justify-center gap-1.5 cursor-pointer min-h-[42px] font-semibold"
+                        >
+                          <CreditCard className="h-4 w-4" />
+                          Re-submit UTR Reference
+                        </Button>
+                      ) : null
+                    ) : (
+                      <div className="py-2.5 text-center text-xs text-amber-800 font-semibold bg-amber-50 rounded-xl border border-amber-200/80">
+                        Submitted &amp; Awaiting Admin Verification
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
+
 
       {/* Submit Payment Reference Modal */}
       <Modal
