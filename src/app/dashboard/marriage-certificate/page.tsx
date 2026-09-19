@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/Badge';
 import { useToast } from '@/components/ui/Toast';
 import { LoadingScreen } from '@/components/ui/LoadingAnimation';
 import { formatDateTime } from '@/lib/utils';
+import { MarriageCertificateSlipModal } from '@/components/resident/MarriageCertificateSlipModal';
 import {
   FileCheck,
   Heart,
@@ -41,6 +42,7 @@ export default function MarriageCertificateDashboardPage() {
   const [loadingApps, setLoadingApps] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [selectedAppForSlip, setSelectedAppForSlip] = useState<MarriageCertificateApplication | null>(null);
 
   // Form State
   const [husbandName, setHusbandName] = useState('');
@@ -298,10 +300,10 @@ export default function MarriageCertificateDashboardPage() {
                   </div>
 
                   <Button
-                    onClick={handlePrintSlip}
+                    onClick={() => setSelectedAppForSlip(app)}
                     variant="outline"
                     size="sm"
-                    className="shrink-0 bg-white hover:bg-emerald-50 text-emerald-800 border-emerald-300 font-bold flex items-center gap-1.5"
+                    className="shrink-0 bg-white hover:bg-emerald-50 text-emerald-800 border-emerald-300 font-bold flex items-center gap-1.5 shadow-xs"
                   >
                     <Printer className="h-3.5 w-3.5" />
                     Print Acknowledgment
@@ -429,9 +431,20 @@ export default function MarriageCertificateDashboardPage() {
                   </div>
                 </div>
 
-                <Badge variant="pending" size="md">
-                  Pending Verification
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => setSelectedAppForSlip(app)}
+                    variant="outline"
+                    size="sm"
+                    className="text-amber-800 border-amber-300 hover:bg-amber-50 text-xs font-semibold flex items-center gap-1"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    Print Slip
+                  </Button>
+                  <Badge variant="pending" size="md">
+                    Pending Verification
+                  </Badge>
+                </div>
               </div>
 
               <div className="bg-amber-50/60 border border-amber-200/60 rounded-2xl p-4 text-xs sm:text-sm text-amber-900 flex items-start gap-3">
@@ -928,6 +941,13 @@ export default function MarriageCertificateDashboardPage() {
           </form>
         </div>
       )}
+
+      {/* Official Acknowledgment Slip Modal */}
+      <MarriageCertificateSlipModal
+        application={selectedAppForSlip}
+        isOpen={Boolean(selectedAppForSlip)}
+        onClose={() => setSelectedAppForSlip(null)}
+      />
     </div>
   );
 }

@@ -31,7 +31,9 @@ import {
   AlertCircle,
   Eye,
   Send,
+  Printer,
 } from 'lucide-react';
+import { MarriageCertificateSlipModal } from '@/components/resident/MarriageCertificateSlipModal';
 
 export default function AdminMarriageCertificatesPage() {
   const { user, isAdmin, isLoading: authLoading } = useAuth();
@@ -53,6 +55,7 @@ export default function AdminMarriageCertificatesPage() {
   const [adminNotesInput, setAdminNotesInput] = useState('');
   const [rejectionReasonInput, setRejectionReasonInput] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [slipApp, setSlipApp] = useState<MarriageCertificateApplication | null>(null);
 
   const loadApplications = async () => {
     try {
@@ -470,6 +473,16 @@ export default function AdminMarriageCertificatesPage() {
                     View Full Details
                   </Button>
 
+                  <Button
+                    onClick={() => setSlipApp(app)}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1.5 text-slate-700"
+                  >
+                    <Printer className="h-3.5 w-3.5 text-slate-500" />
+                    Print Slip
+                  </Button>
+
                   {app.status === 'pending' && (
                     <>
                       <Button
@@ -754,6 +767,13 @@ export default function AdminMarriageCertificatesPage() {
           </div>
         </Modal>
       )}
+
+      {/* Official Acknowledgment Slip Modal */}
+      <MarriageCertificateSlipModal
+        application={slipApp}
+        isOpen={Boolean(slipApp)}
+        onClose={() => setSlipApp(null)}
+      />
     </div>
   );
 }

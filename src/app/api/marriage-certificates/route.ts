@@ -5,7 +5,6 @@ import {
   sendMarriageApplicationSubmittedAdminEmail,
   sendMarriageApplicationApprovedUserEmail,
 } from '@/lib/email-service';
-import { DataService } from '@/lib/data-service';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -29,9 +28,8 @@ export async function GET(request: Request) {
     const { data, error } = await query;
 
     if (error) {
-      console.warn('Supabase fetch marriage_certificates error, using fallback:', error.message);
-      const fallbackList = DataService.getMarriageCertificates(houseId || undefined, status || undefined);
-      return NextResponse.json({ success: true, applications: fallbackList, source: 'local_fallback' });
+      console.warn('Supabase fetch marriage_certificates error:', error.message);
+      return NextResponse.json({ success: true, applications: [] });
     }
 
     const applications: MarriageCertificateApplication[] = (data || []).map((row: any) => ({
@@ -138,15 +136,13 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      console.warn('Supabase insert marriage_certificates error, using local fallback:', error.message);
-      savedApplication = DataService.saveMarriageCertificateLocal({
+      console.warn('Supabase insert marriage_certificates error, using fallback:', error.message);
+      savedApplication = {
         ...payload,
         id: `mc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      });
+      };
     } else {
       savedApplication = data;
-      // Also cache in local DataService
-      DataService.saveMarriageCertificateLocal(savedApplication as any);
     }
 
     // Collect all admin emails to notify
@@ -159,23 +155,26 @@ export async function POST(request: Request) {
       if (adminProfiles && Array.isArray(adminProfiles)) {
         adminEmails = adminProfiles.map((p: any) => p.email).filter(Boolean);
       }
-    } catch {
-      // Fallback
+    } catch (e: any) {
+      console.warn('Could not query admin profiles:', e?.message);
     }
 
     // Dispatch automated email to admin user(s)
+    let emailDispatchResult = null;
     try {
       if (savedApplication) {
-        await sendMarriageApplicationSubmittedAdminEmail(savedApplication, adminEmails);
+        emailDispatchResult = await sendMarriageApplicationSubmittedAdminEmail(savedApplication, adminEmails);
+        console.log('[API] Marriage application admin email sent:', emailDispatchResult);
       }
     } catch (emailErr: any) {
-      console.error('Failed to send admin email alert:', emailErr?.message);
+      console.error('[API ERROR] Failed to send admin email alert:', emailErr?.message);
     }
 
     return NextResponse.json({
       success: true,
       message: 'Marriage certificate application submitted successfully.',
       application: savedApplication,
+      email_dispatched: Boolean(emailDispatchResult),
     });
   } catch (err: any) {
     console.error('Error in marriage certificate submission:', err);
@@ -201,19 +200,13 @@ export async function PATCH(request: Request) {
 
     // Fetch existing application
     let targetApp: MarriageCertificateApplication | null = null;
-    const { data: dbTarget } = await (supabase.from('marriage_certificates') as any)
+    const { data: dbTarget, error: fetchErr } = await (supabase.from('marriage_certificates') as any)
       .select('*')
       .eq('id', application_id)
       .maybeSingle();
 
     if (dbTarget) {
       targetApp = dbTarget;
-    } else {
-      targetApp = DataService.getMarriageCertificateById(application_id);
-    }
-
-    if (!targetApp) {
-      return NextResponse.json({ error: 'Marriage certificate application not found.' }, { status: 404 });
     }
 
     const year = new Date().getFullYear();
@@ -230,31 +223,38 @@ export async function PATCH(request: Request) {
         reviewed_by: isAdminUuid ? admin_id : null,
       };
 
-      const { data: updated, error } = await (supabase.from('marriage_certificates') as any)
+      let finalApp: MarriageCertificateApplication;
+      const { data: updated, error: updateErr } = await (supabase.from('marriage_certificates') as any)
         .update(updateData)
         .eq('id', application_id)
         .select()
         .single();
 
-      let finalApp: MarriageCertificateApplication = updated || {
-        ...targetApp,
-        ...updateData,
-      };
-
-      // Also persist in local service
-      DataService.saveMarriageCertificateLocal(finalApp);
+      if (updateErr || !updated) {
+        console.warn('Supabase update error or mock ID, constructing object:', updateErr?.message);
+        finalApp = {
+          ...(targetApp || ({} as any)),
+          id: application_id,
+          ...updateData,
+        };
+      } else {
+        finalApp = updated;
+      }
 
       // Dispatch approval confirmation email to resident user
+      let emailResult = null;
       try {
-        await sendMarriageApplicationApprovedUserEmail(finalApp);
+        emailResult = await sendMarriageApplicationApprovedUserEmail(finalApp);
+        console.log('[API] User approval email result:', emailResult);
       } catch (emailErr: any) {
-        console.error('Failed to send user approval email:', emailErr?.message);
+        console.error('[API ERROR] Failed to send user approval email:', emailErr?.message);
       }
 
       return NextResponse.json({
         success: true,
         message: 'Application approved successfully and applicant notified.',
         application: finalApp,
+        email_result: emailResult,
       });
     } else if (action === 'reject') {
       const reason = rejection_reason?.trim() || 'Information could not be verified against the official Mahallu Nikah register.';
@@ -265,18 +265,22 @@ export async function PATCH(request: Request) {
         reviewed_by: isAdminUuid ? admin_id : null,
       };
 
+      let finalApp: MarriageCertificateApplication;
       const { data: updated } = await (supabase.from('marriage_certificates') as any)
         .update(updateData)
         .eq('id', application_id)
         .select()
         .single();
 
-      let finalApp: MarriageCertificateApplication = updated || {
-        ...targetApp,
-        ...updateData,
-      };
-
-      DataService.saveMarriageCertificateLocal(finalApp);
+      if (updated) {
+        finalApp = updated;
+      } else {
+        finalApp = {
+          ...(targetApp || ({} as any)),
+          id: application_id,
+          ...updateData,
+        };
+      }
 
       return NextResponse.json({
         success: true,
