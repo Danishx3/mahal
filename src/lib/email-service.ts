@@ -30,10 +30,33 @@ export interface SmtpStatus {
 }
 
 /**
+ * Safely clean environment variables, stripping quotes, tabs, newlines, and trailing spaces.
+ */
+export function cleanEnv(val?: string): string {
+  if (!val) return '';
+  return val.trim().replace(/^["']|["']$/g, '').replace(/[\t\r\n]/g, '').trim();
+}
+
+/**
+ * Get sanitized From address for outgoing emails.
+ */
+export function getSmtpFrom(): string {
+  const custom = cleanEnv(process.env.SMTP_FROM);
+  if (custom && custom.includes('@')) {
+    return custom;
+  }
+  const user = cleanEnv(process.env.SMTP_USER);
+  if (user && user.includes('@')) {
+    return `Kunjikkulam Juma Masjid <${user}>`;
+  }
+  return 'Kunjikkulam Juma Masjid <danishkpmariyad@gmail.com>';
+}
+
+/**
  * Check if SMTP credentials have been provided in environment variables.
  */
 export function isSmtpConfigured(): boolean {
-  return Boolean(process.env.SMTP_USER?.trim() && process.env.SMTP_PASS?.trim());
+  return Boolean(cleanEnv(process.env.SMTP_USER) && cleanEnv(process.env.SMTP_PASS));
 }
 
 /**
@@ -41,12 +64,13 @@ export function isSmtpConfigured(): boolean {
  */
 export function getSmtpStatus(): SmtpStatus {
   const configured = isSmtpConfigured();
+  const user = cleanEnv(process.env.SMTP_USER);
   return {
     configured,
-    user: process.env.SMTP_USER ? process.env.SMTP_USER.replace(/(.{2})(.*)(@.*)/, '$1***$3') : null,
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT) || 465,
-    from: process.env.SMTP_FROM || 'Kunjikkulam Juma Masjid <kunjikkulammasjid@gmail.com>',
+    user: user ? user.replace(/(.{2})(.*)(@.*)/, '$1***$3') : null,
+    host: cleanEnv(process.env.SMTP_HOST) || 'smtp.gmail.com',
+    port: Number(cleanEnv(process.env.SMTP_PORT)) || 465,
+    from: getSmtpFrom(),
   };
 }
 
@@ -55,16 +79,20 @@ export function getSmtpStatus(): SmtpStatus {
  */
 export function getMailTransporter() {
   if (isSmtpConfigured()) {
-    const port = Number(process.env.SMTP_PORT) || 465;
-    const isSecure = process.env.SMTP_SECURE === 'true' || port === 465;
+    const host = cleanEnv(process.env.SMTP_HOST) || 'smtp.gmail.com';
+    const rawPort = cleanEnv(process.env.SMTP_PORT);
+    const port = Number(rawPort) || 465;
+    const isSecure = cleanEnv(process.env.SMTP_SECURE) === 'true' || port === 465;
+    const user = cleanEnv(process.env.SMTP_USER);
+    const pass = cleanEnv(process.env.SMTP_PASS).replace(/\s+/g, '');
 
     return nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      host,
       port,
       secure: isSecure,
       auth: {
-        user: process.env.SMTP_USER!.trim(),
-        pass: process.env.SMTP_PASS!.trim().replace(/\s+/g, ''), // strip spaces from Gmail 16-char app pass
+        user,
+        pass,
       },
     });
   }
@@ -241,7 +269,7 @@ export function generateReminderEmailHtml(payload: ReminderEmailPayload): string
 export async function sendReminderEmail(payload: ReminderEmailPayload): Promise<EmailSendResult> {
   const { to, houseName, regNo, month, amount = 100 } = payload;
   const upiId = payload.upiId || 'kunjikkulam@upi';
-  const from = process.env.SMTP_FROM || 'Kunjikkulam Juma Masjid <kunjikkulammasjid@gmail.com>';
+  const from = getSmtpFrom();
   const formattedMonth = formatMonthName(month);
   const subject = `Kunjikkulam Juma Masjid: Payment Due Reminder (${formattedMonth}) - ${houseName}`;
   const html = generateReminderEmailHtml(payload);
@@ -351,8 +379,8 @@ export async function sendMarriageApplicationSubmittedAdminEmail(
   },
   adminEmails: string[] = []
 ): Promise<{ sentCount: number; recipients: string[] }> {
-  const from = process.env.SMTP_FROM || 'Kunjikkulam Juma Masjid <kunjikkulammasjid@gmail.com>';
-  const fallbackAdmin = process.env.ADMIN_NOTIFICATION_EMAIL || process.env.SMTP_USER || 'danishkpmariyad@gmail.com';
+  const from = getSmtpFrom();
+  const fallbackAdmin = cleanEnv(process.env.ADMIN_NOTIFICATION_EMAIL) || cleanEnv(process.env.SMTP_USER) || 'danishkpmariyad@gmail.com';
   
   // Deduplicate and filter recipient emails
   const recipients = Array.from(
@@ -517,7 +545,7 @@ export async function sendMarriageApplicationApprovedUserEmail(
     return { success: false, error: 'No valid applicant email provided.' };
   }
 
-  const from = process.env.SMTP_FROM || 'Kunjikkulam Juma Masjid <kunjikkulammasjid@gmail.com>';
+  const from = getSmtpFrom();
   const to = application.applicant_email.trim();
   const certNumber = application.certificate_number || `MHL-MC-${new Date().getFullYear()}-001`;
   const subject = `🎉 Marriage Certificate Application Approved - Kunjikkulam Juma Masjid`;

@@ -396,10 +396,10 @@ export default function MarriageCertificateDashboardPage() {
                         Mahallu Central Office Instructions
                       </div>
                       <p>
-                        Please present your reference number <strong className="font-mono">{app.certificate_number}</strong> at Kunjikkulam Juma Masjid office during working hours (Mon - Sat, 9 AM - 5 PM).
+                        Please present your reference number <strong className="font-mono">{app.certificate_number}</strong> at Kunjikkulam Juma Masjid.
                       </p>
                       <p className="flex items-center gap-2 pt-1 font-semibold text-amber-950">
-                        <Phone className="h-3 w-3" /> Helpdesk: +91 98470 12345
+                        <Phone className="h-3 w-3" /> Helpdesk: +91 9846045482
                       </p>
                     </div>
                   </div>
@@ -636,11 +636,10 @@ export default function MarriageCertificateDashboardPage() {
                       }
                     }}
                     placeholder="Husband full name"
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.husband_name
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.husband_name
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.husband_name && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -668,11 +667,10 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.husband_dob
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.husband_dob
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.husband_dob ? (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -717,11 +715,10 @@ export default function MarriageCertificateDashboardPage() {
                       }
                     }}
                     placeholder="Wife full name"
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.wife_full_name
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_full_name
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.wife_full_name && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -749,11 +746,10 @@ export default function MarriageCertificateDashboardPage() {
                       }
                     }}
                     placeholder="Wife initial (full form)"
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.wife_initial
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_initial
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.wife_initial ? (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -785,11 +781,10 @@ export default function MarriageCertificateDashboardPage() {
                       }
                     }}
                     placeholder="Wife's father full name"
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.wife_father_name
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_father_name
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.wife_father_name && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -817,11 +812,10 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.wife_dob
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_dob
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.wife_dob ? (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -853,11 +847,10 @@ export default function MarriageCertificateDashboardPage() {
                       }
                     }}
                     placeholder="Wife permanent address"
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.wife_address
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_address
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.wife_address && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -894,11 +887,10 @@ export default function MarriageCertificateDashboardPage() {
                       });
                     }
                   }}
-                  className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                    formErrors.date_of_nikah
-                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                  }`}
+                  className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.date_of_nikah
+                    ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                    : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                    }`}
                 />
                 {formErrors.date_of_nikah && (
                   <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
