@@ -381,18 +381,18 @@ export async function sendMarriageApplicationSubmittedAdminEmail(
 ): Promise<{ sentCount: number; recipients: string[] }> {
   const from = getSmtpFrom();
   const fallbackAdmin = cleanEnv(process.env.ADMIN_NOTIFICATION_EMAIL) || cleanEnv(process.env.SMTP_USER) || 'danishkpmariyad@gmail.com';
-  
+
   // Deduplicate and filter recipient emails
   const recipients = Array.from(
     new Set(
       [...adminEmails, fallbackAdmin]
         .map((e) => e?.trim().toLowerCase())
+
         .filter((e): e is string => Boolean(e && e.includes('@')))
     )
   );
 
-  const baseUrl = getEmailBaseUrl();
-  const adminReviewUrl = `${baseUrl}/admin/marriage-certificates`;
+  const adminReviewUrl = `https://mahal-rho.vercel.app/dashboard/marriage-certificate`;
   const subject = `[Mahallu Portal] New Marriage Certificate Application: ${application.husband_name} & ${application.wife_full_name} (${application.mahallu_reg_no})`;
 
   const html = `
