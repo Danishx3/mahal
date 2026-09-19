@@ -550,7 +550,7 @@ export async function sendMarriageApplicationApprovedUserEmail(
   const to = application.applicant_email.trim();
   const certNumber = application.certificate_number || `MHL-MC-${new Date().getFullYear()}-001`;
   const subject = `🎉 Marriage Certificate Application Approved - Kunjikkulam Juma Masjid`;
-  const baseUrl = getEmailBaseUrl();
+  const baseUrl = 'https://mahal-rho.vercel.app';
   const portalUrl = `${baseUrl}/dashboard/marriage-certificate`;
 
   const html = `
