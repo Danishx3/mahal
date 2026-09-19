@@ -645,8 +645,8 @@ export async function sendMarriageApplicationApprovedUserEmail(
       </div>
 
       <div class="office-box">
-        <strong>Office Collection Instructions:</strong><br/>
-        Please visit the Mahallu Central Office during operating hours to collect the signed and sealed physical certificate. Please bring your valid identification and reference number <strong>${certNumber}</strong>.
+        <strong>Certificate Collection:</strong><br/>
+        Your marriage certificate application is accepted. Please contact the Mahallu Committee to collect your certificate. Reference number: <strong>${certNumber}</strong>.
       </div>
 
       <a href="${portalUrl}" class="cta-btn" target="_blank">

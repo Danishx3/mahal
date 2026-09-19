@@ -214,19 +214,7 @@ export function MarriageCertificateSlipModal({
             .table-section td.value-col {
               font-weight: 700;
             }
-            .instructions-box {
-              background: #f8fafc;
-              border: 1px dashed #cbd5e1;
-              border-radius: 8px;
-              padding: 10px 12px;
-              margin-bottom: 16px;
-              font-size: 10px;
-              line-height: 1.4;
-              color: #334155;
-            }
-            .instructions-box strong {
-              color: #0f172a;
-            }
+
             .signatures-row {
               display: flex;
               justify-content: space-between;
@@ -388,10 +376,6 @@ export function MarriageCertificateSlipModal({
               </tbody>
             </table>
 
-            <div class="instructions-box">
-              <strong>Office Collection Instructions:</strong>
-              Please visit the Mahallu Office during working hours (9:00 AM - 1:00 PM &amp; 4:30 PM - 7:30 PM). Bring this printed acknowledgment slip along with original photo identification to collect the physical stamped and signed marriage certificate.
-            </div>
 
             <div class="signatures-row">
               <div class="sig-box">
@@ -527,10 +511,6 @@ export function MarriageCertificateSlipModal({
             </div>
           )}
 
-          {/* Collection Notice */}
-          <div className="bg-slate-100/80 rounded-xl p-3 text-[11px] text-slate-600 leading-relaxed border border-slate-200">
-            <strong>Collection Instructions:</strong> Present this acknowledgment slip along with original government photo identification at the Mahallu Central Office to collect the physical official certificate.
-          </div>
         </div>
 
         {/* Modal Bottom Actions */}
