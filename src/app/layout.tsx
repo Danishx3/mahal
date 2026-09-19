@@ -1,10 +1,16 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AuthProvider } from '@/lib/context/AuthContext';
 import { Navbar } from '@/components/shared/Navbar';
 import { Footer } from '@/components/shared/Footer';
 import { TopProgressBar } from '@/components/shared/TopProgressBar';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+};
 
 export const metadata: Metadata = {
   title: "Mahallu & Village Management System | Kunjikkulam Juma Masjid",

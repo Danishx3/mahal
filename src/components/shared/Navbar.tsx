@@ -126,7 +126,7 @@ export function Navbar() {
   // when scrolled or on other pages -> crisp, high-contrast white card style.
   const theme = {
     nav: solid
-      ? 'bg-white/95 backdrop-blur-xl border-b border-slate-200/90 shadow-xs text-slate-900'
+      ? 'bg-white border-b border-slate-200 shadow-sm text-slate-900'
       : 'bg-[#0a1628] border-b border-white/10 text-white',
     brandTitle: solid ? 'text-slate-900' : 'text-white',
     brandSubtitle: solid ? 'text-emerald-700' : 'text-emerald-400',
@@ -149,7 +149,7 @@ export function Navbar() {
   const avatarLetter = (displayName[0] || 'M').toUpperCase();
 
   return (
-    <nav className={`sticky top-0 z-40 no-print transition-colors duration-300 ${theme.nav}`}>
+    <nav className={`sticky top-0 z-50 no-print transition-colors duration-200 ${theme.nav}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo */}
@@ -237,7 +237,7 @@ export function Navbar() {
                     {/* Header */}
                     <div className="px-4 py-3 border-b border-slate-100">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center text-sm font-bold shadow-xs">
+                        <div className="h-10 w-10 rounded-xl bg-emerald-600 bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center text-sm font-bold shadow-xs">
                           {avatarLetter}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -312,7 +312,7 @@ export function Navbar() {
               <div className="flex items-center gap-2">
                 <Link
                   href="/auth/login"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white hover:from-emerald-500 hover:to-teal-600 shadow-md shadow-emerald-700/20 hover:shadow-emerald-700/30 transition-all duration-200 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-emerald-600 bg-gradient-to-r from-emerald-600 to-teal-700 text-white hover:from-emerald-500 hover:to-teal-600 shadow-md shadow-emerald-700/20 hover:shadow-emerald-700/30 transition-all duration-200 cursor-pointer"
                 >
                   <span>Sign In</span>
                   <ArrowRight className="h-3.5 w-3.5" />
@@ -415,7 +415,7 @@ export function Navbar() {
               <Link
                 href="/auth/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block text-center text-xs font-bold py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-700/20"
+                className="block text-center text-xs font-bold py-2.5 px-4 rounded-xl bg-emerald-600 bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-700/20"
               >
                 Sign In
               </Link>

@@ -275,7 +275,7 @@ export default function LandingPage() {
               {/* Action Buttons */}
               <div className="flex flex-wrap items-center gap-4 justify-center lg:justify-start pt-2">
                 <Link href={primaryHref}>
-                  <button className="group relative inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
+                  <button className="group relative inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl bg-emerald-500 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
                     {primaryLabel}
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </button>
@@ -426,7 +426,7 @@ export default function LandingPage() {
                   {/* Top row */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm shadow-emerald-200">
+                      <div className="h-10 w-10 rounded-xl bg-emerald-600 bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm shadow-emerald-200">
                         <MapPin className="h-5 w-5 text-white" />
                       </div>
                       <div>
@@ -445,7 +445,7 @@ export default function LandingPage() {
                   <div className="mb-3">
                     <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-1000 ease-out"
+                        className="h-full rounded-full bg-emerald-500 bg-gradient-to-r from-emerald-400 to-teal-500 transition-all duration-1000 ease-out"
                         style={{ width: `${barPercent}%` }}
                       />
                     </div>
@@ -466,7 +466,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════ CTA BANNER ═══════════ */}
-      <section className="relative overflow-hidden bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-600 py-16 lg:py-20 px-4 sm:px-6 lg:px-8">
+      <section className="relative overflow-hidden bg-emerald-700 bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-600 py-16 lg:py-20 px-4 sm:px-6 lg:px-8">
         {/* Decorative elements */}
         <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
         <div className="absolute bottom-0 right-0 w-80 h-80 bg-white/5 rounded-full translate-x-1/3 translate-y-1/3" />
