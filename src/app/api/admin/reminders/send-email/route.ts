@@ -50,7 +50,12 @@ export async function POST(request: Request) {
 
     const hostHeader = request.headers.get('host') || '';
     const protocol = request.headers.get('x-forwarded-proto') || 'https';
-    const isLocal = !hostHeader || hostHeader.includes('localhost') || hostHeader.includes('127.0.0.1');
+    const isLocal =
+      !hostHeader ||
+      hostHeader.includes('localhost') ||
+      hostHeader.includes('127.0.0.1') ||
+      hostHeader.includes('your-project-name') ||
+      hostHeader.includes('placeholder');
     const siteUrl = isLocal ? 'https://mahal-rho.vercel.app' : `${protocol}://${hostHeader}`;
 
     const payloads: ReminderEmailPayload[] = validRecipients.map((r: any) => ({

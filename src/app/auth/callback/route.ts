@@ -2,9 +2,17 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/dashboard';
+  const requestUrl = new URL(request.url);
+  const code = requestUrl.searchParams.get('code');
+  const next = requestUrl.searchParams.get('next') ?? '/dashboard';
+
+  // Guard against invalid origin / placeholder domains
+  const origin =
+    requestUrl.origin.includes('your-project-name') ||
+    requestUrl.origin.includes('placeholder') ||
+    requestUrl.origin.includes('example.com')
+      ? 'https://mahal-rho.vercel.app'
+      : requestUrl.origin;
 
   if (code) {
     const supabase = await createClient();
@@ -19,6 +27,9 @@ export async function GET(request: Request) {
         .maybeSingle()) as { data: { role?: string; status?: string } | null };
 
       if (profile?.role === 'admin') {
+        if (next && next.startsWith('/admin')) {
+          return NextResponse.redirect(`${origin}${next}`);
+        }
         return NextResponse.redirect(`${origin}/admin`);
       }
 

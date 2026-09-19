@@ -135,20 +135,34 @@ function formatMonthName(monthStr: string): string {
   return monthStr;
 }
 
+export const PRODUCTION_DOMAIN = 'https://mahal-rho.vercel.app';
+
+export function isInvalidDomain(url?: string | null): boolean {
+  if (!url) return true;
+  const lower = url.toLowerCase().trim();
+  return (
+    lower.includes('localhost') ||
+    lower.includes('127.0.0.1') ||
+    lower.includes('your-project-name') ||
+    lower.includes('example.com') ||
+    lower.includes('placeholder')
+  );
+}
+
 /**
  * Returns the production base URL for email links.
- * Prioritizes custom siteUrl or NEXT_PUBLIC_SITE_URL if not pointing to localhost;
- * otherwise defaults to the live production domain https://mahal-rho.vercel.app.
+ * Prioritizes custom siteUrl or NEXT_PUBLIC_SITE_URL only if valid;
+ * strictly falls back to live production domain https://mahal-rho.vercel.app.
  */
 export function getEmailBaseUrl(customUrl?: string): string {
-  if (customUrl && !customUrl.includes('localhost') && !customUrl.includes('127.0.0.1')) {
+  if (customUrl && !isInvalidDomain(customUrl)) {
     return customUrl.replace(/\/$/, '');
   }
   const envUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+  if (envUrl && !isInvalidDomain(envUrl)) {
     return envUrl.replace(/\/$/, '');
   }
-  return 'https://mahal-rho.vercel.app';
+  return PRODUCTION_DOMAIN;
 }
 
 /**
@@ -392,7 +406,7 @@ export async function sendMarriageApplicationSubmittedAdminEmail(
     )
   );
 
-  const baseUrl = 'https://mahal-rho.vercel.app';
+  const baseUrl = getEmailBaseUrl();
   const adminReviewUrl = `${baseUrl}/admin/marriage-certificates`;
   const subject = `[Mahallu Portal] New Marriage Certificate Application: ${application.husband_name} & ${application.wife_full_name} (${application.mahallu_reg_no})`;
 
@@ -550,7 +564,7 @@ export async function sendMarriageApplicationApprovedUserEmail(
   const to = application.applicant_email.trim();
   const certNumber = application.certificate_number || `MHL-MC-${new Date().getFullYear()}-001`;
   const subject = `🎉 Marriage Certificate Application Approved - Kunjikkulam Juma Masjid`;
-  const baseUrl = 'https://mahal-rho.vercel.app';
+  const baseUrl = getEmailBaseUrl();
   const portalUrl = `${baseUrl}/dashboard/marriage-certificate`;
 
   const html = `

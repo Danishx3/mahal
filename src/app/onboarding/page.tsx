@@ -244,7 +244,14 @@ export default function OnboardingPage() {
     setIsGoogleLoading(true);
     try {
       const supabase = createClient();
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const envUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+      const isInvalid =
+        !envUrl ||
+        envUrl.includes('your-project-name') ||
+        envUrl.includes('localhost') ||
+        envUrl.includes('placeholder') ||
+        envUrl.includes('example.com');
+      const siteUrl = !isInvalid ? envUrl.replace(/\/$/, '') : (window.location.origin || 'https://mahal-rho.vercel.app');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
