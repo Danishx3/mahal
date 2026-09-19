@@ -48,8 +48,11 @@ export default function MarriageCertificateDashboardPage() {
   const openFormAndScroll = () => {
     setShowForm(true);
     setTimeout(() => {
-      formSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 60);
+      if (formSectionRef.current) {
+        const top = formSectionRef.current.getBoundingClientRect().top + window.pageYOffset - 85;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
+    }, 80);
   };
 
   // Form State
@@ -288,7 +291,10 @@ export default function MarriageCertificateDashboardPage() {
               className="bg-white rounded-3xl border-2 border-emerald-500 shadow-md p-6 sm:p-8 relative overflow-hidden"
             >
               {/* Top Accent Ribbon */}
-              <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
+              <div
+                className="absolute top-0 left-0 right-0 h-2 bg-emerald-600"
+                style={{ background: 'linear-gradient(to right, #10b981, #14b8a6, #059669)' }}
+              />
 
               <div className="space-y-6">
                 {/* User Notification Banner */}
@@ -389,17 +395,17 @@ export default function MarriageCertificateDashboardPage() {
                       </div>
                     </div>
 
-                    {/* Committee Office Info Card */}
-                    <div className="mt-4 bg-amber-50/70 border border-amber-200/80 rounded-xl p-3.5 text-xs text-amber-900 space-y-1">
-                      <div className="font-bold flex items-center gap-1.5 text-amber-950">
-                        <Building2 className="h-3.5 w-3.5 text-amber-700" />
-                        Mahallu Central Office Instructions
+                    {/* Committee Helpdesk Card */}
+                    <div className="mt-4 bg-emerald-50/80 border border-emerald-200/80 rounded-xl p-3.5 text-xs text-emerald-950 space-y-1">
+                      <div className="font-bold flex items-center gap-1.5 text-emerald-900">
+                        <Building2 className="h-3.5 w-3.5 text-emerald-700" />
+                        Mahallu Committee Helpdesk
                       </div>
-                      <p>
-                        Please present your reference number <strong className="font-mono">{app.certificate_number}</strong> at Kunjikkulam Juma Masjid.
+                      <p className="text-emerald-800">
+                        Please quote reference number <strong className="font-mono font-bold text-emerald-950">{app.certificate_number}</strong> when contacting the committee.
                       </p>
-                      <p className="flex items-center gap-2 pt-1 font-semibold text-amber-950">
-                        <Phone className="h-3 w-3" /> Helpdesk: +91 9846045482
+                      <p className="flex items-center gap-2 pt-1 font-semibold text-emerald-900">
+                        <Phone className="h-3 w-3 text-emerald-600" /> Helpline: +91 9846045482
                       </p>
                     </div>
                   </div>
@@ -542,16 +548,19 @@ export default function MarriageCertificateDashboardPage() {
 
       {/* ═══════════ APPLICATION FORM SECTION ═══════════ */}
       {showForm && (
-        <div ref={formSectionRef} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden scroll-mt-6">
-          <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-slate-900 text-white p-6 sm:p-8">
-            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-2">
-              <PlusCircle className="h-4 w-4" />
+        <div ref={formSectionRef} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden scroll-mt-24">
+          <div
+            className="bg-[#064e3b] text-white p-6 sm:p-8 relative overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #0f172a 100%)' }}
+          >
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-300 uppercase tracking-wider mb-2">
+              <PlusCircle className="h-4 w-4 text-emerald-400" />
               New Application Form
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-white">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
               Marriage Certificate Request
             </h2>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
+            <p className="text-xs sm:text-sm text-emerald-100/90 mt-1 max-w-2xl leading-relaxed">
               Fill in the groom and bride details as recorded in official records. Once submitted, Mahallu committee will verify the registry and dispatch email updates.
             </p>
           </div>
@@ -579,12 +588,15 @@ export default function MarriageCertificateDashboardPage() {
 
             {/* 1. GROOM (HUSBAND) SECTION */}
             <div className="space-y-4">
-              <div className="border-b border-slate-200 pb-2 flex items-center justify-between">
-                <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                  <User className="h-4 w-4 text-emerald-700" />
-                  Section 1: Husband (Groom) Information • വരന്റെ വിവരങ്ങൾ
+              <div className="border-b border-slate-200 pb-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2 flex-wrap">
+                  <User className="h-4 w-4 text-emerald-700 shrink-0" />
+                  <span>Section 1: Husband (Groom) Information</span>
+                  <span className="text-xs font-normal text-slate-500">• വരന്റെ വിവരങ്ങൾ</span>
                 </h3>
-                <span className="text-[11px] font-semibold text-slate-400">Legal Min. Age: 21</span>
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/60 self-start sm:self-auto shrink-0">
+                  Legal Min. Age: 21
+                </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -687,12 +699,15 @@ export default function MarriageCertificateDashboardPage() {
 
             {/* 2. BRIDE (WIFE) SECTION */}
             <div className="space-y-4">
-              <div className="border-b border-slate-200 pb-2 flex items-center justify-between">
-                <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                  <User className="h-4 w-4 text-teal-700" />
-                  Section 2: Wife (Bride) Information • വധുവിന്റെ വിവരങ്ങൾ
+              <div className="border-b border-slate-200 pb-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2 flex-wrap">
+                  <User className="h-4 w-4 text-teal-700 shrink-0" />
+                  <span>Section 2: Wife (Bride) Information</span>
+                  <span className="text-xs font-normal text-slate-500">• വധുവിന്റെ വിവരങ്ങൾ</span>
                 </h3>
-                <span className="text-[11px] font-semibold text-slate-400">Legal Min. Age: 18</span>
+                <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200/60 self-start sm:self-auto shrink-0">
+                  Legal Min. Age: 18
+                </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -863,10 +878,11 @@ export default function MarriageCertificateDashboardPage() {
 
             {/* 3. NIKAH EVENT DATE */}
             <div className="space-y-4">
-              <div className="border-b border-slate-200 pb-2">
-                <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-emerald-700" />
-                  Section 3: Nikah Ceremony Date • നിക്കാഹ് തീയതി
+              <div className="border-b border-slate-200 pb-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2 flex-wrap">
+                  <Calendar className="h-4 w-4 text-emerald-700 shrink-0" />
+                  <span>Section 3: Nikah Ceremony Date</span>
+                  <span className="text-xs font-normal text-slate-500">• നിക്കാഹ് തീയതി</span>
                 </h3>
               </div>
 

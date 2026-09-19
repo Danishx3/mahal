@@ -135,7 +135,10 @@ function LoginFormContent() {
 
 export default function LoginPage() {
   return (
-    <div className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-gradient-to-b from-emerald-950 via-slate-900 to-slate-950 text-slate-100">
+    <div
+      className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-slate-950 text-slate-100"
+      style={{ background: 'linear-gradient(to bottom, #022c22 0%, #0f172a 50%, #020617 100%)' }}
+    >
       <Suspense fallback={<div className="text-slate-400 text-sm">Loading login portal...</div>}>
         <LoginFormContent />
       </Suspense>

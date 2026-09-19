@@ -548,7 +548,10 @@ export default function PaymentVerificationHub() {
       {/* Configuration Cards: UPI Receiving Account + Monthly Fee Schedule */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Active Mahallu UPI Account & QR Banner */}
-        <div className="lg:col-span-2 bg-gradient-to-r from-emerald-900 via-emerald-800 to-slate-900 text-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div
+          className="lg:col-span-2 bg-[#064e3b] text-white rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+          style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #0f172a 100%)' }}
+        >
           <div className="flex items-center gap-3.5">
             <div className="p-3 rounded-xl bg-white/10 text-emerald-300 border border-white/10 shrink-0">
               <QrCode className="h-6 w-6" />

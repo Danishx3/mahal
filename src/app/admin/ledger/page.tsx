@@ -856,7 +856,10 @@ export default function FinancialLedgerPage() {
         </div>
 
         {/* Current Cash/Bank Balance / Net Period Flow */}
-        <div className="bg-gradient-to-br from-emerald-900 to-slate-900 text-white p-6 rounded-3xl shadow-md">
+        <div
+          className="bg-[#064e3b] text-white p-6 rounded-3xl shadow-md"
+          style={{ background: 'linear-gradient(135deg, #064e3b 0%, #0f172a 100%)' }}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-emerald-200">

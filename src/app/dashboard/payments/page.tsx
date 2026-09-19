@@ -517,7 +517,10 @@ export default function ResidentPaymentCenter() {
 
         {/* Active Billing Cycle Action Hero Card */}
         {currentMonthDue && (
-          <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-md">
+          <div
+            className="bg-[#064e3b] text-white rounded-3xl p-6 sm:p-8 shadow-md"
+            style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #0f172a 100%)' }}
+          >
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-emerald-200 text-xs font-semibold backdrop-blur-xs">
