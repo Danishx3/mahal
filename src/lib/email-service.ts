@@ -392,7 +392,8 @@ export async function sendMarriageApplicationSubmittedAdminEmail(
     )
   );
 
-  const adminReviewUrl = `https://mahal-rho.vercel.app/dashboard/marriage-certificate`;
+  const baseUrl = 'https://mahal-rho.vercel.app';
+  const adminReviewUrl = `${baseUrl}/admin/marriage-certificates`;
   const subject = `[Mahallu Portal] New Marriage Certificate Application: ${application.husband_name} & ${application.wife_full_name} (${application.mahallu_reg_no})`;
 
   const html = `
