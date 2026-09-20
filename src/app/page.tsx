@@ -16,58 +16,12 @@ import {
   Bell,
   BarChart3,
   Globe,
-  Briefcase,
-  Baby,
 } from 'lucide-react';
 import { DataService } from '@/lib/data-service';
 import { DIVISION_LABELS, Division } from '@/lib/supabase/types';
 import { divisions } from '@/lib/schemas';
 import { useAuth } from '@/lib/context/AuthContext';
 
-/* ───── Animated Counter Hook ───── */
-function useAnimatedCounter(target: number, duration = 1000) {
-  const [value, setValue] = useState(target);
-  const ref = useRef<HTMLDivElement>(null);
-  const prevTargetRef = useRef(target);
-
-  useEffect(() => {
-    const from = prevTargetRef.current;
-    prevTargetRef.current = target;
-
-    if (target <= 0) {
-      setValue(0);
-      return;
-    }
-
-    if (from === target && value === target) {
-      return;
-    }
-
-    const startVal = value;
-    let animFrame: number;
-    const startTime = performance.now();
-
-    const animate = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const nextVal = Math.round(startVal + (target - startVal) * eased);
-      setValue(nextVal);
-      if (progress < 1) {
-        animFrame = requestAnimationFrame(animate);
-      } else {
-        setValue(target);
-      }
-    };
-
-    animFrame = requestAnimationFrame(animate);
-    return () => {
-      if (animFrame) cancelAnimationFrame(animFrame);
-    };
-  }, [target, duration]);
-
-  return { value, ref };
-}
 
 /* ───── Scroll-reveal Hook ───── */
 function useReveal() {
@@ -195,15 +149,6 @@ export default function LandingPage() {
           ? 'Verification Status'
           : 'Register Household';
 
-  const totalHouses = stats?.totalHouses ?? 0;
-  const totalPopulation = stats?.totalPopulation ?? 0;
-  const totalChildren = stats?.totalChildren ?? 0;
-  const totalAbroad = stats?.totalAbroad ?? 0;
-
-  const housesCounter = useAnimatedCounter(totalHouses);
-  const populationCounter = useAnimatedCounter(totalPopulation);
-  const childrenCounter = useAnimatedCounter(totalChildren);
-  const abroadCounter = useAnimatedCounter(totalAbroad);
 
   const divisionsReveal = useReveal();
   const featuresReveal = useReveal();
@@ -229,136 +174,63 @@ export default function LandingPage() {
           />
         </div>
 
-        <div className="max-w-7xl mx-auto relative z-10 px-4 sm:px-6 lg:px-8 py-20 lg:py-24 w-full">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-            {/* Left: Text content */}
-            <div className="space-y-8 text-center lg:text-left">
+        <div className="max-w-4xl mx-auto relative z-10 px-4 sm:px-6 lg:px-8 py-24 sm:py-32 w-full text-center">
+          <div className="space-y-8 flex flex-col items-center">
 
-              {/* Header Icon Badge */}
-              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/[0.07] border border-white/10 backdrop-blur-md shadow-xl shadow-emerald-950/30">
-                <div className="h-10 w-10 rounded-xl overflow-hidden ring-2 ring-emerald-400/40 bg-white p-0.5 shrink-0 shadow-md">
-                  <Image
-                    src="/logo.jpg"
-                    alt="Kunjikkulam Juma Masjid Logo"
-                    width={40}
-                    height={40}
-                    className="w-full h-full object-cover rounded-[10px]"
-                    priority
-                  />
-                </div>
-                <div className="text-left leading-tight">
-                  <span className="text-xs font-bold text-white tracking-tight block">
-                    Kunjikkulam Juma Masjid
-                  </span>
-                  <span className="text-[10px] font-semibold text-emerald-400 tracking-wider uppercase block">
-                    Official Mahallu Portal
-                  </span>
-                </div>
+            {/* Header Icon Badge */}
+            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/[0.07] border border-white/10 backdrop-blur-md shadow-xl shadow-emerald-950/30">
+              <div className="h-10 w-10 rounded-xl overflow-hidden ring-2 ring-emerald-400/40 bg-white p-0.5 shrink-0 shadow-md">
+                <Image
+                  src="/logo.jpg"
+                  alt="Kunjikkulam Juma Masjid Logo"
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover rounded-[10px]"
+                  priority
+                />
               </div>
-
-              {/* Heading */}
-              <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-extrabold tracking-tight leading-[1.1]">
-                <span className="text-white">Unified Mahallu</span>
-                <br />
-                <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-                  Administration
+              <div className="text-left leading-tight">
+                <span className="text-xs font-bold text-white tracking-tight block">
+                  Kunjikkulam Juma Masjid
                 </span>
-              </h1>
-
-              {/* Subheading */}
-              <p className="text-base sm:text-lg text-slate-400 max-w-xl leading-relaxed">
-                A comprehensive portal for household registration, membership dues tracking,
-                UPI payment reconciliation, and double-entry financial management — built
-                for modern village governance.
-              </p>
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-4 justify-center lg:justify-start pt-2">
-                <Link href={primaryHref}>
-                  <button className="group relative inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl bg-emerald-500 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
-                    {primaryLabel}
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </button>
-                </Link>
-
-                {!user && (
-                  <Link href="/onboarding">
-                    <button className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-sm hover:bg-white/10 backdrop-blur-sm transition-all duration-300 cursor-pointer">
-                      <Users className="h-4 w-4 text-emerald-400" />
-                      Register Household
-                    </button>
-                  </Link>
-                )}
+                <span className="text-[10px] font-semibold text-emerald-400 tracking-wider uppercase block">
+                  Official Mahallu Portal
+                </span>
               </div>
             </div>
 
-            {/* Right: Stats bento grid */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              {/* Registered Houses – large card */}
-              <div
-                ref={housesCounter.ref}
-                className="col-span-2 p-6 rounded-2xl bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/[0.08] backdrop-blur-md"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold text-emerald-400 tracking-wide uppercase">
-                      Registered Houses
-                    </p>
-                    <p className="text-5xl sm:text-6xl font-extrabold text-white mt-2 tabular-nums">
-                      {housesCounter.value}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1">Across all 6 divisions</p>
-                  </div>
-                  <div className="h-16 w-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-                    <Home className="h-8 w-8 text-emerald-400" />
-                  </div>
-                </div>
-              </div>
+            {/* Heading */}
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15]">
+              <span className="text-white">Unified Mahallu</span>{' '}
+              <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+                Administration
+              </span>
+            </h1>
 
-              {/* Census Population */}
-              <div
-                ref={populationCounter.ref}
-                className="p-5 rounded-2xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] backdrop-blur-md"
-              >
-                <Users className="h-5 w-5 text-teal-400 mb-3" />
-                <p className="text-3xl sm:text-4xl font-extrabold text-white tabular-nums">
-                  {populationCounter.value}
-                </p>
-                <p className="text-[11px] text-slate-500 mt-1">Census Population</p>
-              </div>
+            {/* Subheading */}
+            <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+              A comprehensive portal for household registration, membership dues tracking,
+              UPI payment reconciliation, and double-entry financial management — built
+              for modern village governance.
+            </p>
 
-              {/* Children */}
-              <div
-                ref={childrenCounter.ref}
-                className="p-5 rounded-2xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] backdrop-blur-md"
-              >
-                <Baby className="h-5 w-5 text-amber-400 mb-3" />
-                <p className="text-3xl sm:text-4xl font-extrabold text-white tabular-nums">
-                  {childrenCounter.value}
-                </p>
-                <p className="text-[11px] text-slate-500 mt-1">Children (&lt;18)</p>
-              </div>
+            {/* Action Buttons */}
+            <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+              <Link href={primaryHref}>
+                <button className="group relative inline-flex items-center gap-2.5 px-8 py-4 rounded-xl bg-emerald-500 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
+                  {primaryLabel}
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </button>
+              </Link>
 
-              {/* Monthly Due */}
-              <div className="p-5 rounded-2xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] backdrop-blur-md">
-                <CreditCard className="h-5 w-5 text-blue-400 mb-3" />
-                <p className="text-3xl sm:text-4xl font-extrabold text-white">
-                  ₹{stats?.monthlyDueAmount ?? 100}
-                </p>
-                <p className="text-[11px] text-slate-500 mt-1">Per household/month</p>
-              </div>
-
-              {/* Abroad */}
-              <div
-                ref={abroadCounter.ref}
-                className="p-5 rounded-2xl bg-gradient-to-br from-white/[0.06] to-white/[0.02] border border-white/[0.08] backdrop-blur-md"
-              >
-                <Briefcase className="h-5 w-5 text-violet-400 mb-3" />
-                <p className="text-3xl sm:text-4xl font-extrabold text-white tabular-nums">
-                  {abroadCounter.value}
-                </p>
-                <p className="text-[11px] text-slate-500 mt-1">Members Abroad</p>
-              </div>
+              {!user && (
+                <Link href="/onboarding">
+                  <button className="inline-flex items-center gap-2.5 px-8 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-sm hover:bg-white/10 backdrop-blur-sm transition-all duration-300 cursor-pointer">
+                    <Users className="h-4 w-4 text-emerald-400" />
+                    Register Household
+                  </button>
+                </Link>
+              )}
             </div>
           </div>
         </div>
