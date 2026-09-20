@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Bell, X, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
+import { useLanguage } from '@/lib/context/LanguageContext';
 import { useToast } from '@/components/ui/Toast';
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -20,6 +21,8 @@ function urlBase64ToUint8Array(base64String: string) {
 export function PushNotificationPrompt() {
   const pathname = usePathname();
   const { user, profile, isAdmin, house } = useAuth();
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
   const { toast } = useToast();
 
   const [isSupported, setIsSupported] = useState(false);
@@ -92,7 +95,7 @@ export function PushNotificationPrompt() {
 
   const handleSubscribe = async () => {
     if (!isSupported) {
-      toast('Push notifications are not supported by this browser.', 'error');
+      toast(isMl ? 'ഈ ബ്രൗസറിൽ പുഷ് നോട്ടിഫിക്കേഷൻ ലഭ്യമല്ല.' : 'Push notifications are not supported by this browser.', 'error');
       return;
     }
 
@@ -102,7 +105,7 @@ export function PushNotificationPrompt() {
       setPermission(perm);
 
       if (perm !== 'granted') {
-        toast('Notification permission was not granted.', 'info');
+        toast(isMl ? 'നോട്ടിഫിക്കേഷൻ അനുമതി ലഭിച്ചില്ല.' : 'Notification permission was not granted.', 'info');
         setShowPrompt(false);
         return;
       }
@@ -143,14 +146,19 @@ export function PushNotificationPrompt() {
       });
 
       if (res.ok) {
-        toast('🔔 Push notifications enabled successfully! You will receive instant updates.', 'success');
+        toast(
+          isMl
+            ? '🔔 നോട്ടിഫിക്കേഷൻ വിജയകരമായി ഓൺ ചെയ്തു! തത്സമയ വിവരങ്ങൾ ലഭിക്കുന്നതാണ്.'
+            : '🔔 Push notifications enabled successfully! You will receive instant updates.',
+          'success'
+        );
         setShowPrompt(false);
       } else {
-        toast('Permission granted, but failed to register device with server.', 'error');
+        toast(isMl ? 'ഡിവൈസ് സെർവറിൽ രജിസ്റ്റർ ചെയ്യാൻ കഴിഞ്ഞില്ല.' : 'Permission granted, but failed to register device with server.', 'error');
       }
     } catch (err: any) {
       console.error('[PushNotificationPrompt] Subscription error:', err);
-      toast(err?.message || 'Failed to enable push notifications.', 'error');
+      toast(err?.message || (isMl ? 'നോട്ടിഫിക്കേഷൻ ഓൺ ചെയ്യാൻ കഴിഞ്ഞില്ല.' : 'Failed to enable push notifications.'), 'error');
     } finally {
       setIsSubscribing(false);
     }
@@ -186,12 +194,18 @@ export function PushNotificationPrompt() {
             </div>
             <div>
               <h4 className="text-xs font-bold text-white tracking-wide">
-                {isAdminView ? 'Enable Admin Push Alerts' : 'Enable Instant Notifications'}
+                {isAdminView
+                  ? (isMl ? 'അഡ്മിൻ നോട്ടിഫിക്കേഷൻ അനുവദിക്കുക' : 'Enable Admin Push Alerts')
+                  : (isMl ? 'തത്സമയ നോട്ടിഫിക്കേഷൻ അനുവദിക്കുക' : 'Enable Instant Notifications')}
               </h4>
               <p className="text-[11px] text-emerald-100/80 leading-relaxed mt-0.5">
                 {isAdminView
-                  ? 'Receive instant mobile & desktop alerts when residents submit payments, register households, or request certificates.'
-                  : 'Get notified instantly when your dues are verified, certificates are approved, or new collection drives are published.'}
+                  ? (isMl
+                      ? 'പുതിയ പേയ്‌മെന്റുകൾ, വിവാഹ അപേക്ഷകൾ, രജിസ്ട്രേഷനുകൾ എന്നിവ ഉടൻ അറിയാൻ അലർട്ടുകൾ ഓൺ ചെയ്യുക.'
+                      : 'Receive instant mobile & desktop alerts when residents submit payments, register households, or request certificates.')
+                  : (isMl
+                      ? 'നിങ്ങളുടെ പേയ്‌മെന്റുകൾ, വിവാഹ സർട്ടിഫിക്കറ്റ് അപ്രൂവലുകൾ, പ്രധാന അറിയിപ്പുകൾ എന്നിവ ഉടൻ അറിയാൻ നോട്ടിഫിക്കേഷൻ അനുവദിക്കുക.'
+                      : 'Get notified instantly when your dues are verified, certificates are approved, or new collection drives are published.')}
               </p>
             </div>
           </div>
@@ -210,7 +224,7 @@ export function PushNotificationPrompt() {
             onClick={handleDismiss}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 hover:text-white hover:bg-emerald-900/50 transition-all cursor-pointer"
           >
-            Maybe Later
+            {isMl ? 'പിന്നീട്' : 'Maybe Later'}
           </button>
           <button
             onClick={handleSubscribe}
@@ -218,7 +232,7 @@ export function PushNotificationPrompt() {
             className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
           >
             <Bell className="h-3.5 w-3.5" />
-            <span>{isSubscribing ? 'Enabling...' : 'Enable Now'}</span>
+            <span>{isSubscribing ? (isMl ? 'അനുവദിക്കുന്നു...' : 'Enabling...') : (isMl ? 'ഇപ്പോൾ അനുവദിക്കുക' : 'Enable Now')}</span>
           </button>
         </div>
       </div>

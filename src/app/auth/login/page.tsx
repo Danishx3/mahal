@@ -7,12 +7,15 @@ import { createClient, hasSupabaseConfig } from '@/lib/supabase/client';
 import { Landmark, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
+import { useLanguage } from '@/lib/context/LanguageContext';
 
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/dashboard';
   const { toast } = useToast();
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
 
   const [isLoading, setIsLoading] = useState(false);
   const isConfigured = hasSupabaseConfig();
@@ -21,7 +24,9 @@ function LoginFormContent() {
   const handleGoogleLogin = async () => {
     if (!isConfigured) {
       toast(
-        'Supabase project credentials not configured in .env.local yet. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.',
+        isMl
+          ? 'Supabase ക്രെഡൻഷ്യലുകൾ ക്രമീകരിച്ചിട്ടില്ല (.env.local).'
+          : 'Supabase project credentials not configured in .env.local yet. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.',
         'info'
       );
       return;
@@ -47,7 +52,7 @@ function LoginFormContent() {
         toast(error.message, 'error');
       }
     } catch (err: any) {
-      toast(err?.message || 'Authentication failed. Please check credentials.', 'error');
+      toast(err?.message || (isMl ? 'ലോഗിൻ പരാജയപ്പെട്ടു.' : 'Authentication failed. Please check credentials.'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -68,10 +73,12 @@ function LoginFormContent() {
           />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          Mahallu Portal Access
+          {isMl ? 'മഹല്ല് പോർട്ടൽ ലോഗിൻ' : 'Mahallu Portal Access'}
         </h1>
         <p className="text-xs text-slate-500 max-w-sm mx-auto">
-          Sign in to manage your household dues, submit UPI transaction references, or access the administrative console.
+          {isMl
+            ? 'കുടുംബ മാസവരി വിവരങ്ങൾ പരിശോധിക്കാനും അടയ്ക്കാനും അഡ്മിൻ കൺസോൾ ലഭ്യമാക്കാനും ലോഗിൻ ചെയ്യുക.'
+            : 'Sign in to manage your household dues, submit UPI transaction references, or access the administrative console.'}
         </p>
       </div>
 
@@ -80,7 +87,7 @@ function LoginFormContent() {
         <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
           <div className="flex items-center gap-1.5 font-semibold text-amber-800">
             <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
-            Supabase Setup Required
+            {isMl ? 'Supabase ക്രമീകരണം ആവശ്യമാണ്' : 'Supabase Setup Required'}
           </div>
           <p className="text-[11px] text-amber-700 leading-relaxed">
             Please configure your <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[10px]">.env.local</code> file with your Supabase Project URL and Anon Key to enable live authentication.
@@ -114,11 +121,13 @@ function LoginFormContent() {
               d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
             />
           </svg>
-          Continue with Google
+          {isMl ? 'Google വഴി തുടരുക' : 'Continue with Google'}
         </Button>
 
         <p className="text-[11px] text-center text-slate-500 leading-relaxed px-2">
-          Secure, single sign-on authentication for Mahallu residents and committee administrators.
+          {isMl
+            ? 'മഹല്ല് അംഗങ്ങൾക്കും കമ്മിറ്റി ഭാരവാഹികൾക്കുമുള്ള സുരക്ഷിതമായ ലോഗിൻ സംവിധാനം.'
+            : 'Secure, single sign-on authentication for Mahallu residents and committee administrators.'}
         </p>
       </div>
 
@@ -126,7 +135,7 @@ function LoginFormContent() {
       <div className="pt-4 border-t border-slate-100 text-center">
         <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-          Protected with Supabase Auth & PostgreSQL Row-Level Security
+          {isMl ? 'പോസ്റ്റ്ഗ്രെഎസ്ക്യുഎൽ സെക്യൂരിറ്റി മുഖേന സുരക്ഷിതം' : 'Protected with Supabase Auth & PostgreSQL Row-Level Security'}
         </p>
       </div>
     </div>

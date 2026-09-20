@@ -18,6 +18,7 @@ import { DigitalReceipt } from '@/components/resident/DigitalReceipt';
 import { SpecialCollectionReceipt } from '@/components/resident/SpecialCollectionReceipt';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/lib/context/AuthContext';
+import { useLanguage } from '@/lib/context/LanguageContext';
 import {
   CreditCard,
   Clock,
@@ -40,9 +41,51 @@ import {
 import { LoadingScreen } from '@/components/ui/LoadingAnimation';
 import { UpiQrCode } from '@/components/shared/UpiQrCode';
 
+const formatMonthLabel = (billingMonth: string, isMl: boolean) => {
+  if (!billingMonth) return '';
+  const [year, month] = billingMonth.split('-');
+  const monthMapMl: Record<string, string> = {
+    '01': 'ജനുവരി',
+    '02': 'ഫെബ്രുവരി',
+    '03': 'മാർച്ച്',
+    '04': 'ഏപ്രിൽ',
+    '05': 'മേയ്',
+    '06': 'ജൂൺ',
+    '07': 'ജൂലൈ',
+    '08': 'ഓഗസ്റ്റ്',
+    '09': 'സെപ്റ്റംബർ',
+    '10': 'ഒക്ടോബർ',
+    '11': 'നവംബർ',
+    '12': 'ഡിസംബർ',
+  };
+  const monthMapEn: Record<string, string> = {
+    '01': 'January',
+    '02': 'February',
+    '03': 'March',
+    '04': 'April',
+    '05': 'May',
+    '06': 'June',
+    '07': 'July',
+    '08': 'August',
+    '09': 'September',
+    '10': 'October',
+    '11': 'November',
+    '12': 'December',
+  };
+  if (isMl && monthMapMl[month]) {
+    return `${monthMapMl[month]} ${year}`;
+  }
+  if (monthMapEn[month]) {
+    return `${monthMapEn[month]} ${year}`;
+  }
+  return billingMonth;
+};
+
 export default function ResidentPaymentCenter() {
   const { toast } = useToast();
   const { user, profile, house: authHouse, isLoading } = useAuth();
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
   const [house, setHouse] = useState<HouseWithDetails | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'under_review' | 'verified' | 'failed'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'monthly' | 'special'>('all');
@@ -159,8 +202,8 @@ export default function ResidentPaymentCenter() {
   if (isLoading || !house) {
     return (
       <LoadingScreen
-        title="Dues & Receipts Center"
-        message="Loading monthly dues, receipts & ledger balances..."
+        title={isMl ? 'മാസവരി & രസീതുകൾ' : 'Dues & Receipts Center'}
+        message={isMl ? 'മാസവരി കുടിശ്ശിക, രസീതുകൾ, ലെഡ്ജർ വിവരങ്ങൾ ലഭ്യമാക്കുന്നു...' : 'Loading monthly dues, receipts & ledger balances...'}
         minHeight="min-h-[60vh]"
       />
     );
@@ -218,13 +261,20 @@ export default function ResidentPaymentCenter() {
     return {
       id: `due-${due.id}`,
       sourceType: 'monthly_due',
-      title: due.billing_month,
-      subtext: 'Monthly Mahallu Maintenance',
-      categoryBadge: 'Monthly Due',
+      title: isMl ? formatMonthLabel(due.billing_month, true) : due.billing_month,
+      subtext: isMl ? 'പ്രതിമാസ മഹല്ല് മാസവരി' : 'Monthly Mahallu Maintenance',
+      categoryBadge: isMl ? 'മാസവരി' : 'Monthly Due',
       amount: Number(due.amount),
       transactionRef: due.transaction_ref,
       status: due.status,
-      displayStatus: due.status.replace('_', ' '),
+      displayStatus:
+        due.status === 'verified'
+          ? (isMl ? 'സ്ഥിരീകരിച്ചു' : 'Verified')
+          : due.status === 'under_review'
+          ? (isMl ? 'പരിശോധനയിൽ' : 'Under Review')
+          : due.status === 'failed'
+          ? (isMl ? 'നിരസിച്ചു' : 'Failed')
+          : (isMl ? 'അടയ്ക്കാനുണ്ട്' : 'Pending'),
       submittedAt: due.submitted_at,
       verifiedAt: due.verified_at,
       rejectionReason: due.rejection_reason,
@@ -243,13 +293,20 @@ export default function ResidentPaymentCenter() {
     return {
       id: `spl-${contrib.id}`,
       sourceType: 'special_payment',
-      title: req?.title || 'Special Collection',
-      subtext: `Special Appeal • ${req?.category || 'Contribution'}`,
-      categoryBadge: req?.category || 'Special Fund',
+      title: req?.title || (isMl ? 'പ്രത്യേക പിരിവ്' : 'Special Collection'),
+      subtext: isMl ? `പ്രത്യേക പിരിവ് • ${req?.category || 'സംഭാവന'}` : `Special Appeal • ${req?.category || 'Contribution'}`,
+      categoryBadge: req?.category || (isMl ? 'പ്രത്യേക ഫണ്ട്' : 'Special Fund'),
       amount: Number(contrib.amount),
       transactionRef: contrib.transaction_ref,
       status: normalizedStatus,
-      displayStatus: contrib.status === 'rejected' ? 'Rejected' : contrib.status.replace('_', ' '),
+      displayStatus:
+        contrib.status === 'rejected'
+          ? (isMl ? 'നിരസിച്ചു' : 'Rejected')
+          : contrib.status === 'verified'
+          ? (isMl ? 'സ്ഥിരീകരിച്ചു' : 'Verified')
+          : contrib.status === 'under_review'
+          ? (isMl ? 'പരിശോധനയിൽ' : 'Under Review')
+          : (isMl ? 'അടയ്ക്കാനുണ്ട്' : 'Pending'),
       submittedAt: contrib.submitted_at,
       verifiedAt: contrib.verified_at,
       rejectionReason: contrib.rejection_reason,
@@ -257,9 +314,9 @@ export default function ResidentPaymentCenter() {
       rawContrib: contrib,
       rawReq: req || {
         id: contrib.request_id,
-        title: 'Special Collection',
+        title: isMl ? 'പ്രത്യേക പിരിവ്' : 'Special Collection',
         description: '',
-        category: 'Special Fund',
+        category: isMl ? 'പ്രത്യേക ഫണ്ട്' : 'Special Fund',
         amount_type: 'custom',
         target_audience: 'all',
         status: 'completed',
@@ -298,7 +355,12 @@ export default function ResidentPaymentCenter() {
 
     const cleanRef = transactionRef.trim();
     if (!cleanRef || cleanRef.length < 6) {
-      toast('Please enter a valid UPI or Bank UTR Transaction ID (minimum 6 characters)', 'error');
+      toast(
+        isMl
+          ? 'സാധുവായ UPI അല്ലെങ്കിൽ ബാങ്ക് UTR ട്രാൻസാക്ഷൻ ഐഡി നൽകുക (കുറഞ്ഞത് 6 അക്ഷരങ്ങൾ)'
+          : 'Please enter a valid UPI or Bank UTR Transaction ID (minimum 6 characters)',
+        'error'
+      );
       return;
     }
 
@@ -312,7 +374,12 @@ export default function ResidentPaymentCenter() {
       );
 
       if (success) {
-        toast(`Payment reference for ${selectedDue.billing_month} submitted successfully! Sent to Admin queue for verification.`, 'success');
+        toast(
+          isMl
+            ? `${formatMonthLabel(selectedDue.billing_month, true)}-ലെ മാസവരി റഫറൻസ് സമർപ്പിച്ചു! അഡ്മിൻ പരിശോധിച്ച ശേഷം സ്ഥിരീകരിക്കും.`
+            : `Payment reference for ${selectedDue.billing_month} submitted successfully! Sent to Admin queue for verification.`,
+          'success'
+        );
         setSubmitModalOpen(false);
 
         // Immediate optimistic UI update
@@ -335,11 +402,16 @@ export default function ResidentPaymentCenter() {
 
         await loadData();
       } else {
-        toast('Failed to record submission. Please check transaction details and try again.', 'error');
+        toast(
+          isMl
+            ? 'വിവരങ്ങൾ സമർപ്പിക്കാൻ സാധിച്ചില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.'
+            : 'Failed to record submission. Please check transaction details and try again.',
+          'error'
+        );
       }
     } catch (err: any) {
       console.error('Submit payment error:', err);
-      toast(err?.message || 'Failed to submit payment reference.', 'error');
+      toast(err?.message || (isMl ? 'പേയ്‌മെന്റ് റഫറൻസ് സമർപ്പിക്കുന്നതിൽ പരാജയപ്പെട്ടു.' : 'Failed to submit payment reference.'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -370,17 +442,22 @@ export default function ResidentPaymentCenter() {
 
     const amt = Number(contribAmount);
     if (isNaN(amt) || amt <= 0) {
-      toast('Please enter a valid contribution amount', 'error');
+      toast(isMl ? 'സാധുവായ സംഭാവന തുക നൽകുക' : 'Please enter a valid contribution amount', 'error');
       return;
     }
     if (selectedReq.min_amount && amt < selectedReq.min_amount) {
-      toast(`Minimum contribution amount is ₹${selectedReq.min_amount}`, 'error');
+      toast(isMl ? `കുറഞ്ഞ സംഭാവന തുക ₹${selectedReq.min_amount} ആണ്` : `Minimum contribution amount is ₹${selectedReq.min_amount}`, 'error');
       return;
     }
 
     const cleanRef = contribUtr.trim();
     if (!cleanRef || cleanRef.length < 6) {
-      toast('Please enter a valid UPI / Bank UTR Reference (minimum 6 characters)', 'error');
+      toast(
+        isMl
+          ? 'സാധുവായ UPI / ബാങ്ക് UTR റഫറൻസ് നൽകുക (കുറഞ്ഞത് 6 അക്ഷരങ്ങൾ)'
+          : 'Please enter a valid UPI / Bank UTR Reference (minimum 6 characters)',
+        'error'
+      );
       return;
     }
 
@@ -400,12 +477,17 @@ export default function ResidentPaymentCenter() {
         return [contrib, ...filtered];
       });
 
-      toast(`Contribution of ₹${amt} submitted successfully for "${selectedReq.title}"! Sent to Admin queue for verification.`, 'success');
+      toast(
+        isMl
+          ? `₹${amt} സംഭാവന "${selectedReq.title}"-ലേക്ക് സമർപ്പിച്ചു! അഡ്മിൻ പരിശോധിച്ച ശേഷം സ്ഥിരീകരിക്കും.`
+          : `Contribution of ₹${amt} submitted successfully for "${selectedReq.title}"! Sent to Admin queue for verification.`,
+        'success'
+      );
       setRequestModalOpen(false);
       setContribUtr('');
       await loadData();
     } catch (err: any) {
-      toast(err?.message || 'Failed to submit contribution reference', 'error');
+      toast(err?.message || (isMl ? 'സംഭാവന റഫറൻസ് സമർപ്പിക്കുന്നതിൽ പരാജയപ്പെട്ടു' : 'Failed to submit contribution reference'), 'error');
     } finally {
       setIsSubmittingContrib(false);
     }
@@ -419,7 +501,7 @@ export default function ResidentPaymentCenter() {
 
   const handleCopyUpi = () => {
     navigator.clipboard.writeText(upiSettings.upiId);
-    toast(`UPI ID copied to clipboard: ${upiSettings.upiId}`, 'success');
+    toast(isMl ? `UPI ഐഡി കോപ്പി ചെയ്തു: ${upiSettings.upiId}` : `UPI ID copied to clipboard: ${upiSettings.upiId}`, 'success');
   };
 
   return (
@@ -429,10 +511,12 @@ export default function ResidentPaymentCenter() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              Monthly Dues & Receipts Center
+              {isMl ? 'പ്രതിമാസ മാസവരി & രസീതുകൾ' : 'Monthly Dues & Receipts Center'}
             </h1>
             <p className="text-xs text-slate-500">
-              Track your monthly ₹100 contribution, submit UPI transaction references, and download official receipts.
+              {isMl
+                ? 'പ്രതിമാസ ₹100 മാസവരി കണക്കുകൾ, UPI പേയ്‌മെന്റ് റഫറൻസ് സമർപ്പണം, ഔദ്യോഗിക ഡിജിറ്റൽ രസീതുകൾ.'
+                : 'Track your monthly ₹100 contribution, submit UPI transaction references, and download official receipts.'}
             </p>
           </div>
 
@@ -440,7 +524,7 @@ export default function ResidentPaymentCenter() {
             <Link href="/dashboard">
               <Button variant="outline" size="sm" className="gap-2 text-slate-700 bg-white">
                 <Home className="h-4 w-4 text-emerald-700" />
-                Household Overview
+                {isMl ? 'കുടുംബ വിവരങ്ങൾ' : 'Household Overview'}
               </Button>
             </Link>
           </div>
@@ -452,7 +536,7 @@ export default function ResidentPaymentCenter() {
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Pending Dues Amount
+                {isMl ? 'കുടിശ്ശികയുള്ള മാസവരി തുക' : 'Pending Dues Amount'}
               </span>
               <div className="p-2 rounded-xl bg-amber-50 text-amber-700">
                 <Clock className="h-4 w-4" />
@@ -463,7 +547,7 @@ export default function ResidentPaymentCenter() {
                 {formatCurrency(pendingAmount)}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                {pendingDues.length} month(s) pending payment
+                {pendingDues.length} {isMl ? 'മാസത്തെ കുടിശ്ശിക' : 'month(s) pending payment'}
               </p>
             </div>
           </div>
@@ -472,7 +556,7 @@ export default function ResidentPaymentCenter() {
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Total Paid (Reconciled)
+                {isMl ? 'ആകെ അടച്ച തുക (സ്ഥിരീകരിച്ചത്)' : 'Total Paid (Reconciled)'}
               </span>
               <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
                 <CheckCircle2 className="h-4 w-4" />
@@ -483,7 +567,7 @@ export default function ResidentPaymentCenter() {
                 {formatCurrency(totalPaidReconciled)}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                {verifiedDues.length} dues + {verifiedSpecialContribs.length} special payment(s) verified
+                {verifiedDues.length} {isMl ? 'മാസവരി' : 'dues'} + {verifiedSpecialContribs.length} {isMl ? 'പ്രത്യേക സംഭാവന സ്ഥിരീകരിച്ചു' : 'special payment(s) verified'}
               </p>
             </div>
           </div>
@@ -492,7 +576,7 @@ export default function ResidentPaymentCenter() {
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Failed / Rejected
+                {isMl ? 'നിരസിച്ചവ / പരാജയപ്പെട്ടവ' : 'Failed / Rejected'}
               </span>
               <div className="p-2 rounded-xl bg-rose-50 text-rose-700">
                 <AlertTriangle className="h-4 w-4" />
@@ -503,7 +587,9 @@ export default function ResidentPaymentCenter() {
                 {totalFailedCount}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                {totalFailedCount > 0 ? 'Requires re-submission of valid UTR' : 'All submissions in good standing'}
+                {totalFailedCount > 0
+                  ? (isMl ? 'ശരിയായ UTR നൽകി വീണ്ടും സമർപ്പിക്കുക' : 'Requires re-submission of valid UTR')
+                  : (isMl ? 'എല്ലാ ഇടപാടുകളും കൃത്യമാണ്' : 'All submissions in good standing')}
               </p>
             </div>
           </div>
@@ -518,21 +604,25 @@ export default function ResidentPaymentCenter() {
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-emerald-200 text-xs font-semibold backdrop-blur-xs">
-                  <span>Current Billing Period:</span>
-                  <span className="font-bold text-white uppercase">{currentMonthDue.billing_month}</span>
+                  <span>{isMl ? 'നിലവിലെ ബില്ലിംഗ് മാസം:' : 'Current Billing Period:'}</span>
+                  <span className="font-bold text-white uppercase">
+                    {isMl ? formatMonthLabel(currentMonthDue.billing_month, true) : currentMonthDue.billing_month}
+                  </span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
-                  Monthly Membership Due: {formatCurrency(currentMonthDue.amount)}
+                  {isMl ? 'പ്രതിമാസ മാസവരി:' : 'Monthly Membership Due:'} {formatCurrency(currentMonthDue.amount)}
                 </h2>
                 <p className="text-xs text-emerald-100/80 max-w-xl">
-                  Transfer via any UPI app (GPay, PhonePe, Paytm) to the Mahallu account, then enter your 12-digit UPI reference / UTR number below.
+                  {isMl
+                    ? 'മഹല്ല് അക്കൗണ്ടിലേക്ക് ഏതെങ്കിലും UPI ആപ്പ് (GPay, PhonePe, Paytm) വഴി പണമയച്ച ശേഷം 12 അക്ക UTR റഫറൻസ് നമ്പർ രേഖപ്പെടുത്തുക.'
+                    : 'Transfer via any UPI app (GPay, PhonePe, Paytm) to the Mahallu account, then enter your 12-digit UPI reference / UTR number below.'}
                 </p>
                 <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
                   <span className="text-emerald-200 font-mono font-bold">UPI ID: {upiSettings.upiId}</span>
                   <button
                     onClick={handleCopyUpi}
                     className="p-1 hover:bg-white/10 rounded transition-colors text-white"
-                    title="Copy UPI ID"
+                    title={isMl ? 'UPI ഐഡി കോപ്പി ചെയ്യുക' : 'Copy UPI ID'}
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>
@@ -542,7 +632,9 @@ export default function ResidentPaymentCenter() {
                     className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-[11px] font-semibold transition-colors border border-emerald-400/30 cursor-pointer"
                   >
                     <QrCode className="h-3 w-3" />
-                    {showHeroQr ? 'Hide QR Code' : 'Show QR Code'}
+                    {showHeroQr
+                      ? (isMl ? 'QR കോഡ് മറയ്ക്കുക' : 'Hide QR Code')
+                      : (isMl ? 'QR കോഡ് കാണിക്കുക' : 'Show QR Code')}
                   </button>
                 </div>
 
@@ -570,13 +662,13 @@ export default function ResidentPaymentCenter() {
                     className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold border-none shadow-lg gap-2"
                   >
                     <CreditCard className="h-5 w-5" />
-                    Submit Payment Reference
+                    {isMl ? 'പണമടച്ച് UTR റഫറൻസ് നൽകുക' : 'Submit Payment Reference'}
                   </Button>
                 ) : currentMonthDue.status === 'under_review' ? (
                   <div className="bg-white/10 border border-white/20 px-5 py-3 rounded-2xl text-center">
                     <p className="text-xs text-amber-300 font-semibold flex items-center justify-center gap-1.5">
                       <Clock className="h-4 w-4" />
-                      Submitted & Under Review
+                      {isMl ? 'സമർപ്പിച്ചു • പരിശോധനയിൽ' : 'Submitted & Under Review'}
                     </p>
                     <p className="text-[11px] text-emerald-100 mt-0.5 font-mono">
                       Ref: {currentMonthDue.transaction_ref}
@@ -590,7 +682,7 @@ export default function ResidentPaymentCenter() {
                     className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold border-none shadow-lg gap-2"
                   >
                     <FileText className="h-5 w-5" />
-                    View & Print Receipt
+                    {isMl ? 'രസീത് കാണുക & പ്രിന്റ് ചെയ്യുക' : 'View & Print Receipt'}
                   </Button>
                 )}
               </div>
@@ -605,14 +697,16 @@ export default function ResidentPaymentCenter() {
               <div>
                 <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <HandCoins className="h-5 w-5 text-emerald-600" />
-                  Special Collections &amp; Payment Requests
+                  {isMl ? 'പ്രത്യേക പിരിവുകളും സംഭാവനകളും' : 'Special Collections & Payment Requests'}
                 </h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Community fundraising drives, mosque projects, charity appeals, and specific collections requested by the administration.
+                  {isMl
+                    ? 'മസ്ജിദ് വികസനം, റിലീഫ് ഫണ്ട്, പ്രത്യേക പദ്ധതികൾ എന്നിവയ്ക്കായുള്ള പൊതുജന പങ്കാളിത്തം.'
+                    : 'Community fundraising drives, mosque projects, charity appeals, and specific collections requested by the administration.'}
                 </p>
               </div>
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 self-start sm:self-auto">
-                {activeRequests.length} Active Request(s)
+                {activeRequests.length} {isMl ? 'സജീവ പിരിവുകൾ' : 'Active Request(s)'}
               </span>
             </div>
 
@@ -655,18 +749,18 @@ export default function ResidentPaymentCenter() {
                           </span>
                           {req.amount_type === 'fixed' ? (
                             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
-                              Fixed: ₹{req.fixed_amount}
+                              {isMl ? `നിശ്ചിത തുക: ₹${req.fixed_amount}` : `Fixed: ₹${req.fixed_amount}`}
                             </span>
                           ) : (
                             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                              Pay as you wish
+                              {isMl ? 'ഇഷ്ടമുള്ള തുക നൽകാം' : 'Pay as you wish'}
                             </span>
                           )}
                         </div>
 
                         {req.due_date && (
                           <span className="text-[10px] text-slate-500 font-medium">
-                            Due: {req.due_date}
+                            {isMl ? 'അവസാന തീയതി:' : 'Due:'} {req.due_date}
                           </span>
                         )}
                       </div>
@@ -687,7 +781,7 @@ export default function ResidentPaymentCenter() {
                       {pct !== null && (
                         <div className="space-y-1.5 pt-1">
                           <div className="flex justify-between text-[11px] font-semibold text-slate-600">
-                            <span>{pct}% Collected</span>
+                            <span>{pct}% {isMl ? 'ശേഖരിച്ചു' : 'Collected'}</span>
                             <span>
                               ₹{totalRaised.toLocaleString('en-IN')} / ₹{req.target_total?.toLocaleString('en-IN')}
                             </span>
@@ -711,7 +805,7 @@ export default function ResidentPaymentCenter() {
                               <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
                               <div>
                                 <span className="font-bold text-xs block">
-                                  Paid: {formatCurrency(myContrib.amount)}
+                                  {isMl ? 'അടച്ചത്:' : 'Paid:'} {formatCurrency(myContrib.amount)}
                                 </span>
                                 <span className="text-[10px] text-emerald-800 font-mono block">
                                   UTR: {myContrib.transaction_ref}
@@ -719,7 +813,7 @@ export default function ResidentPaymentCenter() {
                               </div>
                             </div>
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-700 text-white uppercase">
-                              Verified
+                              {isMl ? 'സ്ഥിരീകരിച്ചു' : 'Verified'}
                             </span>
                           </div>
 
@@ -730,7 +824,7 @@ export default function ResidentPaymentCenter() {
                             className="w-full text-xs font-semibold border-emerald-400 text-emerald-800 hover:bg-emerald-50 gap-1.5 cursor-pointer"
                           >
                             <FileText className="h-3.5 w-3.5" />
-                            View Digital Receipt
+                            {isMl ? 'ഡിജിറ്റൽ രസീത് കാണുക' : 'View Digital Receipt'}
                           </Button>
                         </div>
                       ) : isUnderReview ? (
@@ -738,17 +832,17 @@ export default function ResidentPaymentCenter() {
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-xs flex items-center gap-1.5 text-amber-900">
                               <Clock className="h-3.5 w-3.5 text-amber-600" />
-                              Submitted: {formatCurrency(myContrib.amount)}
+                              {isMl ? 'സമർപ്പിച്ചത്:' : 'Submitted:'} {formatCurrency(myContrib.amount)}
                             </span>
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900">
-                              Under Review
+                              {isMl ? 'പരിശോധനയിൽ' : 'Under Review'}
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-500 font-mono">
                             UTR: {myContrib.transaction_ref}
                           </p>
                           <p className="text-[11px] text-slate-500">
-                            Awaiting admin bank reconciliation.
+                            {isMl ? 'കമ്മിറ്റിയുടെ പരിശോധനയിലാണ്.' : 'Awaiting admin bank reconciliation.'}
                           </p>
                         </div>
                       ) : isRejected ? (
@@ -756,15 +850,15 @@ export default function ResidentPaymentCenter() {
                           <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-950 space-y-1">
                             <div className="flex items-center justify-between">
                               <span className="font-bold text-xs text-rose-900">
-                                Verification Disputed / Rejected
+                                {isMl ? 'സ്ഥിരീകരിക്കാൻ സാധിച്ചില്ല / നിരസിച്ചു' : 'Verification Disputed / Rejected'}
                               </span>
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-200 text-rose-900">
-                                Failed
+                                {isMl ? 'പരാജയം' : 'Failed'}
                               </span>
                             </div>
                             {myContrib.rejection_reason && (
                               <p className="text-[11px] text-rose-700 font-medium">
-                                Reason: {myContrib.rejection_reason}
+                                {isMl ? 'കാരണം:' : 'Reason:'} {myContrib.rejection_reason}
                               </p>
                             )}
                           </div>
@@ -775,7 +869,7 @@ export default function ResidentPaymentCenter() {
                             className="w-full text-xs font-bold gap-1.5 cursor-pointer"
                           >
                             <CreditCard className="h-3.5 w-3.5" />
-                            Re-submit Payment Reference
+                            {isMl ? 'റഫറൻസ് വീണ്ടും സമർപ്പിക്കുക' : 'Re-submit Payment Reference'}
                           </Button>
                         </div>
                       ) : (
@@ -788,12 +882,12 @@ export default function ResidentPaymentCenter() {
                           {req.amount_type === 'fixed' ? (
                             <>
                               <CreditCard className="h-4 w-4" />
-                              <span>Pay ₹{req.fixed_amount} via UPI</span>
+                              <span>{isMl ? `UPI വഴി ₹${req.fixed_amount} അടയ്ക്കുക` : `Pay ₹${req.fixed_amount} via UPI`}</span>
                             </>
                           ) : (
                             <>
                               <HandCoins className="h-4 w-4" />
-                              <span>Contribute As You Wish</span>
+                              <span>{isMl ? 'ഇഷ്ടമുള്ള തുക സംഭാവന ചെയ്യുക' : 'Contribute As You Wish'}</span>
                             </>
                           )}
                           <ArrowRight className="h-3.5 w-3.5 ml-auto" />
@@ -814,13 +908,15 @@ export default function ResidentPaymentCenter() {
           <div className="px-4 sm:px-6 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <span>Dues Records &amp; Transaction History</span>
+                <span>{isMl ? 'മാസവരി രേഖകളും ഇടപാട് ചരിത്രവും' : 'Dues Records & Transaction History'}</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                  {allTransactions.length} Total
+                  {allTransactions.length} {isMl ? 'ആകെ' : 'Total'}
                 </span>
               </h2>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Comprehensive record of regular monthly dues and special collection payments.
+                {isMl
+                  ? 'പ്രതിമാസ മാസവരിയും പ്രത്യേക സംഭാവനകളും സംബന്ധിച്ച പൂർണ്ണ വിവരങ്ങൾ.'
+                  : 'Comprehensive record of regular monthly dues and special collection payments.'}
               </p>
             </div>
 
@@ -835,7 +931,7 @@ export default function ResidentPaymentCenter() {
                       : 'text-slate-600 hover:text-slate-900'
                     }`}
                 >
-                  All ({allTransactions.length})
+                  {isMl ? `എല്ലാം (${allTransactions.length})` : `All (${allTransactions.length})`}
                 </button>
                 <button
                   type="button"
@@ -845,7 +941,7 @@ export default function ResidentPaymentCenter() {
                       : 'text-slate-600 hover:text-slate-900'
                     }`}
                 >
-                  Monthly Dues ({dueTransactions.length})
+                  {isMl ? `മാസവരി (${dueTransactions.length})` : `Monthly Dues (${dueTransactions.length})`}
                 </button>
                 <button
                   type="button"
@@ -855,18 +951,18 @@ export default function ResidentPaymentCenter() {
                       : 'text-slate-600 hover:text-slate-900'
                     }`}
                 >
-                  Special Appeals ({specialTransactions.length})
+                  {isMl ? `പ്രത്യേക പിരിവുകൾ (${specialTransactions.length})` : `Special Appeals (${specialTransactions.length})`}
                 </button>
               </div>
 
               {/* Status Filter Tabs with smooth mobile swipe */}
               <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
                 {[
-                  { id: 'all', label: 'All' },
-                  { id: 'pending', label: 'Pending' },
-                  { id: 'under_review', label: 'Under Review' },
-                  { id: 'verified', label: 'Paid / Verified' },
-                  { id: 'failed', label: 'Failed' },
+                  { id: 'all', label: isMl ? 'എല്ലാം' : 'All' },
+                  { id: 'pending', label: isMl ? 'അടയ്ക്കാനുള്ളവ' : 'Pending' },
+                  { id: 'under_review', label: isMl ? 'പരിശോധനയിൽ' : 'Under Review' },
+                  { id: 'verified', label: isMl ? 'സ്ഥിരീകരിച്ചവ' : 'Paid / Verified' },
+                  { id: 'failed', label: isMl ? 'പരാജയപ്പെട്ടവ' : 'Failed' },
                 ].map((tab) => (
                   <button
                     key={tab.id}
@@ -888,19 +984,19 @@ export default function ResidentPaymentCenter() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
                 <tr>
-                  <th className="py-3 px-6">Payment / Purpose</th>
-                  <th className="py-3 px-4">Amount</th>
-                  <th className="py-3 px-4">Transaction UTR</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Submission / Audit</th>
-                  <th className="py-3 px-6 text-right">Actions</th>
+                  <th className="py-3 px-6">{isMl ? 'ഇനം / ഉദ്ദേശ്യം' : 'Payment / Purpose'}</th>
+                  <th className="py-3 px-4">{isMl ? 'തുക' : 'Amount'}</th>
+                  <th className="py-3 px-4">{isMl ? 'ഇടപാട് UTR' : 'Transaction UTR'}</th>
+                  <th className="py-3 px-4">{isMl ? 'നില' : 'Status'}</th>
+                  <th className="py-3 px-4">{isMl ? 'സമർപ്പണം / പരിശോധന' : 'Submission / Audit'}</th>
+                  <th className="py-3 px-6 text-right">{isMl ? 'നടപടികൾ' : 'Actions'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredTransactions.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-slate-400">
-                      No payment or transaction records found in this category.
+                      {isMl ? 'ഈ വിഭാഗത്തിൽ ഇടപാട് വിവരങ്ങൾ ലഭ്യമല്ല.' : 'No payment or transaction records found in this category.'}
                     </td>
                   </tr>
                 ) : (
@@ -935,17 +1031,21 @@ export default function ResidentPaymentCenter() {
                       </td>
                       <td className="py-3.5 px-4 text-slate-500">
                         {tx.status === 'verified' && tx.verifiedAt ? (
-                          <span className="text-emerald-700 font-medium">Verified {formatDateTime(tx.verifiedAt)}</span>
+                          <span className="text-emerald-700 font-medium">
+                            {isMl ? `സ്ഥിരീകരിച്ചത്: ${formatDateTime(tx.verifiedAt)}` : `Verified ${formatDateTime(tx.verifiedAt)}`}
+                          </span>
                         ) : tx.status === 'under_review' ? (
-                          <span>Submitted {tx.submittedAt ? formatDateTime(tx.submittedAt) : 'recently'}</span>
+                          <span>
+                            {isMl ? `സമർപ്പിച്ചത്: ${tx.submittedAt ? formatDateTime(tx.submittedAt) : 'സമീപകാലത്ത്'}` : `Submitted ${tx.submittedAt ? formatDateTime(tx.submittedAt) : 'recently'}`}
+                          </span>
                         ) : tx.status === 'failed' && tx.rejectionReason ? (
                           <span className="text-rose-600 font-medium">
-                            Reason: {tx.rejectionReason}
+                            {isMl ? 'കാരണം:' : 'Reason:'} {tx.rejectionReason}
                           </span>
                         ) : tx.status === 'failed' ? (
-                          <span className="text-rose-600 font-medium">Verification rejected</span>
+                          <span className="text-rose-600 font-medium">{isMl ? 'സ്ഥിരീകരണം നിരസിച്ചു' : 'Verification rejected'}</span>
                         ) : (
-                          'Awaiting submission'
+                          isMl ? 'അടവ് രേഖപ്പെടുത്തിയിട്ടില്ല' : 'Awaiting submission'
                         )}
                       </td>
                       <td className="py-3.5 px-6 text-right">
@@ -958,7 +1058,7 @@ export default function ResidentPaymentCenter() {
                               className="gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer"
                             >
                               <FileText className="h-3.5 w-3.5" />
-                              Digital Receipt
+                              {isMl ? 'ഡിജിറ്റൽ രസീത്' : 'Digital Receipt'}
                             </Button>
                           ) : tx.rawDue ? (
                             <Button
@@ -968,7 +1068,7 @@ export default function ResidentPaymentCenter() {
                               className="gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer"
                             >
                               <FileText className="h-3.5 w-3.5" />
-                              Digital Receipt
+                              {isMl ? 'ഡിജിറ്റൽ രസീത്' : 'Digital Receipt'}
                             </Button>
                           ) : null
                         ) : tx.status === 'pending' && tx.rawDue ? (
@@ -978,7 +1078,7 @@ export default function ResidentPaymentCenter() {
                             onClick={() => handleOpenSubmitModal(tx.rawDue!)}
                             className="gap-1.5 cursor-pointer"
                           >
-                            Pay / Enter UTR
+                            {isMl ? 'പണമടച്ച് UTR നൽകുക' : 'Pay / Enter UTR'}
                           </Button>
                         ) : tx.status === 'failed' ? (
                           tx.sourceType === 'special_payment' && tx.rawContrib && tx.rawReq ? (
@@ -988,7 +1088,7 @@ export default function ResidentPaymentCenter() {
                               onClick={() => handleOpenReqModal(tx.rawReq!, tx.rawContrib)}
                               className="gap-1.5 cursor-pointer"
                             >
-                              Re-submit UTR
+                              {isMl ? 'UTR വീണ്ടും സമർപ്പിക്കുക' : 'Re-submit UTR'}
                             </Button>
                           ) : tx.rawDue ? (
                             <Button
@@ -997,11 +1097,11 @@ export default function ResidentPaymentCenter() {
                               onClick={() => handleOpenSubmitModal(tx.rawDue!)}
                               className="gap-1.5 cursor-pointer"
                             >
-                              Re-submit UTR
+                              {isMl ? 'UTR വീണ്ടും സമർപ്പിക്കുക' : 'Re-submit UTR'}
                             </Button>
                           ) : null
                         ) : (
-                          <span className="text-slate-400 text-xs italic">In Admin Queue</span>
+                          <span className="text-slate-400 text-xs italic">{isMl ? 'പരിശോധനയിൽ' : 'In Admin Queue'}</span>
                         )}
                       </td>
                     </tr>
@@ -1015,7 +1115,7 @@ export default function ResidentPaymentCenter() {
           <div className="md:hidden divide-y divide-slate-100">
             {filteredTransactions.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs">
-                No payment or transaction records found in this category.
+                {isMl ? 'ഈ വിഭാഗത്തിൽ ഇടപാട് വിവരങ്ങൾ ലഭ്യമല്ല.' : 'No payment or transaction records found in this category.'}
               </div>
             ) : (
               filteredTransactions.map((tx) => (
@@ -1045,11 +1145,11 @@ export default function ResidentPaymentCenter() {
                   {/* Middle row: Amount & UTR */}
                   <div className="bg-slate-50/90 p-3 rounded-xl border border-slate-200/80 flex items-center justify-between text-xs">
                     <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Amount</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">{isMl ? 'തുക' : 'Amount'}</span>
                       <span className="font-extrabold text-base text-slate-900">{formatCurrency(tx.amount)}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">Transaction UTR</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">{isMl ? 'ഇടപാട് UTR' : 'Transaction UTR'}</span>
                       <span className="font-mono font-bold text-slate-800 text-xs">{tx.transactionRef || '—'}</span>
                     </div>
                   </div>
@@ -1059,32 +1159,32 @@ export default function ResidentPaymentCenter() {
                     {tx.status === 'verified' && tx.verifiedAt ? (
                       <span className="text-emerald-700 font-semibold flex items-center gap-1">
                         <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                        Verified on {formatDateTime(tx.verifiedAt)}
+                        {isMl ? `സ്ഥിരീകരിച്ചത്: ${formatDateTime(tx.verifiedAt)}` : `Verified on ${formatDateTime(tx.verifiedAt)}`}
                       </span>
                     ) : tx.status === 'under_review' ? (
                       <span className="text-amber-800 font-medium flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5 text-amber-600" />
-                        Submitted {tx.submittedAt ? formatDateTime(tx.submittedAt) : 'recently'} • Under Review
+                        {isMl ? `സമർപ്പിച്ചത്: ${tx.submittedAt ? formatDateTime(tx.submittedAt) : 'സമീപകാലത്ത്'} • പരിശോധനയിൽ` : `Submitted ${tx.submittedAt ? formatDateTime(tx.submittedAt) : 'recently'} • Under Review`}
                       </span>
                     ) : tx.status === 'failed' && tx.rejectionReason ? (
                       <span className="text-rose-600 font-medium flex items-start gap-1">
                         <AlertTriangle className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" />
-                        Reason: {tx.rejectionReason}
+                        {isMl ? 'കാരണം:' : 'Reason:'} {tx.rejectionReason}
                       </span>
                     ) : tx.status === 'failed' ? (
                       <span className="text-rose-600 font-medium flex items-center gap-1">
                         <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />
-                        Verification rejected by administration
+                        {isMl ? 'സ്ഥിരീകരണം നിരസിച്ചു' : 'Verification rejected by administration'}
                       </span>
                     ) : (
                       <span className="text-slate-400 flex items-center gap-1">
                         <Clock className="h-3.5 w-3.5 text-slate-400" />
-                        Awaiting payment &amp; reference submission
+                        {isMl ? 'അടവ് രേഖപ്പെടുത്തിയിട്ടില്ല' : 'Awaiting payment & reference submission'}
                       </span>
                     )}
                   </div>
 
-                  {/* Action Button: Touch-friendly min-height 42px */}
+                  {/* Action Button */}
                   <div>
                     {tx.status === 'verified' ? (
                       tx.sourceType === 'special_payment' && tx.rawContrib && tx.rawReq ? (
@@ -1095,7 +1195,7 @@ export default function ResidentPaymentCenter() {
                           className="w-full justify-center gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer min-h-[42px] font-semibold"
                         >
                           <FileText className="h-4 w-4" />
-                          View Digital Receipt
+                          {isMl ? 'ഡിജിറ്റൽ രസീത് കാണുക' : 'View Digital Receipt'}
                         </Button>
                       ) : tx.rawDue ? (
                         <Button
@@ -1105,7 +1205,7 @@ export default function ResidentPaymentCenter() {
                           className="w-full justify-center gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer min-h-[42px] font-semibold"
                         >
                           <FileText className="h-4 w-4" />
-                          View Digital Receipt
+                          {isMl ? 'ഡിജിറ്റൽ രസീത് കാണുക' : 'View Digital Receipt'}
                         </Button>
                       ) : null
                     ) : tx.status === 'pending' && tx.rawDue ? (
@@ -1116,7 +1216,7 @@ export default function ResidentPaymentCenter() {
                         className="w-full justify-center gap-1.5 cursor-pointer min-h-[42px] font-semibold"
                       >
                         <CreditCard className="h-4 w-4" />
-                        Pay Dues &amp; Enter UTR
+                        {isMl ? 'മാസവരി അടച്ച് UTR നൽകുക' : 'Pay Dues & Enter UTR'}
                       </Button>
                     ) : tx.status === 'failed' ? (
                       tx.sourceType === 'special_payment' && tx.rawContrib && tx.rawReq ? (
@@ -1127,7 +1227,7 @@ export default function ResidentPaymentCenter() {
                           className="w-full justify-center gap-1.5 cursor-pointer min-h-[42px] font-semibold"
                         >
                           <CreditCard className="h-4 w-4" />
-                          Re-submit UTR Reference
+                          {isMl ? 'UTR വീണ്ടും സമർപ്പിക്കുക' : 'Re-submit UTR Reference'}
                         </Button>
                       ) : tx.rawDue ? (
                         <Button
@@ -1137,12 +1237,12 @@ export default function ResidentPaymentCenter() {
                           className="w-full justify-center gap-1.5 cursor-pointer min-h-[42px] font-semibold"
                         >
                           <CreditCard className="h-4 w-4" />
-                          Re-submit UTR Reference
+                          {isMl ? 'UTR വീണ്ടും സമർപ്പിക്കുക' : 'Re-submit UTR Reference'}
                         </Button>
                       ) : null
                     ) : (
                       <div className="py-2.5 text-center text-xs text-amber-800 font-semibold bg-amber-50 rounded-xl border border-amber-200/80">
-                        Submitted &amp; Awaiting Admin Verification
+                        {isMl ? 'സമർപ്പിച്ചു • അഡ്മിൻ പരിശോധനയിൽ' : 'Submitted & Awaiting Admin Verification'}
                       </div>
                     )}
                   </div>
@@ -1158,8 +1258,12 @@ export default function ResidentPaymentCenter() {
       <Modal
         isOpen={submitModalOpen}
         onClose={() => setSubmitModalOpen(false)}
-        title="Submit Payment Reference (UTR)"
-        description={`Record your transfer for billing month ${selectedDue?.billing_month}`}
+        title={isMl ? 'മാസവരി പേയ്‌മെന്റ് റഫറൻസ് സമർപ്പിക്കുക (UTR)' : 'Submit Payment Reference (UTR)'}
+        description={
+          isMl
+            ? `${selectedDue ? formatMonthLabel(selectedDue.billing_month, true) : ''}-ലെ മാസവരി അടവ് വിവരങ്ങൾ രേഖപ്പെടുത്തുക`
+            : `Record your transfer for billing month ${selectedDue?.billing_month}`
+        }
       >
         <form onSubmit={handlePaymentSubmit} className="space-y-4 text-xs">
           {/* Step 1: Transfer Instructions & Live Dynamic UPI QR Code */}
@@ -1167,7 +1271,9 @@ export default function ResidentPaymentCenter() {
             <div className="flex items-center justify-between">
               <p className="font-bold flex items-center gap-1.5 text-emerald-900 text-sm">
                 <QrCode className="h-4 w-4 text-emerald-800" />
-                Step 1: Scan & Pay {selectedDue ? formatCurrency(selectedDue.amount) : '₹100'}
+                {isMl
+                  ? `ഘട്ടം 1: സ്കാൻ ചെയ്ത് ${selectedDue ? formatCurrency(selectedDue.amount) : '₹100'} അടയ്ക്കുക`
+                  : `Step 1: Scan & Pay ${selectedDue ? formatCurrency(selectedDue.amount) : '₹100'}`}
               </p>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200/80 text-emerald-950 uppercase tracking-wide">
                 Instant UPI
@@ -1175,7 +1281,9 @@ export default function ResidentPaymentCenter() {
             </div>
 
             <p className="text-[11px] text-slate-600">
-              Scan this QR code with any UPI app (Google Pay, PhonePe, Paytm, BHIM) to make the transfer.
+              {isMl
+                ? 'ഏതെങ്കിലും UPI ആപ്പ് (Google Pay, PhonePe, Paytm, BHIM) ഉപയോഗിച്ച് ഈ QR കോഡ് സ്കാൻ ചെയ്ത് പണമടയ്ക്കുക.'
+                : 'Scan this QR code with any UPI app (Google Pay, PhonePe, Paytm, BHIM) to make the transfer.'}
             </p>
 
             {/* Dynamic Scannable QR Code */}
@@ -1195,7 +1303,9 @@ export default function ResidentPaymentCenter() {
           {/* UTR Input Field */}
           <div>
             <label className="block font-semibold text-slate-700 mb-1.5">
-              Step 2: Enter 12-Digit UPI / Bank UTR Reference Number *
+              {isMl
+                ? 'ഘട്ടം 2: 12 അക്ക UPI / ബാങ്ക് UTR റഫറൻസ് നമ്പർ രേഖപ്പെടുത്തുക *'
+                : 'Step 2: Enter 12-Digit UPI / Bank UTR Reference Number *'}
             </label>
             <input
               type="text"
@@ -1206,7 +1316,9 @@ export default function ResidentPaymentCenter() {
               required
             />
             <p className="text-[11px] text-slate-400 mt-1">
-              Found in your GPay / PhonePe / Banking app payment receipt screen.
+              {isMl
+                ? 'നിങ്ങളുടെ GPay / PhonePe / ബാങ്കിംഗ് ആപ്പിലെ പേയ്‌മെന്റ് സ്ഥിരീകരണ സ്ക്രീനിൽ UTR നമ്പർ കാണാം.'
+                : 'Found in your GPay / PhonePe / Banking app payment receipt screen.'}
             </p>
           </div>
 
@@ -1216,10 +1328,10 @@ export default function ResidentPaymentCenter() {
               variant="outline"
               onClick={() => setSubmitModalOpen(false)}
             >
-              Cancel
+              {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
             </Button>
             <Button type="submit" variant="primary" isLoading={isSubmitting}>
-              Submit for Verification
+              {isMl ? 'പരിശോധനയ്ക്കായി സമർപ്പിക്കുക' : 'Submit for Verification'}
             </Button>
           </div>
         </form>
@@ -1229,7 +1341,7 @@ export default function ResidentPaymentCenter() {
       <Modal
         isOpen={receiptModalOpen}
         onClose={() => setReceiptModalOpen(false)}
-        title="Official Mahallu Electronic Receipt"
+        title={isMl ? 'ഔദ്യോഗിക മഹല്ല് ഡിജിറ്റൽ രസീത്' : 'Official Mahallu Electronic Receipt'}
         maxWidth="2xl"
       >
         {receiptDue && house && (
@@ -1245,8 +1357,15 @@ export default function ResidentPaymentCenter() {
       <Modal
         isOpen={requestModalOpen}
         onClose={() => setRequestModalOpen(false)}
-        title={selectedReq ? `Contribute: ${selectedReq.title}` : 'Special Contribution'}
-        description={selectedReq?.description || 'Support this Mahallu community collection drive.'}
+        title={
+          selectedReq
+            ? (isMl ? `സംഭാവന: ${selectedReq.title}` : `Contribute: ${selectedReq.title}`)
+            : (isMl ? 'പ്രത്യേക സംഭാവന' : 'Special Contribution')
+        }
+        description={
+          selectedReq?.description ||
+          (isMl ? 'ഈ മഹല്ല് പൊതു പിരിവിലേക്ക് സംഭാവന ചെയ്യുക.' : 'Support this Mahallu community collection drive.')
+        }
         maxWidth="xl"
       >
         {selectedReq && house && (
@@ -1257,8 +1376,8 @@ export default function ResidentPaymentCenter() {
                 <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
                   <Coins className="h-4 w-4 text-emerald-600" />
                   {selectedReq.amount_type === 'fixed'
-                    ? 'Fixed Requested Amount'
-                    : 'Enter Contribution Amount (Pay As You Wish)'}
+                    ? (isMl ? 'നിശ്ചയിച്ച സംഭാവന തുക' : 'Fixed Requested Amount')
+                    : (isMl ? 'സംഭാവന തുക രേഖപ്പെടുത്തുക (ഇഷ്ടമുള്ള തുക)' : 'Enter Contribution Amount (Pay As You Wish)')}
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
                   {selectedReq.category}
@@ -1270,7 +1389,7 @@ export default function ResidentPaymentCenter() {
                   <span className="text-2xl font-black text-slate-900">
                     ₹{selectedReq.fixed_amount}
                   </span>
-                  <span className="text-xs text-slate-500 font-medium">per household</span>
+                  <span className="text-xs text-slate-500 font-medium">{isMl ? 'ഓരോ വീടിനും' : 'per household'}</span>
                 </div>
               ) : (
                 <div className="space-y-2 pt-1">
@@ -1284,7 +1403,7 @@ export default function ResidentPaymentCenter() {
                       step="1"
                       value={contribAmount}
                       onChange={(e) => setContribAmount(e.target.value)}
-                      placeholder="Enter amount"
+                      placeholder={isMl ? 'തുക നൽകുക' : 'Enter amount'}
                       required
                       className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-slate-300 text-base font-extrabold bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
                     />
@@ -1292,7 +1411,7 @@ export default function ResidentPaymentCenter() {
 
                   {/* Quick preset amount chips */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-[11px] text-slate-500 font-medium mr-1">Quick Select:</span>
+                    <span className="text-[11px] text-slate-500 font-medium mr-1">{isMl ? 'വേഗത്തിൽ തിരഞ്ഞെടുക്കാം:' : 'Quick Select:'}</span>
                     {[200, 500, 1000, 2500, 5000].map((amt) => (
                       <button
                         key={amt}
@@ -1309,7 +1428,7 @@ export default function ResidentPaymentCenter() {
                   </div>
                   {selectedReq.min_amount && (
                     <p className="text-[11px] text-slate-500">
-                      Minimum suggested contribution: ₹{selectedReq.min_amount}
+                      {isMl ? `കുറഞ്ഞ നിർദ്ദേശിത തുക: ₹${selectedReq.min_amount}` : `Minimum suggested contribution: ₹${selectedReq.min_amount}`}
                     </p>
                   )}
                 </div>
@@ -1322,8 +1441,8 @@ export default function ResidentPaymentCenter() {
                 <p className="font-bold flex items-center gap-1.5 text-emerald-900 text-xs">
                   <QrCode className="h-4 w-4 text-emerald-800" />
                   {Number(contribAmount) > 0
-                    ? `Step 1: Scan & Transfer ${formatCurrency(Number(contribAmount))}`
-                    : 'Step 1: Scan QR or enter amount above'}
+                    ? (isMl ? `ഘട്ടം 1: സ്കാൻ ചെയ്ത് ${formatCurrency(Number(contribAmount))} അയക്കുക` : `Step 1: Scan & Transfer ${formatCurrency(Number(contribAmount))}`)
+                    : (isMl ? 'ഘട്ടം 1: QR സ്കാൻ ചെയ്യുക അല്ലെങ്കിൽ മുകളിൽ തുക നൽകുക' : 'Step 1: Scan QR or enter amount above')}
                 </p>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200/80 text-emerald-950 uppercase tracking-wide">
                   Instant UPI
@@ -1346,7 +1465,7 @@ export default function ResidentPaymentCenter() {
             {/* Step 2: 12-Digit UTR Input */}
             <div>
               <label className="block font-semibold text-slate-700 mb-1.5">
-                Step 2: Enter 12-Digit UPI / Bank UTR Reference Number *
+                {isMl ? 'ഘട്ടം 2: 12 അക്ക UPI / ബാങ്ക് UTR റഫറൻസ് നമ്പർ നൽകുക *' : 'Step 2: Enter 12-Digit UPI / Bank UTR Reference Number *'}
               </label>
               <input
                 type="text"
@@ -1357,7 +1476,9 @@ export default function ResidentPaymentCenter() {
                 required
               />
               <p className="text-[11px] text-slate-400 mt-1">
-                Obtained from your payment app (Google Pay, PhonePe, Paytm) confirmation screen.
+                {isMl
+                  ? 'നിങ്ങളുടെ പേയ്‌മെന്റ് ആപ്പിലെ (Google Pay, PhonePe, Paytm) കൺഫർമേഷൻ സ്ക്രീനിൽ നിന്ന് ലഭിക്കുന്നതാണ്.'
+                  : 'Obtained from your payment app (Google Pay, PhonePe, Paytm) confirmation screen.'}
               </p>
             </div>
 
@@ -1368,7 +1489,7 @@ export default function ResidentPaymentCenter() {
                 onClick={() => setRequestModalOpen(false)}
                 disabled={isSubmittingContrib}
               >
-                Cancel
+                {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
               </Button>
               <Button
                 type="submit"
@@ -1376,7 +1497,7 @@ export default function ResidentPaymentCenter() {
                 isLoading={isSubmittingContrib}
                 className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
               >
-                Submit Contribution Reference
+                {isMl ? 'സംഭാവന റഫറൻസ് സമർപ്പിക്കുക' : 'Submit Contribution Reference'}
               </Button>
             </div>
           </form>
@@ -1387,7 +1508,7 @@ export default function ResidentPaymentCenter() {
       <Modal
         isOpen={splReceiptModalOpen}
         onClose={() => setSplReceiptModalOpen(false)}
-        title="Official Mahallu Electronic Receipt"
+        title={isMl ? 'ഔദ്യോഗിക മഹല്ല് ഡിജിറ്റൽ രസീത്' : 'Official Mahallu Electronic Receipt'}
         maxWidth="2xl"
       >
         {splReceiptContrib && splReceiptReq && house && (

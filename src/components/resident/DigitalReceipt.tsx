@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useRef } from 'react';
-import { PaymentDue, HouseWithDetails, DIVISION_LABELS } from '@/lib/supabase/types';
+import { PaymentDue, HouseWithDetails, DIVISION_LABELS, DIVISION_LABELS_ML } from '@/lib/supabase/types';
+import { useLanguage } from '@/lib/context/LanguageContext';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { Printer, CheckCircle2, ShieldCheck, Download, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -13,14 +14,41 @@ interface DigitalReceiptProps {
 }
 
 export function DigitalReceipt({ due, house, onClose }: DigitalReceiptProps) {
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
   const receiptCardRef = useRef<HTMLDivElement>(null);
 
   const receiptNo = `REC-${due.billing_month.replace('-', '')}-${house.mahallu_reg_no.replace(/[^A-Za-z0-9]/g, '').slice(-4)}`;
-  const billingCycle = new Date(due.billing_month + '-01').toLocaleDateString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  });
-  const divisionLabel = DIVISION_LABELS[house.division] || house.division;
+  
+  const formatMonthCycle = (bMonth: string) => {
+    const [year, month] = bMonth.split('-');
+    const monthMapMl: Record<string, string> = {
+      '01': 'ജനുവരി',
+      '02': 'ഫെബ്രുവരി',
+      '03': 'മാർച്ച്',
+      '04': 'ഏപ്രിൽ',
+      '05': 'മേയ്',
+      '06': 'ജൂൺ',
+      '07': 'ജൂലൈ',
+      '08': 'ഓഗസ്റ്റ്',
+      '09': 'സെപ്റ്റംബർ',
+      '10': 'ഒക്ടോബർ',
+      '11': 'നവംബർ',
+      '12': 'ഡിസംബർ',
+    };
+    if (isMl && monthMapMl[month]) {
+      return `${monthMapMl[month]} ${year}`;
+    }
+    return new Date(bMonth + '-01').toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  const billingCycle = formatMonthCycle(due.billing_month);
+  const divisionLabel = isMl
+    ? (DIVISION_LABELS_ML[house.division] || house.division)
+    : (DIVISION_LABELS[house.division] || house.division);
   const transactionRef = due.transaction_ref || 'OFFLINE-665740';
   const submittedAtFormatted = formatDateTime(due.submitted_at);
   const verifiedAtFormatted = formatDateTime(due.verified_at);
@@ -374,8 +402,8 @@ export function DigitalReceipt({ due, house, onClose }: DigitalReceiptProps) {
                   </svg>
                 </div>
                 <div class="title-wrap">
-                  <h1>Kunjikkulam Juma Masjid</h1>
-                  <p>Official Monthly Dues Electronic Receipt</p>
+                  <h1>${isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്' : 'Kunjikkulam Juma Masjid'}</h1>
+                  <p>${isMl ? 'പ്രതിമാസ വരിസംഖ്യ ഡിജിറ്റൽ രസീത്' : 'Official Monthly Dues Electronic Receipt'}</p>
                 </div>
               </div>
               <div class="header-right">
@@ -384,10 +412,10 @@ export function DigitalReceipt({ due, house, onClose }: DigitalReceiptProps) {
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                     <polyline points="22 4 12 14.01 9 11.01"></polyline>
                   </svg>
-                  Verified & Reconciled
+                  ${isMl ? 'പരിശോധിച്ചു സ്വീകരിച്ചു' : 'Verified & Reconciled'}
                 </div>
                 <div class="receipt-no-text">
-                  Receipt No: <strong>${receiptNo}</strong>
+                  ${isMl ? 'രസീത് നമ്പർ' : 'Receipt No'}: <strong>${receiptNo}</strong>
                 </div>
               </div>
             </div>
@@ -395,19 +423,19 @@ export function DigitalReceipt({ due, house, onClose }: DigitalReceiptProps) {
             <!-- Details Grid -->
             <div class="details-grid">
               <div>
-                <div class="col-title">Household Information</div>
+                <div class="col-title">${isMl ? 'കുടുംബ വിവരങ്ങൾ' : 'Household Information'}</div>
                 <div class="detail-line house-name">${house.house_name}</div>
-                <div class="detail-line">House No: ${house.house_number}</div>
-                <div class="detail-line">Division: <strong>${divisionLabel}</strong></div>
-                <div class="detail-line">Mahallu Reg No: <span class="reg-no-highlight">${house.mahallu_reg_no}</span></div>
-                <div class="detail-line">Contact: ${house.phone}</div>
+                <div class="detail-line">${isMl ? 'വീട്ടു നമ്പർ' : 'House No'}: ${house.house_number}</div>
+                <div class="detail-line">${isMl ? 'വിഭാഗം' : 'Division'}: <strong>${divisionLabel}</strong></div>
+                <div class="detail-line">${isMl ? 'മഹല്ല് രജി. നമ്പർ' : 'Mahallu Reg No'}: <span class="reg-no-highlight">${house.mahallu_reg_no}</span></div>
+                <div class="detail-line">${isMl ? 'ഫോൺ' : 'Contact'}: ${house.phone}</div>
               </div>
               <div class="audit-right">
-                <div class="col-title">Payment Audit Details</div>
-                <div class="detail-line">Billing Cycle: <span class="audit-val-bold">${billingCycle}</span></div>
-                <div class="detail-line">Transaction Ref: <span class="audit-val-bold">${transactionRef}</span></div>
-                <div class="detail-line">Submitted At: ${submittedAtFormatted}</div>
-                <div class="detail-line">Verified At: <span class="audit-val-green">${verifiedAtFormatted}</span></div>
+                <div class="col-title">${isMl ? 'പേയ്‌മെന്റ് വിവരങ്ങൾ' : 'Payment Audit Details'}</div>
+                <div class="detail-line">${isMl ? 'മാസം / വർഷം' : 'Billing Cycle'}: <span class="audit-val-bold">${billingCycle}</span></div>
+                <div class="detail-line">${isMl ? 'റഫറൻസ് നമ്പർ' : 'Transaction Ref'}: <span class="audit-val-bold">${transactionRef}</span></div>
+                <div class="detail-line">${isMl ? 'സമർപ്പിച്ചത്' : 'Submitted At'}: ${submittedAtFormatted}</div>
+                <div class="detail-line">${isMl ? 'പരിശോധിച്ചത്' : 'Verified At'}: <span class="audit-val-green">${verifiedAtFormatted}</span></div>
               </div>
             </div>
 
@@ -416,16 +444,16 @@ export function DigitalReceipt({ due, house, onClose }: DigitalReceiptProps) {
               <table>
                 <thead>
                   <tr>
-                    <th style="width: 55%">Description</th>
-                    <th class="center" style="width: 20%">Period</th>
-                    <th class="right" style="width: 25%">Amount</th>
+                    <th style="width: 55%">${isMl ? 'വിവരണം' : 'Description'}</th>
+                    <th class="center" style="width: 20%">${isMl ? 'കാലയളവ്' : 'Period'}</th>
+                    <th class="right" style="width: 25%">${isMl ? 'തുക' : 'Amount'}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
                     <td>
-                      <div class="desc-main">Monthly Mahallu Membership Due</div>
-                      <div class="desc-secondary">Mosque operations, Madrasa education fund, and local community services</div>
+                      <div class="desc-main">${isMl ? 'പ്രതിമാസ മഹല്ല് വരിസംഖ്യ' : 'Monthly Mahallu Membership Due'}</div>
+                      <div class="desc-secondary">${isMl ? 'പള്ളി പരിപാലനം, മദ്രസ വിദ്യാഭ്യാസ ഫണ്ട്, മഹല്ല് സേവനങ്ങൾ' : 'Mosque operations, Madrasa education fund, and local community services'}</div>
                     </td>
                     <td class="center period-val">${due.billing_month}</td>
                     <td class="right amount-val">${formattedAmount}</td>
@@ -433,7 +461,7 @@ export function DigitalReceipt({ due, house, onClose }: DigitalReceiptProps) {
                 </tbody>
                 <tfoot>
                   <tr class="total-row">
-                    <td colspan="2" class="total-label">Total Paid:</td>
+                    <td colspan="2" class="total-label">${isMl ? 'ആകെ അടച്ചത്:' : 'Total Paid:'}</td>
                     <td class="total-amount">${formattedAmount}</td>
                   </tr>
                 </tfoot>
@@ -453,8 +481,8 @@ export function DigitalReceipt({ due, house, onClose }: DigitalReceiptProps) {
                   </div>
                 </div>
                 <div>
-                  <div class="verified-text-title">Digitally Verified by Mahallu Admin</div>
-                  <div class="verified-text-sub">System-generated official receipt. Recorded in Mahallu Financial Ledger.</div>
+                  <div class="verified-text-title">${isMl ? 'മഹല്ല് അഡ്മിൻ ഡിജിറ്റലായി പരിശോധിച്ചു' : 'Digitally Verified by Mahallu Admin'}</div>
+                  <div class="verified-text-sub">${isMl ? 'സിസ്റ്റം ജനറേറ്റഡ് ഔദ്യോഗിക രസീത്. മഹല്ല് ലെഡ്ജറിൽ രേഖപ്പെടുത്തി.' : 'System-generated official receipt. Recorded in Mahallu Financial Ledger.'}</div>
                 </div>
               </div>
               <div class="auth-id-text">
@@ -497,10 +525,10 @@ export function DigitalReceipt({ due, house, onClose }: DigitalReceiptProps) {
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-                Kunjikkulam Juma Masjid
+                {isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്' : 'Kunjikkulam Juma Masjid'}
               </h1>
               <p className="text-xs text-emerald-700 font-semibold tracking-wide uppercase">
-                Official Monthly Dues Electronic Receipt
+                {isMl ? 'പ്രതിമാസ വരിസംഖ്യ ഡിജിറ്റൽ രസീത്' : 'Official Monthly Dues Electronic Receipt'}
               </p>
             </div>
           </div>
@@ -508,10 +536,10 @@ export function DigitalReceipt({ due, house, onClose }: DigitalReceiptProps) {
           <div className="text-left sm:text-right">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-200">
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-              Verified & Reconciled
+              {isMl ? 'പരിശോധിച്ചു സ്വീകരിച്ചു' : 'Verified & Reconciled'}
             </div>
             <p className="text-xs text-slate-500 font-mono mt-1">
-              Receipt No: <span className="font-bold text-slate-900">{receiptNo}</span>
+              {isMl ? 'രസീത് നമ്പർ:' : 'Receipt No:'} <span className="font-bold text-slate-900">{receiptNo}</span>
             </p>
           </div>
         </div>
@@ -521,41 +549,41 @@ export function DigitalReceipt({ due, house, onClose }: DigitalReceiptProps) {
           {/* Household Info */}
           <div className="space-y-1.5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-              Household Information
+              {isMl ? 'കുടുംബ വിവരങ്ങൾ' : 'Household Information'}
             </h3>
             <div>
               <p className="font-bold text-base text-slate-900">{house.house_name}</p>
-              <p className="text-xs text-slate-600">House No: {house.house_number}</p>
+              <p className="text-xs text-slate-600">{isMl ? 'വീട്ടു നമ്പർ:' : 'House No:'} {house.house_number}</p>
               <p className="text-xs text-slate-600">
-                Division: <span className="font-semibold text-slate-800">{divisionLabel}</span>
+                {isMl ? 'വിഭാഗം:' : 'Division:'} <span className="font-semibold text-slate-800">{divisionLabel}</span>
               </p>
               <p className="text-xs text-slate-600 font-mono">
-                Mahallu Reg No: <span className="font-bold text-emerald-800">{house.mahallu_reg_no}</span>
+                {isMl ? 'മഹല്ല് രജി. നമ്പർ:' : 'Mahallu Reg No:'} <span className="font-bold text-emerald-800">{house.mahallu_reg_no}</span>
               </p>
-              <p className="text-xs text-slate-600">Contact: {house.phone}</p>
+              <p className="text-xs text-slate-600">{isMl ? 'ഫോൺ:' : 'Contact:'} {house.phone}</p>
             </div>
           </div>
 
           {/* Payment & Audit Info */}
           <div className="space-y-1.5 sm:text-right">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-              Payment Audit Details
+              {isMl ? 'പേയ്‌മെന്റ് വിവരങ്ങൾ' : 'Payment Audit Details'}
             </h3>
             <div>
               <p className="text-xs text-slate-600">
-                Billing Cycle:{' '}
+                {isMl ? 'മാസം / വർഷം:' : 'Billing Cycle:'}{' '}
                 <span className="font-bold text-slate-900">{billingCycle}</span>
               </p>
               <p className="text-xs text-slate-600 font-mono">
-                Transaction Ref:{' '}
+                {isMl ? 'റഫറൻസ് നമ്പർ:' : 'Transaction Ref:'}{' '}
                 <span className="font-bold text-slate-900">{transactionRef}</span>
               </p>
               <p className="text-xs text-slate-600">
-                Submitted At:{' '}
+                {isMl ? 'സമർപ്പിച്ചത്:' : 'Submitted At:'}{' '}
                 <span className="text-slate-800">{submittedAtFormatted}</span>
               </p>
               <p className="text-xs text-slate-600">
-                Verified At:{' '}
+                {isMl ? 'പരിശോധിച്ചത്:' : 'Verified At:'}{' '}
                 <span className="font-semibold text-emerald-800">{verifiedAtFormatted}</span>
               </p>
             </div>
@@ -567,17 +595,17 @@ export function DigitalReceipt({ due, house, onClose }: DigitalReceiptProps) {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                <th className="pb-3">Description</th>
-                <th className="pb-3 text-center">Period</th>
-                <th className="pb-3 text-right">Amount</th>
+                <th className="pb-3">{isMl ? 'വിവരണം' : 'Description'}</th>
+                <th className="pb-3 text-center">{isMl ? 'കാലയളവ്' : 'Period'}</th>
+                <th className="pb-3 text-right">{isMl ? 'തുക' : 'Amount'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               <tr>
                 <td className="py-3.5">
-                  <p className="font-semibold text-slate-800">Monthly Mahallu Membership Due</p>
+                  <p className="font-semibold text-slate-800">{isMl ? 'പ്രതിമാസ മഹല്ല് വരിസംഖ്യ' : 'Monthly Mahallu Membership Due'}</p>
                   <p className="text-xs text-slate-500">
-                    Mosque operations, Madrasa education fund, and local community services
+                    {isMl ? 'പള്ളി പരിപാലനം, മദ്രസ വിദ്യാഭ്യാസ ഫണ്ട്, മഹല്ല് സേവനങ്ങൾ' : 'Mosque operations, Madrasa education fund, and local community services'}
                   </p>
                 </td>
                 <td className="py-3.5 text-center font-mono text-xs text-slate-600">
@@ -591,7 +619,7 @@ export function DigitalReceipt({ due, house, onClose }: DigitalReceiptProps) {
             <tfoot>
               <tr className="border-t-2 border-slate-900 font-bold text-slate-900">
                 <td colSpan={2} className="pt-3.5 text-right text-sm">
-                  Total Paid:
+                  {isMl ? 'ആകെ അടച്ചത്:' : 'Total Paid:'}
                 </td>
                 <td className="pt-3.5 text-right text-xl text-emerald-800">
                   {formattedAmount}
@@ -611,9 +639,9 @@ export function DigitalReceipt({ due, house, onClose }: DigitalReceiptProps) {
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-800">Digitally Verified by Mahallu Admin</p>
+              <p className="text-xs font-semibold text-slate-800">{isMl ? 'മഹല്ല് അഡ്മിൻ ഡിജിറ്റലായി പരിശോധിച്ചു' : 'Digitally Verified by Mahallu Admin'}</p>
               <p className="text-[11px] text-slate-500">
-                System-generated official receipt. Recorded in Mahallu Financial Ledger.
+                {isMl ? 'സിസ്റ്റം ജനറേറ്റഡ് ഔദ്യോഗിക രസീത്. മഹല്ല് ലെഡ്ജറിൽ രേഖപ്പെടുത്തി.' : 'System-generated official receipt. Recorded in Mahallu Financial Ledger.'}
               </p>
             </div>
           </div>
@@ -627,11 +655,11 @@ export function DigitalReceipt({ due, house, onClose }: DigitalReceiptProps) {
       {/* Action Buttons (Hidden on Print) */}
       <div className="flex items-center justify-end gap-3 no-print">
         <Button variant="outline" onClick={onClose}>
-          Close
+          {isMl ? 'ക്ലോസ് ചെയ്യുക' : 'Close'}
         </Button>
         <Button variant="primary" onClick={handlePrint} className="gap-2 font-semibold">
           <Printer className="h-4 w-4" />
-          Print / Save PDF Receipt
+          {isMl ? 'രസീത് പ്രിന്റ് ചെയ്യുക / PDF' : 'Print / Save PDF Receipt'}
         </Button>
       </div>
     </div>

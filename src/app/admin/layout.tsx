@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
+import { useLanguage } from '@/lib/context/LanguageContext';
 import { DataService } from '@/lib/data-service';
 import { Button } from '@/components/ui/Button';
 import { LoadingScreen } from '@/components/ui/LoadingAnimation';
@@ -27,6 +28,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router = useRouter();
   const { user, profile, isAdmin, isLoading } = useAuth();
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
   const [pendingCount, setPendingCount] = useState(0);
   const [paymentsReviewCount, setPaymentsReviewCount] = useState(0);
   const [pendingCertificatesCount, setPendingCertificatesCount] = useState(0);
@@ -87,8 +90,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (isLoading) {
     return (
       <LoadingScreen
-        title="Mahallu Administration"
-        message="Verifying administrative credentials & loading console..."
+        title={isMl ? 'മഹല്ല് അഡ്മിനിസ്ട്രേഷൻ' : 'Mahallu Administration'}
+        message={isMl ? 'അഡ്മിൻ വിവരങ്ങൾ പരിശോധിക്കുന്നു...' : 'Verifying administrative credentials & loading console...'}
         minHeight="min-h-[70vh]"
       />
     );
@@ -101,63 +104,89 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Lock className="h-8 w-8" />
         </div>
         <div className="space-y-1">
-          <h2 className="text-xl font-bold text-slate-900">Access Restricted</h2>
+          <h2 className="text-xl font-bold text-slate-900">
+            {isMl ? 'പ്രവേശനം നിയന്ത്രിച്ചിരിക്കുന്നു' : 'Access Restricted'}
+          </h2>
           <p className="text-xs text-slate-500 max-w-sm">
-            You do not possess the required administrator credentials to access the Mahallu administrative suite.
+            {isMl
+              ? 'മഹല്ല് അഡ്മിൻ പാനലിൽ പ്രവേശിക്കുന്നതിനുള്ള അനുമതി നിങ്ങളുടെ അക്കൗണ്ടിനില്ല.'
+              : 'You do not possess the required administrator credentials to access the Mahallu administrative suite.'}
           </p>
         </div>
         <Button onClick={() => router.push(user ? '/dashboard' : '/auth/login')} variant="primary">
-          {user ? 'Return to Resident Portal' : 'Sign In as Admin'}
+          {user
+            ? (isMl ? 'റസിഡന്റ് പോർട്ടലിലേക്ക് മടങ്ങുക' : 'Return to Resident Portal')
+            : (isMl ? 'അഡ്മിനായി പ്രവേശിക്കുക' : 'Sign In as Admin')}
         </Button>
       </div>
     );
   }
 
   const adminNav = [
-    { label: 'Executive Overview', shortLabel: 'Overview', href: '/admin', icon: LayoutDashboard },
     {
-      label: 'Profile Verification',
-      shortLabel: 'Verify',
+      label: isMl ? 'അവലോകനം' : 'Executive Overview',
+      shortLabel: isMl ? 'അവലോകനം' : 'Overview',
+      href: '/admin',
+      icon: LayoutDashboard,
+    },
+    {
+      label: isMl ? 'പ്രൊഫൈൽ വെരിഫിക്കേഷൻ' : 'Profile Verification',
+      shortLabel: isMl ? 'വെരിഫിക്കേഷൻ' : 'Verify',
       href: '/admin/verification',
       icon: UserCheck,
       badge: pendingCount > 0 ? pendingCount : undefined,
     },
-    { label: 'Houses Directory', shortLabel: 'Houses', href: '/admin/houses', icon: Users },
     {
-      label: 'Payment Review',
-      shortLabel: 'Payments',
+      label: isMl ? 'വീടുകളുടെ പട്ടിക' : 'Houses Directory',
+      shortLabel: isMl ? 'വീടുകൾ' : 'Houses',
+      href: '/admin/houses',
+      icon: Users,
+    },
+    {
+      label: isMl ? 'പേയ്‌മെന്റ് പരിശോധന' : 'Payment Review',
+      shortLabel: isMl ? 'പേയ്‌മെന്റുകൾ' : 'Payments',
       href: '/admin/payments',
       icon: CreditCard,
       badge: paymentsReviewCount > 0 ? paymentsReviewCount : undefined,
     },
-    { label: 'Dues Defaulters', shortLabel: 'Defaulters', href: '/admin/defaulters', icon: AlertTriangle },
     {
-      label: 'Marriage Certificates',
-      shortLabel: 'Certs',
+      label: isMl ? 'കുടിശ്ശികക്കാർ' : 'Dues Defaulters',
+      shortLabel: isMl ? 'കുടിശ്ശിക' : 'Defaulters',
+      href: '/admin/defaulters',
+      icon: AlertTriangle,
+    },
+    {
+      label: isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റുകൾ' : 'Marriage Certificates',
+      shortLabel: isMl ? 'സർട്ടിഫിക്കറ്റുകൾ' : 'Certs',
       href: '/admin/marriage-certificates',
       icon: FileCheck,
       badge: pendingCertificatesCount > 0 ? pendingCertificatesCount : undefined,
     },
-    { label: 'Financial Ledger', shortLabel: 'Ledger', href: '/admin/ledger', icon: FileSpreadsheet },
+    {
+      label: isMl ? 'വരവ്-ചിലവ് ലെഡ്ജർ' : 'Financial Ledger',
+      shortLabel: isMl ? 'ലെഡ്ജർ' : 'Ledger',
+      href: '/admin/ledger',
+      icon: FileSpreadsheet,
+    },
   ];
 
   // 4 primary daily operational tabs for mobile bottom dock
   const primaryMobileNav = [
-    { label: 'Overview', href: '/admin', icon: LayoutDashboard },
+    { label: isMl ? 'അവലോകനം' : 'Overview', href: '/admin', icon: LayoutDashboard },
     {
-      label: 'Verify',
+      label: isMl ? 'വെരിഫിക്കേഷൻ' : 'Verify',
       href: '/admin/verification',
       icon: UserCheck,
       badge: pendingCount > 0 ? pendingCount : undefined,
     },
     {
-      label: 'Payments',
+      label: isMl ? 'പേയ്‌മെന്റുകൾ' : 'Payments',
       href: '/admin/payments',
       icon: CreditCard,
       badge: paymentsReviewCount > 0 ? paymentsReviewCount : undefined,
     },
     {
-      label: 'Certs',
+      label: isMl ? 'സർട്ടിഫിക്കറ്റുകൾ' : 'Certs',
       href: '/admin/marriage-certificates',
       icon: FileCheck,
       badge: pendingCertificatesCount > 0 ? pendingCertificatesCount : undefined,
@@ -167,20 +196,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Secondary modules housed in the "More" drawer
   const moreModules = [
     {
-      label: 'Houses Directory & Census',
-      description: 'Household registry, family strength & division demographics',
+      label: isMl ? 'വീടുകളുടെ രജിസ്ട്രിയും സെൻസസും' : 'Houses Directory & Census',
+      description: isMl ? 'കുടുംബാംഗങ്ങളുടെ വിവരങ്ങളും ഡിവിഷൻ സെൻസസും' : 'Household registry, family strength & division demographics',
       href: '/admin/houses',
       icon: Users,
     },
     {
-      label: 'Dues Defaulters Tracker',
-      description: 'Track unpaid months, send WhatsApp reminders & record payments',
+      label: isMl ? 'വരിസംഖ്യ കുടിശ്ശിക ട്രാക്കർ' : 'Dues Defaulters Tracker',
+      description: isMl ? 'അടയ്ക്കാത്ത മാസങ്ങൾ, വാട്ട്സ്ആപ്പ് ഓർമ്മപ്പെടുത്തലുകൾ' : 'Track unpaid months, send WhatsApp reminders & record payments',
       href: '/admin/defaulters',
       icon: AlertTriangle,
     },
     {
-      label: 'Financial Ledger & Audit',
-      description: 'Credits, debits, cash reconciliation & CSV ledger export',
+      label: isMl ? 'വരവ്-ചിലവ് ലെഡ്ജറും ഓഡിറ്റും' : 'Financial Ledger & Audit',
+      description: isMl ? 'വരവുകൾ, ചിലവുകൾ, കാഷ് ഓഡിറ്റ്, സിഎസ്വി എക്സ്പോർട്ട്' : 'Credits, debits, cash reconciliation & CSV ledger export',
       href: '/admin/ledger',
       icon: FileSpreadsheet,
     },
@@ -195,7 +224,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="max-w-7xl mx-auto flex items-center gap-2 min-w-max">
           <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider pr-2 border-r border-slate-200">
             <ShieldCheck className="h-4 w-4 text-emerald-700" />
-            Admin Suite
+            {isMl ? 'അഡ്മിൻ പാനൽ' : 'Admin Suite'}
           </div>
 
           {adminNav.map((item) => {
@@ -332,7 +361,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Menu className="h-5 w-5" />
             )}
           </div>
-          <span className="text-[10px] mt-0.5 tracking-tight leading-none">More</span>
+          <span className="text-[10px] mt-0.5 tracking-tight leading-none">
+            {isMl ? 'മറ്റു സേവനങ്ങൾ' : 'More'}
+          </span>
           {isMoreActive && (
             <span className="absolute bottom-0.5 w-4 h-0.5 rounded-full bg-emerald-600" />
           )}
@@ -355,7 +386,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="h-7 w-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
                   <ShieldCheck className="h-4 w-4" />
                 </div>
-                <h3 className="text-sm font-extrabold text-slate-900">Mahallu Admin Modules</h3>
+                <h3 className="text-sm font-extrabold text-slate-900">
+                  {isMl ? 'മഹല്ല് അഡ്മിൻ മോഡ്യൂളുകൾ' : 'Mahallu Admin Modules'}
+                </h3>
               </div>
               <button
                 type="button"

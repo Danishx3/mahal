@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DataService, ProfileUpdateRequest } from '@/lib/data-service';
-import { HouseWithDetails, DIVISION_LABELS, Division, FamilyMember, MaritalStatus, PaymentRequestItem } from '@/lib/supabase/types';
+import { HouseWithDetails, DIVISION_LABELS, DIVISION_LABELS_ML, Division, FamilyMember, MaritalStatus, PaymentRequestItem } from '@/lib/supabase/types';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -40,73 +40,102 @@ import {
   FileCheck,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
+import { useLanguage } from '@/lib/context/LanguageContext';
 import { LoadingScreen } from '@/components/ui/LoadingAnimation';
 
-const RELATIONSHIP_OPTIONS = [
-  'Self',
-  'Wife',
-  'Husband',
-  'Son',
-  'Daughter',
-  'Father',
-  'Mother',
-  'Brother',
-  'Sister',
-  'Grandfather',
-  'Grandmother',
-  'Grandson',
-  'Granddaughter',
-  'Son-in-law',
-  'Daughter-in-law',
-  'Other Relative',
+const RELATIONSHIP_OPTIONS: { value: string; labelEn: string; labelMl: string }[] = [
+  { value: 'Self', labelEn: 'Self (Head)', labelMl: 'സ്വയം (കുടുംബനാഥൻ)' },
+  { value: 'Wife', labelEn: 'Wife', labelMl: 'ഭാര്യ' },
+  { value: 'Husband', labelEn: 'Husband', labelMl: 'ഭർത്താവ്' },
+  { value: 'Son', labelEn: 'Son', labelMl: 'മകൻ' },
+  { value: 'Daughter', labelEn: 'Daughter', labelMl: 'മകൾ' },
+  { value: 'Father', labelEn: 'Father', labelMl: 'പിതാവ്' },
+  { value: 'Mother', labelEn: 'Mother', labelMl: 'മാതാവ്' },
+  { value: 'Brother', labelEn: 'Brother', labelMl: 'സഹോദരൻ' },
+  { value: 'Sister', labelEn: 'Sister', labelMl: 'സഹോദരി' },
+  { value: 'Grandfather', labelEn: 'Grandfather', labelMl: 'മുത്തശ്ശൻ' },
+  { value: 'Grandmother', labelEn: 'Grandmother', labelMl: 'മുത്തശ്ശി' },
+  { value: 'Grandson', labelEn: 'Grandson', labelMl: 'കൊച്ചുമകൻ' },
+  { value: 'Granddaughter', labelEn: 'Granddaughter', labelMl: 'കൊച്ചുമകൾ' },
+  { value: 'Son-in-law', labelEn: 'Son-in-law', labelMl: 'മരുമകൻ' },
+  { value: 'Daughter-in-law', labelEn: 'Daughter-in-law', labelMl: 'മരുമകൾ' },
+  { value: 'Other Relative', labelEn: 'Other Relative', labelMl: 'മറ്റു ബന്ധുക്കൾ' },
 ];
 
-const MARITAL_STATUS_OPTIONS: { value: MaritalStatus; label: string }[] = [
-  { value: 'single', label: 'Single' },
-  { value: 'married', label: 'Married' },
-  { value: 'widowed', label: 'Widowed' },
-  { value: 'divorced', label: 'Divorced' },
+const MARITAL_STATUS_OPTIONS: { value: MaritalStatus; labelEn: string; labelMl: string }[] = [
+  { value: 'married', labelEn: 'Married', labelMl: 'വിവാഹിതൻ/വിവാഹിത' },
+  { value: 'single', labelEn: 'Single', labelMl: 'അവിവാഹിതൻ/അവിവാഹിത' },
+  { value: 'widowed', labelEn: 'Widowed', labelMl: 'വിധവ/വിഭാര്യൻ' },
+  { value: 'divorced', labelEn: 'Divorced', labelMl: 'വിവാഹമോചിതൻ/വിവാഹമോചിത' },
 ];
 
-const JOB_STATUS_OPTIONS = [
-  'Employed',
-  'Business',
-  'Abroad',
-  'Homemaker',
-  'Student',
-  'Agriculture',
-  'Retired',
-  'Unemployed',
-  'Other',
+const JOB_STATUS_OPTIONS: { value: string; labelEn: string; labelMl: string }[] = [
+  { value: 'Employed', labelEn: 'Employed (Local)', labelMl: 'ജോലി (നാട്ടിൽ)' },
+  { value: 'Business', labelEn: 'Business / Trade', labelMl: 'ബിസിനസ്സ് / വ്യാപാരം' },
+  { value: 'Abroad', labelEn: 'Abroad / NRI', labelMl: 'പ്രവാസി (NRI)' },
+  { value: 'Homemaker', labelEn: 'Homemaker', labelMl: 'വീട്ടമ്മ' },
+  { value: 'Student', labelEn: 'Student', labelMl: 'വിദ്യാർത്ഥി' },
+  { value: 'Agriculture', labelEn: 'Agriculture', labelMl: 'കൃഷി' },
+  { value: 'Retired', labelEn: 'Retired', labelMl: 'വിരമിച്ചു' },
+  { value: 'Unemployed', labelEn: 'Unemployed', labelMl: 'തൊഴിൽരഹിതൻ' },
+  { value: 'Other', labelEn: 'Other', labelMl: 'മറ്റുള്ളവ' },
 ];
 
-const GENERAL_EDUCATION_OPTIONS = [
-  'Below SSLC',
-  'SSLC',
-  'Plus Two',
-  'Diploma',
-  'Degree',
-  'PG',
-  'Professional',
-  'Other',
+const GENERAL_EDUCATION_OPTIONS: { value: string; labelEn: string; labelMl: string }[] = [
+  { value: 'Below SSLC', labelEn: 'Below SSLC', labelMl: 'എസ്.എസ്.എൽ.സിക്ക് താഴെ' },
+  { value: 'SSLC', labelEn: 'SSLC', labelMl: 'എസ്.എസ്.എൽ.സി (SSLC)' },
+  { value: 'Plus Two', labelEn: 'Plus Two (+2)', labelMl: 'പ്ലസ് ടു (+2)' },
+  { value: 'Diploma', labelEn: 'Diploma / ITI', labelMl: 'ഡിപ്ലോമ / ITI' },
+  { value: 'Degree', labelEn: 'Degree / Graduate', labelMl: 'ബിരുദം (Degree)' },
+  { value: 'PG', labelEn: 'Post Graduate (PG)', labelMl: 'ബിരുദാനന്തര ബിരുദം (PG)' },
+  { value: 'Professional', labelEn: 'Professional', labelMl: 'പ്രൊഫഷണൽ കോഴ്സ്' },
+  { value: 'Other', labelEn: 'Other', labelMl: 'മറ്റുള്ളവ' },
 ];
 
-const RELIGIOUS_EDUCATION_OPTIONS = [
-  'Basic',
-  'Madrasa 5th',
-  'Madrasa 7th',
-  'Madrasa 10th',
-  'Madrasa +2',
-  'Dars',
-  'Islamic Scholar',
-  'Hafiz',
-  'Other',
+const RELIGIOUS_EDUCATION_OPTIONS: { value: string; labelEn: string; labelMl: string }[] = [
+  { value: 'Basic', labelEn: 'Basic Islamic Education', labelMl: 'പ്രാഥമിക മതവിദ്യാഭ്യാസം' },
+  { value: 'Madrasa 5th', labelEn: 'Madrasa 5th Standard', labelMl: 'മദ്റസ 5-ാം ക്ലാസ്സ്' },
+  { value: 'Madrasa 7th', labelEn: 'Madrasa 7th Standard', labelMl: 'മദ്റസ 7-ാം ക്ലാസ്സ്' },
+  { value: 'Madrasa 10th', labelEn: 'Madrasa 10th Standard', labelMl: 'മദ്റസ 10-ാം ക്ലാസ്സ്' },
+  { value: 'Madrasa +2', labelEn: 'Madrasa Secondary (+2)', labelMl: 'മദ്റസ പ്ലസ് ടു' },
+  { value: 'Dars', labelEn: 'Masjid Dars Student', labelMl: 'ദർസ് വിദ്യാഭ്യാസം' },
+  { value: 'Islamic Scholar', labelEn: 'Islamic Scholar / Moulavi', labelMl: 'ഇസ്ലാമിക പണ്ഡിതൻ / മൗലവി' },
+  { value: 'Hafiz', labelEn: 'Hafiz-ul-Quran', labelMl: 'ഹാഫിളുൽ ഖുർആൻ' },
+  { value: 'Other', labelEn: 'Other', labelMl: 'മറ്റുള്ളവ' },
 ];
+
+const getRelLabel = (val: string, isMl: boolean) => {
+  const found = RELATIONSHIP_OPTIONS.find((o) => o.value.toLowerCase() === (val || '').toLowerCase());
+  if (found) return isMl ? found.labelMl : found.labelEn;
+  return val;
+};
+const getMaritalLabel = (val: string, isMl: boolean) => {
+  const found = MARITAL_STATUS_OPTIONS.find((o) => o.value.toLowerCase() === (val || '').toLowerCase());
+  if (found) return isMl ? found.labelMl : found.labelEn;
+  return val;
+};
+const getJobLabel = (val: string, isMl: boolean) => {
+  const found = JOB_STATUS_OPTIONS.find((o) => o.value.toLowerCase() === (val || '').toLowerCase());
+  if (found) return isMl ? found.labelMl : found.labelEn;
+  return val;
+};
+const getEduLabel = (val: string, isMl: boolean) => {
+  const found = GENERAL_EDUCATION_OPTIONS.find((o) => o.value.toLowerCase() === (val || '').toLowerCase());
+  if (found) return isMl ? found.labelMl : found.labelEn;
+  return val;
+};
+const getRelEduLabel = (val: string, isMl: boolean) => {
+  const found = RELIGIOUS_EDUCATION_OPTIONS.find((o) => o.value.toLowerCase() === (val || '').toLowerCase());
+  if (found) return isMl ? found.labelMl : found.labelEn;
+  return val;
+};
 
 export default function ResidentDashboard() {
   const router = useRouter();
   const { toast } = useToast();
   const { user, profile, house: authHouse, isLoading } = useAuth();
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
   const [house, setHouse] = useState<HouseWithDetails | null>(null);
   const [membersExpanded, setMembersExpanded] = useState(true);
   const [activePaymentRequests, setActivePaymentRequests] = useState<PaymentRequestItem[]>([]);
@@ -220,8 +249,8 @@ export default function ResidentDashboard() {
   if (isLoading) {
     return (
       <LoadingScreen
-        title="Resident Portal"
-        message="Loading household dashboard & dwelling records..."
+        title={isMl ? 'റെസിഡന്റ് പോർട്ടൽ' : 'Resident Portal'}
+        message={isMl ? 'കുടുംബ വിവരങ്ങളും രേഖകളും ലഭ്യമാക്കുന്നു...' : 'Loading household dashboard & dwelling records...'}
         minHeight="min-h-[60vh]"
       />
     );
@@ -231,8 +260,12 @@ export default function ResidentDashboard() {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-3">
-          <p className="text-slate-500">No household profile found for this account.</p>
-          <Button onClick={() => router.push('/onboarding')}>Complete Onboarding</Button>
+          <p className="text-slate-500">
+            {isMl ? 'ഈ അക്കൗണ്ടിൽ കുടുംബ വിവരങ്ങൾ കണ്ടെത്തിയില്ല.' : 'No household profile found for this account.'}
+          </p>
+          <Button onClick={() => router.push('/onboarding')}>
+            {isMl ? 'കുടുംബ രജിസ്ട്രേഷൻ പൂർത്തിയാക്കുക' : 'Complete Onboarding'}
+          </Button>
         </div>
       </div>
     );
@@ -321,7 +354,12 @@ export default function ResidentDashboard() {
 
   const handleRemoveMember = (index: number) => {
     if (editMembers.length <= 1) {
-      toast('At least one family member is required in the household roster', 'error');
+      toast(
+        isMl
+          ? 'കുടുംബത്തിൽ കുറഞ്ഞത് ഒരു അംഗമെങ്കിലും ഉണ്ടായിരിക്കണം'
+          : 'At least one family member is required in the household roster',
+        'error'
+      );
       return;
     }
     const wasHead = editMembers[index].is_head_of_family;
@@ -339,24 +377,24 @@ export default function ResidentDashboard() {
 
     if (!editHouseName.trim()) {
       setActiveEditTab('dwelling');
-      toast('Please enter your official house name', 'error');
+      toast(isMl ? 'ഔദ്യോഗിക വീട്ടുപേര് നൽകുക' : 'Please enter your official house name', 'error');
       return;
     }
     if (!editHouseNumber.trim()) {
       setActiveEditTab('dwelling');
-      toast('Please enter your ward / door number', 'error');
+      toast(isMl ? 'വാർഡ് / വീട്ടുനമ്പർ നൽകുക' : 'Please enter your ward / door number', 'error');
       return;
     }
     const cleanPhone = editPhone.trim().replace(/\D/g, '');
     if (cleanPhone.length < 10) {
       setActiveEditTab('dwelling');
-      toast('Please enter a valid 10-digit primary phone number', 'error');
+      toast(isMl ? 'സാധുവായ 10 അക്ക മൊബൈൽ നമ്പർ നൽകുക' : 'Please enter a valid 10-digit primary phone number', 'error');
       return;
     }
 
     if (editMembers.length === 0) {
       setActiveEditTab('members');
-      toast('Household must have at least one family member', 'error');
+      toast(isMl ? 'കുടുംബത്തിൽ കുറഞ്ഞത് ഒരു അംഗമെങ്കിലും ഉണ്ടായിരിക്കണം' : 'Household must have at least one family member', 'error');
       return;
     }
 
@@ -364,7 +402,12 @@ export default function ResidentDashboard() {
       const m = editMembers[i];
       if (!m.name || m.name.trim().length < 2) {
         setActiveEditTab('members');
-        toast(`Please enter a valid full name for member #${i + 1}`, 'error');
+        toast(
+          isMl
+            ? `അംഗം #${i + 1}-ന്റെ പൂർണ്ണ പേര് നൽകുക`
+            : `Please enter a valid full name for member #${i + 1}`,
+          'error'
+        );
         return;
       }
     }
@@ -376,7 +419,7 @@ export default function ResidentDashboard() {
       finalMembers[0] = { ...finalMembers[0], is_head_of_family: true };
     } else if (heads.length > 1) {
       setActiveEditTab('members');
-      toast('Please select only one Head of Family', 'error');
+      toast(isMl ? 'ഒരു കുടുംബനാഥനെ മാത്രം തിരഞ്ഞെടുക്കുക' : 'Please select only one Head of Family', 'error');
       return;
     }
 
@@ -420,9 +463,14 @@ export default function ResidentDashboard() {
 
       setPendingUpdate(submitted);
       setEditModalOpen(false);
-      toast('Household details & family census submitted to Profile Verification! Admin will review and verify.', 'success');
+      toast(
+        isMl
+          ? 'കുടുംബ വിവരങ്ങളും സെൻസസും പരിശോധനയ്ക്കായി സമർപ്പിച്ചു! മഹല്ല് കമ്മിറ്റി പരിശോധിച്ച് അംഗീകരിക്കും.'
+          : 'Household details & family census submitted to Profile Verification! Admin will review and verify.',
+        'success'
+      );
     } catch (err: any) {
-      toast(err?.message || 'Failed to submit profile update', 'error');
+      toast(err?.message || (isMl ? 'വിവരങ്ങൾ സമർപ്പിക്കുന്നതിൽ പരാജയപ്പെട്ടു' : 'Failed to submit profile update'), 'error');
     } finally {
       setIsSubmittingUpdate(false);
     }
@@ -433,9 +481,9 @@ export default function ResidentDashboard() {
     try {
       await DataService.cancelProfileUpdateRequestAsync(pendingUpdate.id);
       setPendingUpdate(null);
-      toast('Profile update request cancelled.', 'info');
+      toast(isMl ? 'തിരുത്തൽ അപേക്ഷ റദ്ദാക്കി.' : 'Profile update request cancelled.', 'info');
     } catch (err: any) {
-      toast(err?.message || 'Failed to cancel update request', 'error');
+      toast(err?.message || (isMl ? 'അപേക്ഷ റദ്ദാക്കാൻ കഴിഞ്ഞില്ല' : 'Failed to cancel update request'), 'error');
     }
   };
 
@@ -449,12 +497,16 @@ export default function ResidentDashboard() {
               <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                 {house.house_name}
               </h1>
-              <Badge variant="approved">Verified Household</Badge>
+              <Badge variant="approved">
+                {isMl ? 'അംഗീകൃത കുടുംബം' : 'Verified Household'}
+              </Badge>
             </div>
             <p className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
-              <span>Mahallu Reg No: <strong className="text-emerald-800 font-mono">{house.mahallu_reg_no}</strong></span>
+              <span>{isMl ? 'മഹല്ല് രജിസ്റ്റർ നമ്പർ' : 'Mahallu Reg No'}: <strong className="text-emerald-800 font-mono">{house.mahallu_reg_no}</strong></span>
               <span>•</span>
-              <span>Division: <strong className="text-slate-800">{DIVISION_LABELS[house.division]}</strong></span>
+              <span>{isMl ? 'ഡിവിഷൻ' : 'Division'}: <strong className="text-slate-800">
+                {isMl ? (DIVISION_LABELS_ML[house.division as Division] || house.division) : (DIVISION_LABELS[house.division as Division] || house.division)}
+              </strong></span>
             </p>
           </div>
 
@@ -462,13 +514,13 @@ export default function ResidentDashboard() {
             <Link href="/dashboard/marriage-certificate" className="w-full sm:w-auto">
               <Button variant="outline" className="w-full justify-center gap-2 border-slate-200 text-xs sm:text-sm py-2.5 min-h-[44px]">
                 <FileCheck className="h-4 w-4 text-emerald-700 shrink-0" />
-                <span className="truncate">Marriage Cert</span>
+                <span className="truncate">{isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ്' : 'Marriage Cert'}</span>
               </Button>
             </Link>
             <Link href="/dashboard/payments" className="w-full sm:w-auto">
               <Button variant="primary" className="w-full justify-center gap-2 text-xs sm:text-sm py-2.5 min-h-[44px]">
                 <CreditCard className="h-4 w-4 shrink-0" />
-                <span className="truncate">Pay Monthly Dues</span>
+                <span className="truncate">{isMl ? 'മാസവരി അടയ്ക്കുക' : 'Pay Monthly Dues'}</span>
               </Button>
             </Link>
           </div>
@@ -484,16 +536,18 @@ export default function ResidentDashboard() {
               </div>
               <div>
                 <h3 className="text-base font-extrabold text-emerald-950">
-                  Your application is accepted, contact mahal committee for certificate
+                  {isMl
+                    ? 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ അംഗീകരിച്ചു, സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക'
+                    : 'Your application is accepted, contact mahal committee for certificate'}
                 </h3>
                 <p className="text-xs text-emerald-800 mt-0.5">
-                  Couple:{' '}
+                  {isMl ? 'ദമ്പതികൾ' : 'Couple'}:{' '}
                   <strong>{marriageCerts.find((c) => c.status === 'approved').husband_name}</strong>{' '}
                   &amp;{' '}
                   <strong>{marriageCerts.find((c) => c.status === 'approved').wife_full_name}</strong>{' '}
-                  • Certificate Ref:{' '}
+                  • {isMl ? 'സർട്ടിഫിക്കറ്റ് റഫറൻസ്' : 'Certificate Ref'}:{' '}
                   <span className="font-mono font-bold">
-                    {marriageCerts.find((c) => c.status === 'approved').certificate_number || 'Official Ref Assigned'}
+                    {marriageCerts.find((c) => c.status === 'approved').certificate_number || (isMl ? 'ഔദ്യോഗിക റഫറൻസ് നൽകി' : 'Official Ref Assigned')}
                   </span>
                 </p>
               </div>
@@ -501,7 +555,7 @@ export default function ResidentDashboard() {
 
             <Link href="/dashboard/marriage-certificate" className="shrink-0 w-full sm:w-auto">
               <Button size="sm" variant="primary" className="w-full sm:w-auto bg-emerald-700 hover:bg-emerald-800 text-white font-bold">
-                View Certificate
+                {isMl ? 'സർട്ടിഫിക്കറ്റ് കാണുക' : 'View Certificate'}
               </Button>
             </Link>
           </div>
@@ -520,18 +574,18 @@ export default function ResidentDashboard() {
               <div className="space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 uppercase tracking-wide">
-                    Active Payment Request
+                    {isMl ? 'പ്രത്യേക പിരിവ് / ഫണ്ട്' : 'Active Payment Request'}
                   </span>
                   <span className="text-xs font-semibold text-emerald-300">
                     {activePaymentRequests[0].category}
                   </span>
                   {activePaymentRequests[0].amount_type === 'fixed' ? (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/30 text-blue-200 border border-blue-400/30">
-                      Amount: ₹{activePaymentRequests[0].fixed_amount}
+                      {isMl ? 'തുക' : 'Amount'}: ₹{activePaymentRequests[0].fixed_amount}
                     </span>
                   ) : (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/30 text-amber-200 border border-amber-400/30">
-                      Pay As You Wish
+                      {isMl ? 'ഇഷ്ടമുള്ള തുക നൽകാം' : 'Pay As You Wish'}
                     </span>
                   )}
                 </div>
@@ -541,8 +595,8 @@ export default function ResidentDashboard() {
                 <p className="text-xs text-emerald-100/80 leading-relaxed max-w-2xl">
                   {activePaymentRequests[0].description ||
                     (activePaymentRequests[0].amount_type === 'fixed'
-                      ? `The Mahallu Committee has requested an amount of ₹${activePaymentRequests[0].fixed_amount} from each household.`
-                      : 'The Mahallu Committee has invited community contributions for this cause.')}
+                      ? (isMl ? `ഓരോ വീടും ₹${activePaymentRequests[0].fixed_amount} സംഭാവന നൽകാൻ മഹല്ല് കമ്മിറ്റി അഭ്യർത്ഥിക്കുന്നു.` : `The Mahallu Committee has requested an amount of ₹${activePaymentRequests[0].fixed_amount} from each household.`)
+                      : (isMl ? 'ഈ പൊതുആവശ്യത്തിലേക്ക് നിങ്ങളുടെ സംഭാവനകൾ മഹല്ല് കമ്മിറ്റി സ്വാഗതം ചെയ്യുന്നു.' : 'The Mahallu Committee has invited community contributions for this cause.'))}
                 </p>
               </div>
             </div>
@@ -553,7 +607,7 @@ export default function ResidentDashboard() {
                 size="sm"
                 className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold border-none gap-2 shadow-sm cursor-pointer py-2.5 px-4"
               >
-                <span>View &amp; Pay Request</span>
+                <span>{isMl ? 'വിവരങ്ങൾ കാണുക & അടയ്ക്കുക' : 'View & Pay Request'}</span>
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -566,7 +620,7 @@ export default function ResidentDashboard() {
           <div className="bg-white p-4.5 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Pending / Due
+                {isMl ? 'അടയ്ക്കാനുള്ള മാസവരി' : 'Pending / Due'}
               </span>
               <div className="p-2 rounded-xl bg-amber-50 text-amber-700">
                 <Clock className="h-4 w-4" />
@@ -577,13 +631,13 @@ export default function ResidentDashboard() {
                 {formatCurrency(pendingAmount)}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                {pendingDues.length} month(s) awaiting payment or review
+                {isMl ? `${pendingDues.length} മാസത്തെ കുടിശ്ശിക / പരിശോധനയിൽ` : `${pendingDues.length} month(s) awaiting payment or review`}
               </p>
               <Link
                 href="/dashboard/payments"
                 className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 hover:text-amber-900 hover:underline min-h-[36px]"
               >
-                <span>Pay Dues & Submit UPI Ref</span>
+                <span>{isMl ? 'മാസവരി അടച്ച് UPI റഫറൻസ് സമർപ്പിക്കുക' : 'Pay Dues & Submit UPI Ref'}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -593,7 +647,7 @@ export default function ResidentDashboard() {
           <div className="bg-white p-4.5 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Total Paid (Reconciled)
+                {isMl ? 'ആകെ അടച്ച തുക (സ്ഥിരീകരിച്ചത്)' : 'Total Paid (Reconciled)'}
               </span>
               <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
                 <CheckCircle2 className="h-4 w-4" />
@@ -604,13 +658,15 @@ export default function ResidentDashboard() {
                 {formatCurrency(paidTotal + specialPaidTotal)}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                {verifiedDues.length} dues + {specialPaidCount} special payment(s) verified
+                {isMl
+                  ? `${verifiedDues.length} മാസവരി + ${specialPaidCount} പ്രത്യേക സംഭാവനകൾ സ്ഥിരീകരിച്ചു`
+                  : `${verifiedDues.length} dues + ${specialPaidCount} special payment(s) verified`}
               </p>
               <Link
                 href="/dashboard/payments"
                 className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline min-h-[36px]"
               >
-                <span>View Receipts & Ledger</span>
+                <span>{isMl ? 'രസീതുകളും ലെഡ്ജറും കാണുക' : 'View Receipts & Ledger'}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -620,7 +676,7 @@ export default function ResidentDashboard() {
           <div className="bg-white p-4.5 sm:p-5 rounded-2xl border border-slate-200 shadow-xs">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Registered Members
+                {isMl ? 'രജിസ്റ്റർ ചെയ്ത അംഗങ്ങൾ' : 'Registered Members'}
               </span>
               <div className="p-2 rounded-xl bg-slate-100 text-slate-700">
                 <Users className="h-4 w-4" />
@@ -628,11 +684,11 @@ export default function ResidentDashboard() {
             </div>
             <div className="mt-2.5 sm:mt-3">
               <div className="text-2xl font-extrabold text-slate-900">
-                {house.family_members.length} Members
+                {house.family_members.length} {isMl ? 'അംഗങ്ങൾ' : 'Members'}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                {house.family_members.filter((m) => m.job_status === 'Abroad').length} abroad (NRI) •{' '}
-                {house.family_members.filter((m) => m.age !== null && m.age < 18).length} children
+                {house.family_members.filter((m) => m.job_status === 'Abroad').length} {isMl ? 'പ്രവാസികൾ (NRI)' : 'abroad (NRI)'} •{' '}
+                {house.family_members.filter((m) => m.age !== null && m.age < 18).length} {isMl ? 'കുട്ടികൾ' : 'children'}
               </p>
             </div>
           </div>
@@ -644,7 +700,9 @@ export default function ResidentDashboard() {
           <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
             <div className="flex items-center gap-2.5">
               <Home className="h-4 w-4 text-emerald-700" />
-              <h2 className="text-sm font-bold text-slate-900">Dwelling & Contact Records</h2>
+              <h2 className="text-sm font-bold text-slate-900">
+                {isMl ? 'താമസസ്ഥലവും കോൺടാക്റ്റ് വിവരങ്ങളും' : 'Dwelling & Contact Records'}
+              </h2>
             </div>
             <Button
               variant="outline"
@@ -653,7 +711,9 @@ export default function ResidentDashboard() {
               className="gap-1.5 font-semibold text-emerald-800 border-emerald-300 hover:bg-emerald-50 cursor-pointer self-start sm:self-auto"
             >
               <Pencil className="h-3.5 w-3.5" />
-              {pendingUpdate && pendingUpdate.status === 'pending' ? 'Edit / Modify Changes' : 'Edit Details'}
+              {pendingUpdate && pendingUpdate.status === 'pending'
+                ? (isMl ? 'മാറ്റങ്ങൾ തിരുത്തുക' : 'Edit / Modify Changes')
+                : (isMl ? 'വിവരങ്ങൾ തിരുത്തുക' : 'Edit Details')}
             </Button>
           </div>
 
@@ -663,29 +723,33 @@ export default function ResidentDashboard() {
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 font-bold text-xs">
                   <Clock className="h-4 w-4 text-amber-700 shrink-0" />
-                  <span>Profile Update Submitted for Admin Verification</span>
+                  <span>{isMl ? 'വിവരങ്ങളിലെ മാറ്റങ്ങൾ അഡ്മിൻ പരിശോധനയ്ക്കായി സമർപ്പിച്ചു' : 'Profile Update Submitted for Admin Verification'}</span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/80 text-amber-900">
-                    Pending Review
+                    {isMl ? 'പരിശോധനയിൽ' : 'Pending Review'}
                   </span>
                 </div>
                 <p className="text-[11px] text-amber-900 leading-relaxed">
-                  Submitted on <strong>{formatDateTime(pendingUpdate.submitted_at)}</strong>. Mahallu Administration will verify your changes shortly.
+                  {isMl
+                    ? `സമർപ്പിച്ച തീയതി: ${formatDateTime(pendingUpdate.submitted_at)}. മഹല്ല് കമ്മിറ്റി പരിശോധിച്ച ശേഷം മാറ്റങ്ങൾ നിലവിൽ വരും.`
+                    : `Submitted on ${formatDateTime(pendingUpdate.submitted_at)}. Mahallu Administration will verify your changes shortly.`}
                 </p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-amber-900 font-medium pt-1">
                   {pendingUpdate.requested_details.house_name !== house.house_name && (
-                    <span>House Name: <strong className="text-amber-950 underline decoration-amber-400">{pendingUpdate.requested_details.house_name}</strong></span>
+                    <span>{isMl ? 'വീട്ടുപേര്' : 'House Name'}: <strong className="text-amber-950 underline decoration-amber-400">{pendingUpdate.requested_details.house_name}</strong></span>
                   )}
                   {pendingUpdate.requested_details.house_number !== house.house_number && (
-                    <span>Ward / Door: <strong className="text-amber-950 underline decoration-amber-400">{pendingUpdate.requested_details.house_number}</strong></span>
+                    <span>{isMl ? 'വാർഡ് / നമ്പർ' : 'Ward / Door'}: <strong className="text-amber-950 underline decoration-amber-400">{pendingUpdate.requested_details.house_number}</strong></span>
                   )}
                   {pendingUpdate.requested_details.phone !== house.phone && (
-                    <span>Phone: <strong className="text-amber-950 underline decoration-amber-400">{pendingUpdate.requested_details.phone}</strong></span>
+                    <span>{isMl ? 'ഫോൺ' : 'Phone'}: <strong className="text-amber-950 underline decoration-amber-400">{pendingUpdate.requested_details.phone}</strong></span>
                   )}
                   {pendingUpdate.requested_details.division !== house.division && (
-                    <span>Division: <strong className="text-amber-950 underline decoration-amber-400">{DIVISION_LABELS[pendingUpdate.requested_details.division]}</strong></span>
+                    <span>{isMl ? 'ഡിവിഷൻ' : 'Division'}: <strong className="text-amber-950 underline decoration-amber-400">
+                      {isMl ? (DIVISION_LABELS_ML[pendingUpdate.requested_details.division] || pendingUpdate.requested_details.division) : (DIVISION_LABELS[pendingUpdate.requested_details.division] || pendingUpdate.requested_details.division)}
+                    </strong></span>
                   )}
                   {pendingUpdate.requested_members && pendingUpdate.requested_members.length > 0 && (
-                    <span>Family Census: <strong className="text-amber-950 underline decoration-amber-400">{pendingUpdate.requested_members.length} member(s) ({pendingUpdate.requested_members.length !== house.family_members.length ? `${house.family_members.length} → ${pendingUpdate.requested_members.length}` : 'roster updated'})</strong></span>
+                    <span>{isMl ? 'കുടുംബ സെൻസസ്' : 'Family Census'}: <strong className="text-amber-950 underline decoration-amber-400">{pendingUpdate.requested_members.length} {isMl ? 'അംഗങ്ങൾ' : 'member(s)'} ({pendingUpdate.requested_members.length !== house.family_members.length ? `${house.family_members.length} → ${pendingUpdate.requested_members.length}` : (isMl ? 'അംഗങ്ങളുടെ വിവരം പുതുക്കി' : 'roster updated')})</strong></span>
                   )}
                 </div>
               </div>
@@ -697,7 +761,7 @@ export default function ResidentDashboard() {
                   className="text-xs bg-white text-amber-950 border-amber-300 hover:bg-amber-100/70 cursor-pointer"
                 >
                   <Pencil className="h-3 w-3 mr-1" />
-                  Modify
+                  {isMl ? 'മാറ്റം വരുത്തുക' : 'Modify'}
                 </Button>
                 <Button
                   variant="ghost"
@@ -705,7 +769,7 @@ export default function ResidentDashboard() {
                   onClick={handleCancelProfileUpdate}
                   className="text-xs text-amber-800 hover:bg-amber-100 cursor-pointer"
                 >
-                  Cancel Request
+                  {isMl ? 'അപേക്ഷ റദ്ദാക്കുക' : 'Cancel Request'}
                 </Button>
               </div>
             </div>
@@ -717,9 +781,9 @@ export default function ResidentDashboard() {
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold block">Previous Edit Request Rejected</span>
+                  <span className="font-bold block">{isMl ? 'മുൻ തിരുത്തൽ അപേക്ഷ നിരസിച്ചു' : 'Previous Edit Request Rejected'}</span>
                   <span className="text-rose-800 text-[11px]">
-                    Reason: <em>"{pendingUpdate.rejection_reason || 'Information could not be verified'}"</em>. You may edit and resubmit corrected records.
+                    {isMl ? 'കാരണം' : 'Reason'}: <em>"{pendingUpdate.rejection_reason || (isMl ? 'വിവരങ്ങൾ സ്ഥിരീകരിക്കാൻ സാധിച്ചില്ല' : 'Information could not be verified')}"</em>. {isMl ? 'ശരിയായ വിവരങ്ങൾ ഉൾപ്പെടുത്തി വീണ്ടും സമർപ്പിക്കാം.' : 'You may edit and resubmit corrected records.'}
                   </span>
                 </div>
               </div>
@@ -729,31 +793,39 @@ export default function ResidentDashboard() {
                 onClick={() => handleOpenEditModal('dwelling')}
                 className="text-xs bg-white text-rose-900 border-rose-300 hover:bg-rose-100/70 shrink-0 cursor-pointer"
               >
-                Resubmit Changes
+                {isMl ? 'വീണ്ടും സമർപ്പിക്കുക' : 'Resubmit Changes'}
               </Button>
             </div>
           )}
 
           <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6 text-xs">
             <div className="bg-slate-50/80 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-0 col-span-2 sm:col-span-1">
-              <span className="text-slate-400 block mb-1 text-[11px] font-medium">Official House Name</span>
+              <span className="text-slate-400 block mb-1 text-[11px] font-medium">
+                {isMl ? 'ഔദ്യോഗിക വീട്ടുപേര്' : 'Official House Name'}
+              </span>
               <span className="font-bold text-sm text-slate-900">{house.house_name}</span>
             </div>
 
             <div className="bg-slate-50/80 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-0">
-              <span className="text-slate-400 block mb-1 text-[11px] font-medium">Ward / Door Number</span>
+              <span className="text-slate-400 block mb-1 text-[11px] font-medium">
+                {isMl ? 'വാർഡ് / വീട്ടുനമ്പർ' : 'Ward / Door Number'}
+              </span>
               <span className="font-semibold text-slate-800">{house.house_number}</span>
             </div>
 
             <div className="bg-slate-50/80 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-0">
-              <span className="text-slate-400 block mb-1 text-[11px] font-medium">Mahallu Reg. Number</span>
+              <span className="text-slate-400 block mb-1 text-[11px] font-medium">
+                {isMl ? 'മഹല്ല് രജിസ്റ്റർ നമ്പർ' : 'Mahallu Reg. Number'}
+              </span>
               <span className="font-mono font-bold text-emerald-800 text-xs sm:text-sm">
                 {house.mahallu_reg_no}
               </span>
             </div>
 
             <div className="bg-slate-50/80 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-0">
-              <span className="text-slate-400 block mb-1 text-[11px] font-medium">Registered Phone</span>
+              <span className="text-slate-400 block mb-1 text-[11px] font-medium">
+                {isMl ? 'രജിസ്റ്റർ ചെയ്ത ഫോൺ' : 'Registered Phone'}
+              </span>
               <a
                 href={`tel:${house.phone}`}
                 className="font-semibold text-slate-800 hover:text-emerald-700 font-mono block"
@@ -763,9 +835,11 @@ export default function ResidentDashboard() {
             </div>
 
             <div className="bg-slate-50/80 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-0 col-span-2 sm:col-span-1">
-              <span className="text-slate-400 block mb-1 text-[11px] font-medium">Mahallu Division</span>
+              <span className="text-slate-400 block mb-1 text-[11px] font-medium">
+                {isMl ? 'മഹല്ല് ഡിവിഷൻ' : 'Mahallu Division'}
+              </span>
               <span className="font-semibold text-slate-800 capitalize">
-                {DIVISION_LABELS[house.division as Division] || house.division}
+                {isMl ? (DIVISION_LABELS_ML[house.division as Division] || house.division) : (DIVISION_LABELS[house.division as Division] || house.division)}
               </span>
             </div>
           </div>
@@ -777,7 +851,7 @@ export default function ResidentDashboard() {
             <div className="flex items-center gap-2.5">
               <Users className="h-4 w-4 text-emerald-700" />
               <h2 className="text-sm font-bold text-slate-900">
-                Family Members Census ({house.family_members.length})
+                {isMl ? 'കുടുംബാംഗങ്ങളുടെ സെൻസസ്' : 'Family Members Census'} ({house.family_members.length})
               </h2>
             </div>
             <div className="flex items-center gap-2 self-end sm:self-auto">
@@ -788,12 +862,14 @@ export default function ResidentDashboard() {
                 className="gap-1.5 font-semibold text-emerald-800 border-emerald-300 hover:bg-emerald-50 cursor-pointer text-xs"
               >
                 <Pencil className="h-3.5 w-3.5" />
-                {pendingUpdate && pendingUpdate.status === 'pending' ? 'Edit / Modify Members' : 'Edit Members'}
+                {pendingUpdate && pendingUpdate.status === 'pending'
+                  ? (isMl ? 'അംഗങ്ങളെ തിരുത്തുക' : 'Edit / Modify Members')
+                  : (isMl ? 'അംഗങ്ങളെ തിരുത്തുക' : 'Edit Members')}
               </Button>
               <button
                 onClick={() => setMembersExpanded(!membersExpanded)}
                 className="p-1.5 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
-                title={membersExpanded ? 'Collapse Census' : 'Expand Census'}
+                title={membersExpanded ? (isMl ? 'ചുരുക്കുക' : 'Collapse Census') : (isMl ? 'വിപുലീകരിക്കുക' : 'Expand Census')}
               >
                 {membersExpanded ? (
                   <ChevronUp className="h-4 w-4" />
@@ -810,14 +886,16 @@ export default function ResidentDashboard() {
               <div className="flex items-center gap-2">
                 <Clock className="h-3.5 w-3.5 text-amber-700 shrink-0" />
                 <span>
-                  Census changes submitted for verification: <strong>{pendingUpdate.requested_members.length} member(s)</strong> awaiting admin approval.
+                  {isMl
+                    ? `സെൻസസ് മാറ്റങ്ങൾ സമർപ്പിച്ചു: ${pendingUpdate.requested_members.length} അംഗങ്ങളുടെ വിവരം പരിശോധനയിലാണ്.`
+                    : `Census changes submitted for verification: ${pendingUpdate.requested_members.length} member(s) awaiting admin approval.`}
                 </span>
               </div>
               <button
                 onClick={() => handleOpenEditModal('members')}
                 className="text-amber-900 font-bold underline hover:text-amber-950 cursor-pointer text-left sm:text-right"
               >
-                Review / Modify Roster
+                {isMl ? 'പട്ടിക പരിശോധിക്കുക / തിരുത്തുക' : 'Review / Modify Roster'}
               </button>
             </div>
           )}
@@ -829,13 +907,13 @@ export default function ResidentDashboard() {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
                     <tr>
-                      <th className="py-3 px-6">Name</th>
-                      <th className="py-3 px-4">Relationship</th>
-                      <th className="py-3 px-4">Age</th>
-                      <th className="py-3 px-4">Marital Status</th>
-                      <th className="py-3 px-4">Occupation</th>
-                      <th className="py-3 px-4">Education</th>
-                      <th className="py-3 px-4">Religious Ed</th>
+                      <th className="py-3 px-6">{isMl ? 'പേര്' : 'Name'}</th>
+                      <th className="py-3 px-4">{isMl ? 'ബന്ധം' : 'Relationship'}</th>
+                      <th className="py-3 px-4">{isMl ? 'വയസ്സ്' : 'Age'}</th>
+                      <th className="py-3 px-4">{isMl ? 'വിവാഹാവസ്ഥ' : 'Marital Status'}</th>
+                      <th className="py-3 px-4">{isMl ? 'തൊഴിൽ' : 'Occupation'}</th>
+                      <th className="py-3 px-4">{isMl ? 'വിദ്യാഭ്യാസം' : 'Education'}</th>
+                      <th className="py-3 px-4">{isMl ? 'മതവിദ്യാഭ്യാസം' : 'Religious Ed'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -847,7 +925,7 @@ export default function ResidentDashboard() {
                             {member.is_head_of_family && (
                               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                                 <Crown className="h-3 w-3" />
-                                Head
+                                {isMl ? 'കുടുംബനാഥൻ' : 'Head'}
                               </span>
                             )}
                           </div>
@@ -857,25 +935,29 @@ export default function ResidentDashboard() {
                             </span>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 text-slate-700">{member.relationship}</td>
+                        <td className="py-3.5 px-4 text-slate-700">
+                          {getRelLabel(member.relationship, isMl)}
+                        </td>
                         <td className="py-3.5 px-4 text-slate-700">{member.age ?? '—'}</td>
-                        <td className="py-3.5 px-4 text-slate-700 capitalize">{member.marital_status}</td>
+                        <td className="py-3.5 px-4 text-slate-700 capitalize">
+                          {getMaritalLabel(member.marital_status, isMl)}
+                        </td>
                         <td className="py-3.5 px-4">
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px]">
                             <Briefcase className="h-3 w-3 text-slate-400" />
-                            {member.job_status}
+                            {getJobLabel(member.job_status, isMl)}
                           </span>
                         </td>
                         <td className="py-3.5 px-4">
                           <span className="inline-flex items-center gap-1 text-slate-700">
                             <GraduationCap className="h-3 w-3 text-slate-400" />
-                            {member.general_education}
+                            {getEduLabel(member.general_education, isMl)}
                           </span>
                         </td>
                         <td className="py-3.5 px-4">
                           <span className="inline-flex items-center gap-1 text-slate-700">
                             <BookOpen className="h-3 w-3 text-emerald-600" />
-                            {member.religious_education}
+                            {getRelEduLabel(member.religious_education, isMl)}
                           </span>
                         </td>
                       </tr>
@@ -906,7 +988,7 @@ export default function ResidentDashboard() {
                             {member.is_head_of_family && (
                               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
                                 <Crown className="h-3 w-3 text-amber-600" />
-                                Head
+                                {isMl ? 'കുടുംബനാഥൻ' : 'Head'}
                               </span>
                             )}
                           </div>
@@ -924,7 +1006,7 @@ export default function ResidentDashboard() {
 
                       {/* Relationship chip */}
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
-                        {member.relationship}
+                        {getRelLabel(member.relationship, isMl)}
                       </span>
                     </div>
 
@@ -932,30 +1014,30 @@ export default function ResidentDashboard() {
                     <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                       {member.age !== null && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium">
-                          {member.age} yrs
+                          {member.age} {isMl ? 'വയസ്സ്' : 'yrs'}
                         </span>
                       )}
                       {member.marital_status && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-medium capitalize">
-                          {member.marital_status}
+                          {getMaritalLabel(member.marital_status, isMl)}
                         </span>
                       )}
                       {member.job_status && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-medium">
                           <Briefcase className="h-3 w-3 text-blue-500" />
-                          {member.job_status}
+                          {getJobLabel(member.job_status, isMl)}
                         </span>
                       )}
                       {member.general_education && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 text-[11px] font-medium">
                           <GraduationCap className="h-3 w-3 text-purple-500" />
-                          {member.general_education}
+                          {getEduLabel(member.general_education, isMl)}
                         </span>
                       )}
                       {member.religious_education && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-medium">
                           <BookOpen className="h-3 w-3 text-emerald-600" />
-                          {member.religious_education}
+                          {getRelEduLabel(member.religious_education, isMl)}
                         </span>
                       )}
                     </div>
@@ -972,8 +1054,12 @@ export default function ResidentDashboard() {
       <Modal
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
-        title="Edit Household Profile & Census"
-        description="Update your household dwelling records and family members census. Submitted changes will be forwarded to Mahallu Admin for verification."
+        title={isMl ? 'കുടുംബ വിവരങ്ങളും സെൻസസും തിരുത്തുക' : 'Edit Household Profile & Census'}
+        description={
+          isMl
+            ? 'നിങ്ങളുടെ വീടിന്റെ വിവരങ്ങളും കുടുംബാംഗങ്ങളുടെ സെൻസസും അപ്‌ഡേറ്റ് ചെയ്യുക. മാറ്റങ്ങൾ മഹല്ല് കമ്മിറ്റി പരിശോധിച്ച ശേഷം അംഗീകരിക്കും.'
+            : 'Update your household dwelling records and family members census. Submitted changes will be forwarded to Mahallu Admin for verification.'
+        }
         maxWidth="4xl"
       >
         <form onSubmit={handleSubmitProfileUpdate} className="space-y-4 text-xs">
@@ -989,7 +1075,7 @@ export default function ResidentDashboard() {
               }`}
             >
               <Home className="h-4 w-4" />
-              <span>Dwelling & Contact Details</span>
+              <span>{isMl ? 'താമസസ്ഥലവും കോൺടാക്റ്റും' : 'Dwelling & Contact Details'}</span>
             </button>
 
             <button
@@ -1002,7 +1088,7 @@ export default function ResidentDashboard() {
               }`}
             >
               <Users className="h-4 w-4" />
-              <span>Family Members Census</span>
+              <span>{isMl ? 'കുടുംബാംഗങ്ങളുടെ സെൻസസ്' : 'Family Members Census'}</span>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                 activeEditTab === 'members'
                   ? 'bg-emerald-100 text-emerald-900'
@@ -1020,7 +1106,7 @@ export default function ResidentDashboard() {
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                    Permanent Mahallu Registration No
+                    {isMl ? 'സ്ഥിരം മഹല്ല് രജിസ്ട്രേഷൻ നമ്പർ' : 'Permanent Mahallu Registration No'}
                   </span>
                   <span className="font-mono font-bold text-sm text-emerald-800">
                     {house.mahallu_reg_no}
@@ -1028,7 +1114,7 @@ export default function ResidentDashboard() {
                 </div>
                 <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-white px-2 py-1 rounded border border-slate-200">
                   <Lock className="h-3 w-3 text-slate-400" />
-                  Locked by Mahallu
+                  {isMl ? 'മഹല്ല് രേഖകളിൽ രേഖപ്പെടുത്തിയത്' : 'Locked by Mahallu'}
                 </span>
               </div>
 
@@ -1036,13 +1122,13 @@ export default function ResidentDashboard() {
                 {/* House Name */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    Official House Name *
+                    {isMl ? 'ഔദ്യോഗിക വീട്ടുപേര് *' : 'Official House Name *'}
                   </label>
                   <input
                     type="text"
                     value={editHouseName}
                     onChange={(e) => setEditHouseName(e.target.value)}
-                    placeholder="e.g. Cherickode house"
+                    placeholder={isMl ? 'ഉദാ: ചെറിക്കോട് വീട്' : 'e.g. Cherickode house'}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                     required
                   />
@@ -1051,13 +1137,13 @@ export default function ResidentDashboard() {
                 {/* Ward / Door Number */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    Ward / Door Number *
+                    {isMl ? 'വാർഡ് / വീട്ടുനമ്പർ *' : 'Ward / Door Number *'}
                   </label>
                   <input
                     type="text"
                     value={editHouseNumber}
                     onChange={(e) => setEditHouseNumber(e.target.value)}
-                    placeholder="e.g. Ward 3 / Door 142"
+                    placeholder={isMl ? 'ഉദാ: വാർഡ് 3 / ഡോർ 142' : 'e.g. Ward 3 / Door 142'}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                     required
                   />
@@ -1066,13 +1152,13 @@ export default function ResidentDashboard() {
                 {/* Registered Phone */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    Registered Contact Phone *
+                    {isMl ? 'രജിസ്റ്റർ ചെയ്ത ഫോൺ നമ്പർ *' : 'Registered Contact Phone *'}
                   </label>
                   <input
                     type="tel"
                     value={editPhone}
                     onChange={(e) => setEditPhone(e.target.value)}
-                    placeholder="10-digit mobile number"
+                    placeholder={isMl ? '10 അക്ക മൊബൈൽ നമ്പർ' : '10-digit mobile number'}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                     required
                   />
@@ -1081,7 +1167,7 @@ export default function ResidentDashboard() {
                 {/* Mahallu Division */}
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    Mahallu Ward / Division *
+                    {isMl ? 'മഹല്ല് വാർഡ് / ഡിവിഷൻ *' : 'Mahallu Ward / Division *'}
                   </label>
                   <select
                     value={editDivision}
@@ -1091,7 +1177,7 @@ export default function ResidentDashboard() {
                   >
                     {(Object.keys(DIVISION_LABELS) as Division[]).map((key) => (
                       <option key={key} value={key}>
-                        {DIVISION_LABELS[key]}
+                        {isMl ? (DIVISION_LABELS_ML[key] || key) : DIVISION_LABELS[key]}
                       </option>
                     ))}
                   </select>
@@ -1101,13 +1187,17 @@ export default function ResidentDashboard() {
               {/* Reason / Notes */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
-                  Reason or Explanation for Changes (Optional)
+                  {isMl ? 'മാറ്റങ്ങൾക്കുള്ള കാരണം / വിശദീകരണം (നിർബന്ധമില്ല)' : 'Reason or Explanation for Changes (Optional)'}
                 </label>
                 <textarea
                   rows={2}
                   value={editNote}
                   onChange={(e) => setEditNote(e.target.value)}
-                  placeholder="e.g. Updating contact number to head of family, door number revision as per local body records..."
+                  placeholder={
+                    isMl
+                      ? 'ഉദാ: കുടുംബനാഥന്റെ ഫോൺ നമ്പർ പുതുക്കൽ, പഞ്ചായത്ത് രേഖ പ്രകാരമുള്ള വീട്ടുനമ്പർ...'
+                      : 'e.g. Updating contact number to head of family, door number revision as per local body records...'
+                  }
                   className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                 />
               </div>
@@ -1120,10 +1210,12 @@ export default function ResidentDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-emerald-50/50 border border-emerald-200/70">
                 <div>
                   <h3 className="font-bold text-slate-900 text-xs">
-                    Household Census Roster ({editMembers.length} Members)
+                    {isMl ? 'കുടുംബാംഗങ്ങളുടെ പട്ടിക' : 'Household Census Roster'} ({editMembers.length} {isMl ? 'അംഗങ്ങൾ' : 'Members'})
                   </h3>
                   <p className="text-[11px] text-slate-600">
-                    Add, remove, or edit member profiles. Designate one member as the official Head of Family.
+                    {isMl
+                      ? 'കുടുംബാംഗങ്ങളെ ചേർക്കുകയോ തിരുത്തുകയോ ചെയ്യുക. ഒരാളെ കുടുംബനാഥനായി തിരഞ്ഞെടുക്കുക.'
+                      : 'Add, remove, or edit member profiles. Designate one member as the official Head of Family.'}
                   </p>
                 </div>
                 <Button
@@ -1134,7 +1226,7 @@ export default function ResidentDashboard() {
                   className="gap-1.5 font-bold text-emerald-800 border-emerald-300 hover:bg-emerald-100/60 cursor-pointer text-xs shrink-0 self-start sm:self-auto"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Add Member
+                  {isMl ? 'അംഗത്തെ ചേർക്കുക' : 'Add Member'}
                 </Button>
               </div>
 
@@ -1157,12 +1249,12 @@ export default function ResidentDashboard() {
                             {index + 1}
                           </span>
                           <span className="font-bold text-xs text-slate-900">
-                            {member.name || `Member #${index + 1}`}
+                            {member.name || `${isMl ? 'അംഗം' : 'Member'} #${index + 1}`}
                           </span>
                           {member.is_head_of_family ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200 font-bold text-[10px]">
                               <Crown className="h-3 w-3 text-amber-600" />
-                              Head of Family
+                              {isMl ? 'കുടുംബനാഥൻ' : 'Head of Family'}
                             </span>
                           ) : (
                             <button
@@ -1170,7 +1262,7 @@ export default function ResidentDashboard() {
                               onClick={() => handleSetHeadOfFamily(index)}
                               className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline cursor-pointer ml-1"
                             >
-                              Make Head
+                              {isMl ? 'കുടുംബനാഥനാക്കുക' : 'Make Head'}
                             </button>
                           )}
                         </div>
@@ -1180,7 +1272,7 @@ export default function ResidentDashboard() {
                             type="button"
                             onClick={() => handleRemoveMember(index)}
                             className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                            title="Remove Member"
+                            title={isMl ? 'അംഗത്തെ ഒഴിവാക്കുക' : 'Remove Member'}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -1192,13 +1284,13 @@ export default function ResidentDashboard() {
                         {/* Name */}
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">
-                            Full Name *
+                            {isMl ? 'പൂർണ്ണ പേര് *' : 'Full Name *'}
                           </label>
                           <input
                             type="text"
                             value={member.name}
                             onChange={(e) => handleUpdateMember(index, 'name', e.target.value)}
-                            placeholder="Full name as per official ID"
+                            placeholder={isMl ? 'തിരിച്ചറിയൽ രേഖയിലുള്ള പേര്' : 'Full name as per official ID'}
                             className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                             required
                           />
@@ -1207,7 +1299,7 @@ export default function ResidentDashboard() {
                         {/* Relationship */}
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">
-                            Relationship to Head *
+                            {isMl ? 'കുടുംബനാഥനുമായുള്ള ബന്ധം *' : 'Relationship to Head *'}
                           </label>
                           <select
                             value={member.relationship}
@@ -1215,8 +1307,8 @@ export default function ResidentDashboard() {
                             className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                           >
                             {RELATIONSHIP_OPTIONS.map((rel) => (
-                              <option key={rel} value={rel}>
-                                {rel}
+                              <option key={rel.value} value={rel.value}>
+                                {isMl ? rel.labelMl : rel.labelEn}
                               </option>
                             ))}
                           </select>
@@ -1225,7 +1317,7 @@ export default function ResidentDashboard() {
                         {/* Age */}
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">
-                            Age (Years)
+                            {isMl ? 'വയസ്സ് *' : 'Age (Years)'}
                           </label>
                           <input
                             type="number"
@@ -1247,7 +1339,7 @@ export default function ResidentDashboard() {
                         {/* Marital Status */}
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">
-                            Marital Status *
+                            {isMl ? 'വിവാഹാവസ്ഥ *' : 'Marital Status *'}
                           </label>
                           <select
                             value={member.marital_status}
@@ -1258,7 +1350,7 @@ export default function ResidentDashboard() {
                           >
                             {MARITAL_STATUS_OPTIONS.map((ms) => (
                               <option key={ms.value} value={ms.value}>
-                                {ms.label}
+                                {isMl ? ms.labelMl : ms.labelEn}
                               </option>
                             ))}
                           </select>
@@ -1267,7 +1359,7 @@ export default function ResidentDashboard() {
                         {/* Employment Status */}
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">
-                            Job / Employment *
+                            {isMl ? 'തൊഴിൽ / ജോലി *' : 'Job / Employment *'}
                           </label>
                           <select
                             value={member.job_status}
@@ -1275,8 +1367,8 @@ export default function ResidentDashboard() {
                             className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                           >
                             {JOB_STATUS_OPTIONS.map((job) => (
-                              <option key={job} value={job}>
-                                {job}
+                              <option key={job.value} value={job.value}>
+                                {isMl ? job.labelMl : job.labelEn}
                               </option>
                             ))}
                           </select>
@@ -1285,7 +1377,7 @@ export default function ResidentDashboard() {
                         {/* General Education */}
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">
-                            General Education *
+                            {isMl ? 'പൊതുവിദ്യാഭ്യാസം *' : 'General Education *'}
                           </label>
                           <select
                             value={member.general_education}
@@ -1295,8 +1387,8 @@ export default function ResidentDashboard() {
                             className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                           >
                             {GENERAL_EDUCATION_OPTIONS.map((edu) => (
-                              <option key={edu} value={edu}>
-                                {edu}
+                              <option key={edu.value} value={edu.value}>
+                                {isMl ? edu.labelMl : edu.labelEn}
                               </option>
                             ))}
                           </select>
@@ -1305,7 +1397,7 @@ export default function ResidentDashboard() {
                         {/* Religious Education */}
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">
-                            Religious Education *
+                            {isMl ? 'മതവിദ്യാഭ്യാസം *' : 'Religious Education *'}
                           </label>
                           <select
                             value={member.religious_education}
@@ -1315,8 +1407,8 @@ export default function ResidentDashboard() {
                             className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                           >
                             {RELIGIOUS_EDUCATION_OPTIONS.map((redu) => (
-                              <option key={redu} value={redu}>
-                                {redu}
+                              <option key={redu.value} value={redu.value}>
+                                {isMl ? redu.labelMl : redu.labelEn}
                               </option>
                             ))}
                           </select>
@@ -1325,13 +1417,13 @@ export default function ResidentDashboard() {
                         {/* Contact Phone */}
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">
-                            Personal Phone (Optional)
+                            {isMl ? 'വ്യക്തിഗത ഫോൺ (നിർബന്ധമില്ല)' : 'Personal Phone (Optional)'}
                           </label>
                           <input
                             type="tel"
                             value={member.phone || ''}
                             onChange={(e) => handleUpdateMember(index, 'phone', e.target.value)}
-                            placeholder="10-digit mobile number"
+                            placeholder={isMl ? '10 അക്ക മൊബൈൽ നമ്പർ' : '10-digit mobile number'}
                             className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                           />
                         </div>
@@ -1354,7 +1446,7 @@ export default function ResidentDashboard() {
                   onClick={() => setActiveEditTab('members')}
                   className="gap-1 text-slate-700 cursor-pointer"
                 >
-                  <span>Edit Family Members ({editMembers.length})</span>
+                  <span>{isMl ? `കുടുംബാംഗങ്ങളെ തിരുത്തുക (${editMembers.length})` : `Edit Family Members (${editMembers.length})`}</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               ) : (
@@ -1365,7 +1457,7 @@ export default function ResidentDashboard() {
                   onClick={() => setActiveEditTab('dwelling')}
                   className="gap-1 text-slate-700 cursor-pointer"
                 >
-                  <span>← Back to Dwelling Details</span>
+                  <span>{isMl ? '← താമസസ്ഥല വിവരങ്ങളിലേക്ക്' : '← Back to Dwelling Details'}</span>
                 </Button>
               )}
             </div>
@@ -1378,7 +1470,7 @@ export default function ResidentDashboard() {
                 onClick={() => setEditModalOpen(false)}
                 disabled={isSubmittingUpdate}
               >
-                Cancel
+                {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
               </Button>
               <Button
                 type="submit"
@@ -1388,7 +1480,7 @@ export default function ResidentDashboard() {
                 className="bg-emerald-700 hover:bg-emerald-800 gap-1.5 cursor-pointer"
               >
                 <Send className="h-3.5 w-3.5" />
-                Submit to Profile Verification
+                {isMl ? 'പരിശോധനയ്ക്കായി സമർപ്പിക്കുക' : 'Submit to Profile Verification'}
               </Button>
             </div>
           </div>

@@ -6,7 +6,9 @@ import {
   PaymentRequestItem,
   HouseWithDetails,
   DIVISION_LABELS,
+  DIVISION_LABELS_ML,
 } from '@/lib/supabase/types';
+import { useLanguage } from '@/lib/context/LanguageContext';
 import { formatCurrency, formatDateTime, getHouseHeadName } from '@/lib/utils';
 import { Printer, CheckCircle2, ShieldCheck, Landmark } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -24,11 +26,15 @@ export function SpecialCollectionReceipt({
   house,
   onClose,
 }: SpecialCollectionReceiptProps) {
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
   const receiptCardRef = useRef<HTMLDivElement>(null);
 
   const headName = getHouseHeadName(house);
   const receiptNo = `REC-SPL-${contrib.id.replace(/[^A-Za-z0-9]/g, '').slice(-6).toUpperCase()}`;
-  const divisionLabel = DIVISION_LABELS[house.division] || house.division;
+  const divisionLabel = isMl
+    ? (DIVISION_LABELS_ML[house.division] || house.division)
+    : (DIVISION_LABELS[house.division] || house.division);
   const transactionRef = contrib.transaction_ref || 'N/A';
   const submittedAtFormatted = formatDateTime(contrib.submitted_at);
   const verifiedAtFormatted = contrib.verified_at
@@ -390,8 +396,8 @@ export function SpecialCollectionReceipt({
                   </svg>
                 </div>
                 <div class="title-wrap">
-                  <h1>Kunjikkulam Juma Masjid</h1>
-                  <p>Official Special Collection &amp; Contribution Receipt</p>
+                  <h1>${isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്' : 'Kunjikkulam Juma Masjid'}</h1>
+                  <p>${isMl ? 'പ്രത്യേക പിരിവ് സംഭാവനാ രസീത്' : 'Official Special Collection & Contribution Receipt'}</p>
                 </div>
               </div>
               <div class="header-right">
@@ -400,10 +406,10 @@ export function SpecialCollectionReceipt({
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                     <polyline points="22 4 12 14.01 9 11.01"></polyline>
                   </svg>
-                  Verified &amp; Reconciled
+                  ${isMl ? 'പരിശോധിച്ചു സ്വീകരിച്ചു' : 'Verified & Reconciled'}
                 </div>
                 <div class="receipt-no-text">
-                  Receipt No: <strong>${receiptNo}</strong>
+                  ${isMl ? 'രസീത് നമ്പർ' : 'Receipt No'}: <strong>${receiptNo}</strong>
                 </div>
               </div>
             </div>
@@ -411,20 +417,20 @@ export function SpecialCollectionReceipt({
             <!-- Details Grid -->
             <div class="details-grid">
               <div>
-                <div class="col-title">Household &amp; Donor Information</div>
+                <div class="col-title">${isMl ? 'കുടുംബ വിവരങ്ങൾ' : 'Household & Donor Information'}</div>
                 <div class="detail-line house-name">${house.house_name}</div>
-                ${headName ? `<div class="detail-line head-name">Head of Family: ${headName}</div>` : ''}
-                <div class="detail-line">House No: ${house.house_number}</div>
-                <div class="detail-line">Division: <strong>${divisionLabel}</strong></div>
-                <div class="detail-line">Mahallu Reg No: <span class="reg-no-highlight">${house.mahallu_reg_no}</span></div>
-                <div class="detail-line">Contact: ${house.phone}</div>
+                ${headName ? `<div class="detail-line head-name">${isMl ? 'കുടുംബനാഥൻ' : 'Head of Family'}: ${headName}</div>` : ''}
+                <div class="detail-line">${isMl ? 'വീട്ടു നമ്പർ' : 'House No'}: ${house.house_number}</div>
+                <div class="detail-line">${isMl ? 'വിഭാഗം' : 'Division'}: <strong>${divisionLabel}</strong></div>
+                <div class="detail-line">${isMl ? 'മഹല്ല് രജി. നമ്പർ' : 'Mahallu Reg No'}: <span class="reg-no-highlight">${house.mahallu_reg_no}</span></div>
+                <div class="detail-line">${isMl ? 'ഫോൺ' : 'Contact'}: ${house.phone}</div>
               </div>
               <div class="audit-right">
-                <div class="col-title">Payment Audit Details</div>
-                <div class="detail-line">Fund Category: <span class="audit-val-bold">${request.category}</span></div>
-                <div class="detail-line">Transaction UTR: <span class="audit-val-bold">${transactionRef}</span></div>
-                <div class="detail-line">Submitted At: ${submittedAtFormatted}</div>
-                <div class="detail-line">Verified At: <span class="audit-val-green">${verifiedAtFormatted}</span></div>
+                <div class="col-title">${isMl ? 'പേയ്‌മെന്റ് വിവരങ്ങൾ' : 'Payment Audit Details'}</div>
+                <div class="detail-line">${isMl ? 'ഫണ്ട് വിഭാഗം' : 'Fund Category'}: <span class="audit-val-bold">${request.category}</span></div>
+                <div class="detail-line">${isMl ? 'ട്രാൻസാക്ഷൻ UTR' : 'Transaction UTR'}: <span class="audit-val-bold">${transactionRef}</span></div>
+                <div class="detail-line">${isMl ? 'സമർപ്പിച്ചത്' : 'Submitted At'}: ${submittedAtFormatted}</div>
+                <div class="detail-line">${isMl ? 'പരിശോധിച്ചത്' : 'Verified At'}: <span class="audit-val-green">${verifiedAtFormatted}</span></div>
               </div>
             </div>
 
@@ -433,16 +439,16 @@ export function SpecialCollectionReceipt({
               <table>
                 <thead>
                   <tr>
-                    <th style="width: 55%">Campaign &amp; Description</th>
-                    <th class="center" style="width: 20%">Category</th>
-                    <th class="right" style="width: 25%">Amount</th>
+                    <th style="width: 55%">${isMl ? 'ക്യാമ്പയിനും വിവരങ്ങളും' : 'Campaign & Description'}</th>
+                    <th class="center" style="width: 20%">${isMl ? 'വിഭാഗം' : 'Category'}</th>
+                    <th class="right" style="width: 25%">${isMl ? 'തുക' : 'Amount'}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
                     <td>
                       <div class="desc-main">${request.title}</div>
-                      <div class="desc-secondary">${request.description || 'Special collection drive authorized by Mahallu Committee'}</div>
+                      <div class="desc-secondary">${request.description || (isMl ? 'മഹല്ല് കമ്മിറ്റി അംഗീകരിച്ച പ്രത്യേക പിരിവ്' : 'Special collection drive authorized by Mahallu Committee')}</div>
                     </td>
                     <td class="center period-val">${request.category}</td>
                     <td class="right amount-val">${formattedAmount}</td>
@@ -450,7 +456,7 @@ export function SpecialCollectionReceipt({
                 </tbody>
                 <tfoot>
                   <tr class="total-row">
-                    <td colspan="2" class="total-label">Total Contribution:</td>
+                    <td colspan="2" class="total-label">${isMl ? 'ആകെ സംഭാവന:' : 'Total Contribution:'}</td>
                     <td class="total-amount">${formattedAmount}</td>
                   </tr>
                 </tfoot>
@@ -470,8 +476,8 @@ export function SpecialCollectionReceipt({
                   </div>
                 </div>
                 <div>
-                  <div class="verified-text-title">Digitally Verified by Mahallu Admin</div>
-                  <div class="verified-text-sub">System-generated official receipt. Recorded in Mahallu Financial Ledger.</div>
+                  <div class="verified-text-title">${isMl ? 'മഹല്ല് അഡ്മിൻ ഡിജിറ്റലായി പരിശോധിച്ചു' : 'Digitally Verified by Mahallu Admin'}</div>
+                  <div class="verified-text-sub">${isMl ? 'സിസ്റ്റം ജനറേറ്റഡ് ഔദ്യോഗിക രസീത്. മഹല്ല് ലെഡ്ജറിൽ രേഖപ്പെടുത്തി.' : 'System-generated official receipt. Recorded in Mahallu Financial Ledger.'}</div>
                 </div>
               </div>
               <div class="auth-id-text">
@@ -514,10 +520,10 @@ export function SpecialCollectionReceipt({
             </div>
             <div>
               <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-                Kunjikkulam Juma Masjid
+                {isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്' : 'Kunjikkulam Juma Masjid'}
               </h1>
               <p className="text-xs text-emerald-700 font-semibold tracking-wide uppercase">
-                Official Special Collection &amp; Contribution Receipt
+                {isMl ? 'പ്രത്യേക പിരിവ് സംഭാവനാ രസീത്' : 'Official Special Collection & Contribution Receipt'}
               </p>
             </div>
           </div>
@@ -525,10 +531,10 @@ export function SpecialCollectionReceipt({
           <div className="text-left sm:text-right">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-semibold border border-emerald-200">
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-              Verified &amp; Reconciled
+              {isMl ? 'പരിശോധിച്ചു സ്വീകരിച്ചു' : 'Verified & Reconciled'}
             </div>
             <p className="text-xs text-slate-500 font-mono mt-1">
-              Receipt No: <span className="font-bold text-slate-900">{receiptNo}</span>
+              {isMl ? 'രസീത് നമ്പർ:' : 'Receipt No:'} <span className="font-bold text-slate-900">{receiptNo}</span>
             </p>
           </div>
         </div>
@@ -538,47 +544,47 @@ export function SpecialCollectionReceipt({
           {/* Household Info */}
           <div className="space-y-1.5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-              Household &amp; Donor Information
+              {isMl ? 'കുടുംബ വിവരങ്ങൾ' : 'Household & Donor Information'}
             </h3>
             <div>
               <p className="font-bold text-base text-slate-900">{house.house_name}</p>
               {headName && (
                 <p className="text-xs font-semibold text-emerald-800">
-                  Head of Family: {headName}
+                  {isMl ? 'കുടുംബനാഥൻ:' : 'Head of Family:'} {headName}
                 </p>
               )}
-              <p className="text-xs text-slate-600">House No: {house.house_number}</p>
+              <p className="text-xs text-slate-600">{isMl ? 'വീട്ടു നമ്പർ:' : 'House No:'} {house.house_number}</p>
               <p className="text-xs text-slate-600">
-                Division: <span className="font-semibold text-slate-800">{divisionLabel}</span>
+                {isMl ? 'വിഭാഗം:' : 'Division:'} <span className="font-semibold text-slate-800">{divisionLabel}</span>
               </p>
               <p className="text-xs text-slate-600 font-mono">
-                Mahallu Reg No:{' '}
+                {isMl ? 'മഹല്ല് രജി. നമ്പർ:' : 'Mahallu Reg No:'}{' '}
                 <span className="font-bold text-emerald-800">{house.mahallu_reg_no}</span>
               </p>
-              <p className="text-xs text-slate-600">Contact: {house.phone}</p>
+              <p className="text-xs text-slate-600">{isMl ? 'ഫോൺ:' : 'Contact:'} {house.phone}</p>
             </div>
           </div>
 
           {/* Payment & Audit Info */}
           <div className="space-y-1.5 sm:text-right">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-              Payment Audit Details
+              {isMl ? 'പേയ്‌മെന്റ് വിവരങ്ങൾ' : 'Payment Audit Details'}
             </h3>
             <div>
               <p className="text-xs text-slate-600">
-                Fund Category:{' '}
+                {isMl ? 'ഫണ്ട് വിഭാഗം:' : 'Fund Category:'}{' '}
                 <span className="font-bold text-slate-900">{request.category}</span>
               </p>
               <p className="text-xs text-slate-600 font-mono">
-                Transaction Ref:{' '}
+                {isMl ? 'ട്രാൻസാക്ഷൻ UTR:' : 'Transaction Ref:'}{' '}
                 <span className="font-bold text-slate-900">{transactionRef}</span>
               </p>
               <p className="text-xs text-slate-600">
-                Submitted At:{' '}
+                {isMl ? 'സമർപ്പിച്ചത്:' : 'Submitted At:'}{' '}
                 <span className="text-slate-800">{submittedAtFormatted}</span>
               </p>
               <p className="text-xs text-slate-600">
-                Verified At:{' '}
+                {isMl ? 'പരിശോധിച്ചത്:' : 'Verified At:'}{' '}
                 <span className="font-semibold text-emerald-800">{verifiedAtFormatted}</span>
               </p>
             </div>
@@ -590,9 +596,9 @@ export function SpecialCollectionReceipt({
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                <th className="pb-3">Campaign &amp; Description</th>
-                <th className="pb-3 text-center">Category</th>
-                <th className="pb-3 text-right">Amount</th>
+                <th className="pb-3">{isMl ? 'ക്യാമ്പയിനും വിവരങ്ങളും' : 'Campaign & Description'}</th>
+                <th className="pb-3 text-center">{isMl ? 'വിഭാഗം' : 'Category'}</th>
+                <th className="pb-3 text-right">{isMl ? 'തുക' : 'Amount'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -600,7 +606,7 @@ export function SpecialCollectionReceipt({
                 <td className="py-3.5">
                   <p className="font-semibold text-slate-800">{request.title}</p>
                   <p className="text-xs text-slate-500">
-                    {request.description || 'Special community collection drive'}
+                    {request.description || (isMl ? 'മഹല്ല് കമ്മിറ്റി അംഗീകരിച്ച പ്രത്യേക പിരിവ്' : 'Special community collection drive')}
                   </p>
                 </td>
                 <td className="py-3.5 text-center font-mono text-xs text-slate-600">
@@ -614,7 +620,7 @@ export function SpecialCollectionReceipt({
             <tfoot>
               <tr className="border-t-2 border-slate-900 font-bold text-slate-900">
                 <td colSpan={2} className="pt-3.5 text-right text-sm">
-                  Total Contribution:
+                  {isMl ? 'ആകെ സംഭാവന:' : 'Total Contribution:'}
                 </td>
                 <td className="pt-3.5 text-right text-xl text-emerald-800">
                   {formattedAmount}
@@ -634,9 +640,9 @@ export function SpecialCollectionReceipt({
               </div>
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-800">Digitally Verified by Mahallu Admin</p>
+              <p className="text-xs font-semibold text-slate-800">{isMl ? 'മഹല്ല് അഡ്മിൻ ഡിജിറ്റലായി പരിശോധിച്ചു' : 'Digitally Verified by Mahallu Admin'}</p>
               <p className="text-[11px] text-slate-500">
-                System-generated official receipt. Recorded in Mahallu Financial Ledger.
+                {isMl ? 'സിസ്റ്റം ജനറേറ്റഡ് ഔദ്യോഗിക രസീത്. മഹല്ല് ലെഡ്ജറിൽ രേഖപ്പെടുത്തി.' : 'System-generated official receipt. Recorded in Mahallu Financial Ledger.'}
               </p>
             </div>
           </div>
@@ -650,11 +656,11 @@ export function SpecialCollectionReceipt({
       {/* Action Buttons (Hidden on Print) */}
       <div className="flex items-center justify-end gap-3 no-print">
         <Button variant="outline" onClick={onClose}>
-          Close
+          {isMl ? 'ക്ലോസ് ചെയ്യുക' : 'Close'}
         </Button>
         <Button variant="primary" onClick={handlePrint} className="gap-2 font-semibold bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer">
           <Printer className="h-4 w-4" />
-          Print / Save PDF Receipt
+          {isMl ? 'രസീത് പ്രിന്റ് ചെയ്യുക / PDF' : 'Print / Save PDF Receipt'}
         </Button>
       </div>
     </div>

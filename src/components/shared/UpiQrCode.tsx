@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { Copy, Check, QrCode as QrIcon } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { useLanguage } from '@/lib/context/LanguageContext';
 
 interface UpiQrCodeProps {
   upiId: string;
@@ -22,7 +23,7 @@ export function buildUpiUri(params: {
   amount?: number;
   note?: string;
 }): string {
-  const { upiId, payeeName = "Kunjikkulam Juma Masjid", amount, note = 'Mahallu Monthly Dues' } = params;
+  const { upiId, payeeName = "Kunjikkulam Juma Masjid", amount, note = 'മഹല്ല് വരിസംഖ്യ' } = params;
   const query = new URLSearchParams();
   query.set('pa', upiId.trim());
   query.set('pn', payeeName.trim());
@@ -40,12 +41,14 @@ export const UpiQrCode: React.FC<UpiQrCodeProps> = ({
   upiId,
   payeeName = "Kunjikkulam Juma Masjid",
   amount,
-  note = 'Mahallu Monthly Dues',
+  note = 'മഹല്ല് വരിസംഖ്യ',
   size = 170,
   showDetails = true,
   showOpenAppButton = true,
   className = '',
 }) => {
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
   const { toast } = useToast();
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
@@ -85,7 +88,7 @@ export const UpiQrCode: React.FC<UpiQrCodeProps> = ({
   const handleCopyUpi = () => {
     navigator.clipboard.writeText(upiId);
     setCopied(true);
-    toast(`Copied UPI ID: ${upiId}`, 'success');
+    toast(isMl ? `യു.പി.ഐ ഐഡി പകർത്തി: ${upiId}` : `Copied UPI ID: ${upiId}`, 'success');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -99,7 +102,7 @@ export const UpiQrCode: React.FC<UpiQrCodeProps> = ({
             className="flex flex-col items-center justify-center bg-slate-50 rounded-xl text-slate-400 animate-pulse text-xs gap-1.5"
           >
             <QrIcon className="h-6 w-6 text-emerald-600 animate-spin" />
-            <span>Generating QR...</span>
+            <span>{isMl ? 'ക്യു.ആർ കോഡ് തയ്യാറാക്കുന്നു...' : 'Generating QR...'}</span>
           </div>
         ) : (
           <div className="relative group">
@@ -130,8 +133,8 @@ export const UpiQrCode: React.FC<UpiQrCodeProps> = ({
             <button
               type="button"
               onClick={handleCopyUpi}
-              className="p-1 text-slate-600 hover:text-emerald-700 hover:bg-slate-200 rounded-md transition-colors shrink-0"
-              title="Copy UPI ID"
+              className="p-1 text-slate-600 hover:text-emerald-700 hover:bg-slate-200 rounded-md transition-colors shrink-0 cursor-pointer"
+              title={isMl ? 'യു.പി.ഐ ഐഡി പകർത്തുക' : 'Copy UPI ID'}
             >
               {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
             </button>
@@ -140,7 +143,7 @@ export const UpiQrCode: React.FC<UpiQrCodeProps> = ({
           {/* Amount badge if provided */}
           {amount && amount > 0 ? (
             <div className="text-[11px] text-slate-600 font-medium">
-              Amount: <strong className="text-emerald-800 text-xs">₹{amount.toFixed(2)}</strong>
+              {isMl ? 'തുക:' : 'Amount:'} <strong className="text-emerald-800 text-xs">₹{amount.toFixed(2)}</strong>
             </div>
           ) : null}
 

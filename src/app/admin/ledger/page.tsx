@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
+import { useLanguage } from '@/lib/context/LanguageContext';
 import { DataService } from '@/lib/data-service';
 import { FinancialLedger, TransactionType, HouseWithDetails, PaymentDue } from '@/lib/supabase/types';
 import { ledgerEntrySchema, LedgerEntryInput } from '@/lib/schemas';
@@ -30,7 +31,24 @@ import {
   FileText,
 } from 'lucide-react';
 
+const CATEGORY_NAMES_ML: Record<string, string> = {
+  'Donation': 'പൊതു സംഭാവന',
+  'House Monthly Due': 'പ്രതിമാസ വരിസംഖ്യ',
+  'Madrasa Collection': 'മദ്രസ ഫണ്ട്',
+  'Friday Collection': 'വെള്ളിയാഴ്ച ജുമുഅ പിരിവ്',
+  'Maintenance': 'അറ്റകുറ്റപ്പണി',
+  'Electricity': 'വൈദ്യുതി & വെള്ളം ബിൽ',
+  'Relief Aid': 'ചികിത്സാ / ജീവകാരുണ്യ സഹായം',
+  'Salaries': 'ജീവനക്കാരുടെ ശമ്പളം / അലവൻസ്',
+  'Sound System': 'സൗണ്ട് സിസ്റ്റം & മൈക്ക് റിപ്പയർ',
+  'Other': 'മറ്റുള്ളവ',
+};
+
 export default function FinancialLedgerPage() {
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
+  const getCategoryLabel = (cat: string) => (isMl ? (CATEGORY_NAMES_ML[cat] || cat) : cat);
+
   const { toast } = useToast();
   const [ledger, setLedger] = useState<FinancialLedger[]>([]);
   const [houses, setHouses] = useState<HouseWithDetails[]>([]);
@@ -86,7 +104,7 @@ export default function FinancialLedgerPage() {
     setTypeFilter('all');
     setCategoryFilter('all');
     setSearchQuery('');
-    toast('All filters cleared to All-Time view', 'info');
+    toast(isMl ? 'എല്ലാ ഫിൽട്ടറുകളും ഒഴിവാക്കി മുഴുവൻ രേഖകളും കാണിക്കുന്നു' : 'All filters cleared to All-Time view', 'info');
   };
 
   // Manual Transaction Entry Modal
@@ -322,11 +340,11 @@ export default function FinancialLedgerPage() {
 
     const numAmount = parseFloat(amount);
     if (isNaN(numAmount) || numAmount <= 0) {
-      toast('Please enter a valid positive amount', 'error');
+      toast(isMl ? 'ദയവായി സാധുവായ തുക നൽകുക' : 'Please enter a valid positive amount', 'error');
       return;
     }
     if (!description.trim()) {
-      toast('Please provide a detailed description', 'error');
+      toast(isMl ? 'വിശദമായ വിവരണം നൽകുക' : 'Please provide a detailed description', 'error');
       return;
     }
 
@@ -341,10 +359,15 @@ export default function FinancialLedgerPage() {
       setEntryModalOpen(false);
       setAmount('');
       setDescription('');
-      toast(`Recorded manual ${entryType} transaction of ${formatCurrency(numAmount)}!`, 'success');
+      toast(
+        isMl
+          ? `${entryType === 'credit' ? 'വരവ്' : 'ചിലവ്'} ഇടപാടായി ${formatCurrency(numAmount)} രേഖപ്പെടുത്തി!`
+          : `Recorded manual ${entryType} transaction of ${formatCurrency(numAmount)}!`,
+        'success'
+      );
       await loadLedger();
     } catch {
-      toast('Failed to record transaction', 'error');
+      toast(isMl ? 'ഇടപാട് രേഖപ്പെടുത്താൻ കഴിഞ്ഞില്ല' : 'Failed to record transaction', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -361,12 +384,17 @@ export default function FinancialLedgerPage() {
     try {
       setIsDeleting(true);
       await DataService.deleteLedgerEntryAsync(itemToDelete.id, revertDueStatus);
-      toast(`Deleted ${itemToDelete.category} transaction (${formatCurrency(itemToDelete.amount)}) from ledger`, 'success');
+      toast(
+        isMl
+          ? `ലെഡ്ജറിൽ നിന്ന് ${getCategoryLabel(itemToDelete.category)} ഇടപാട് (${formatCurrency(itemToDelete.amount)}) നീക്കം ചെയ്തു`
+          : `Deleted ${itemToDelete.category} transaction (${formatCurrency(itemToDelete.amount)}) from ledger`,
+        'success'
+      );
       setDeleteModalOpen(false);
       setItemToDelete(null);
       await loadLedger();
     } catch (err: any) {
-      toast(err?.message || 'Failed to delete ledger entry', 'error');
+      toast(err?.message || (isMl ? 'ലെഡ്ജർ രേഖ നീക്കം ചെയ്യാൻ കഴിഞ്ഞില്ല' : 'Failed to delete ledger entry'), 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -401,7 +429,7 @@ export default function FinancialLedgerPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast(`Exported ${filteredLedger.length} ledger transactions to CSV`, 'success');
+    toast(isMl ? `${filteredLedger.length} ഇടപാടുകൾ CSV ആയി എക്സ്പോർട്ട് ചെയ്തു` : `Exported ${filteredLedger.length} ledger transactions to CSV`, 'success');
   };
 
   const handleExportPDF = () => {
@@ -765,22 +793,24 @@ export default function FinancialLedgerPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            Mahallu Financial Accounts & Ledger
+            {isMl ? 'മഹല്ല് വരവ്-ചിലവ് രജിസ്റ്റർ (ലെഡ്ജർ)' : 'Mahallu Financial Accounts & Ledger'}
           </h1>
           <p className="text-xs text-slate-500">
-            Double-entry bookkeeping audit of all monthly membership dues, public donations, and community expenditures.
+            {isMl
+              ? 'പ്രതിമാസ വരിസംഖ്യകൾ, പൊതു സംഭാവനകൾ, പള്ളി നടത്തിപ്പ് ചിലവുകൾ എന്നിവയുടെ ഡബിൾ-എൻട്രി അക്കൗണ്ട്സ് ഓഡിറ്റ്.'
+              : 'Double-entry bookkeeping audit of all monthly membership dues, public donations, and community expenditures.'}
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
           <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-2">
             <Download className="h-4 w-4" />
-            Export CSV
+            {isMl ? 'CSV എക്സ്പോർട്ട്' : 'Export CSV'}
           </Button>
 
           <Button variant="outline" size="sm" onClick={handleExportPDF} className="gap-2 text-emerald-800 border-emerald-300 hover:bg-emerald-50">
             <FileText className="h-4 w-4 text-emerald-700" />
-            Export PDF
+            {isMl ? 'PDF സ്റ്റേറ്റ്മെന്റ്' : 'Export PDF'}
           </Button>
 
           <Button
@@ -790,7 +820,7 @@ export default function FinancialLedgerPage() {
             className="gap-2 bg-emerald-700 hover:bg-emerald-800"
           >
             <Plus className="h-4 w-4" />
-            Record Transaction
+            {isMl ? 'പുതിയ ഇടപാട് രേഖപ്പെടുത്തുക' : 'Record Transaction'}
           </Button>
         </div>
       </div>
@@ -802,11 +832,11 @@ export default function FinancialLedgerPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Total Inflow (Credits)
+                {isMl ? 'ആകെ വരവ് (ക്രെഡിറ്റ്)' : 'Total Inflow (Credits)'}
               </span>
               {isFiltered && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Filtered ({creditCount})
+                  {isMl ? 'ഫിൽട്ടർ ചെയ്തത്' : 'Filtered'} ({creditCount})
                 </span>
               )}
             </div>
@@ -820,8 +850,8 @@ export default function FinancialLedgerPage() {
             </div>
             <p className="text-xs text-slate-500 mt-1">
               {isFiltered
-                ? `${creditCount} credit entries in filtered view`
-                : 'Monthly dues collections & public donations'}
+                ? (isMl ? `${creditCount} വരവ് രേഖകൾ കാണിക്കുന്നു` : `${creditCount} credit entries in filtered view`)
+                : (isMl ? 'പ്രതിമാസ വരിസംഖ്യകളും പൊതു സംഭാവനകളും' : 'Monthly dues collections & public donations')}
             </p>
           </div>
         </div>
@@ -831,11 +861,11 @@ export default function FinancialLedgerPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Total Outflow (Debits)
+                {isMl ? 'ആകെ ചിലവ് (ഡെബിറ്റ്)' : 'Total Outflow (Debits)'}
               </span>
               {isFiltered && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                  Filtered ({debitCount})
+                  {isMl ? 'ഫിൽട്ടർ ചെയ്തത്' : 'Filtered'} ({debitCount})
                 </span>
               )}
             </div>
@@ -849,8 +879,8 @@ export default function FinancialLedgerPage() {
             </div>
             <p className="text-xs text-slate-500 mt-1">
               {isFiltered
-                ? `${debitCount} debit entries in filtered view`
-                : 'Mosque power, sound repair, aid & maintenance'}
+                ? (isMl ? `${debitCount} ചിലവ് രേഖകൾ കാണിക്കുന്നു` : `${debitCount} debit entries in filtered view`)
+                : (isMl ? 'പള്ളി കറന്റ് ബിൽ, അറ്റകുറ്റപ്പണി, സഹായങ്ങൾ' : 'Mosque power, sound repair, aid & maintenance')}
             </p>
           </div>
         </div>
@@ -863,11 +893,13 @@ export default function FinancialLedgerPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-emerald-200">
-                {isFiltered ? 'Period Net Balance' : 'Treasury Cash Balance'}
+                {isFiltered
+                  ? (isMl ? 'കാലയളവിലെ നീക്കിയിരിപ്പ്' : 'Period Net Balance')
+                  : (isMl ? 'നീക്കിയിരിപ്പ് (ട്രഷറി ബാലൻസ്)' : 'Treasury Cash Balance')}
               </span>
               {isFiltered && (
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-200 border border-emerald-400/30">
-                  Filtered Flow
+                  {isMl ? 'നീക്കിയിരിപ്പ്' : 'Filtered Flow'}
                 </span>
               )}
             </div>
@@ -883,8 +915,8 @@ export default function FinancialLedgerPage() {
             </div>
             <p className="text-xs text-emerald-200/80 mt-1">
               {isFiltered
-                ? `Net flow for selected filter • All-Time Treasury: ${formatCurrency(summary.balance)}`
-                : 'Reconciled across bank & cash accounts'}
+                ? (isMl ? `ഫിൽട്ടർ ചെയ്ത ഫ്ലോ • ആകെ ട്രഷറി നീക്കിയിരിപ്പ്: ${formatCurrency(summary.balance)}` : `Net flow for selected filter • All-Time Treasury: ${formatCurrency(summary.balance)}`)
+                : (isMl ? 'ബാങ്ക് & ക്യാഷ് അക്കൗണ്ടുകളിലെ ആകെയുള്ള തുക' : 'Reconciled across bank & cash accounts')}
             </p>
           </div>
         </div>
@@ -898,14 +930,14 @@ export default function FinancialLedgerPage() {
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5 mr-1">
               <Calendar className="h-3.5 w-3.5 text-emerald-700" />
-              Period:
+              {isMl ? 'കാലയളവ്:' : 'Period:'}
             </span>
             {[
-              { id: 'all', label: 'All Time' },
-              { id: 'today', label: 'Today' },
-              { id: 'this_month', label: 'This Month' },
-              { id: 'last_month', label: 'Last Month' },
-              { id: 'this_year', label: 'This Year' },
+              { id: 'all', label: isMl ? 'മുഴുവൻ' : 'All Time' },
+              { id: 'today', label: isMl ? 'ഇന്ന്' : 'Today' },
+              { id: 'this_month', label: isMl ? 'ഈ മാസം' : 'This Month' },
+              { id: 'last_month', label: isMl ? 'കഴിഞ്ഞ മാസം' : 'Last Month' },
+              { id: 'this_year', label: isMl ? 'ഈ വർഷം' : 'This Year' },
             ].map((preset) => (
               <button
                 key={preset.id}
@@ -925,7 +957,7 @@ export default function FinancialLedgerPage() {
           {/* Custom Date Pickers */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-medium text-slate-500">From:</span>
+              <span className="text-[11px] font-medium text-slate-500">{isMl ? 'തുടക്കം:' : 'From:'}</span>
               <input
                 type="date"
                 value={startDate}
@@ -937,7 +969,7 @@ export default function FinancialLedgerPage() {
               />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-medium text-slate-500">To:</span>
+              <span className="text-[11px] font-medium text-slate-500">{isMl ? 'അവസാനം:' : 'To:'}</span>
               <input
                 type="date"
                 value={endDate}
@@ -971,7 +1003,7 @@ export default function FinancialLedgerPage() {
                 typeFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              All Types
+              {isMl ? 'എല്ലാ ഇടപാടുകളും' : 'All Types'}
             </button>
             <button
               onClick={() => setTypeFilter('credit')}
@@ -979,7 +1011,7 @@ export default function FinancialLedgerPage() {
                 typeFilter === 'credit' ? 'bg-emerald-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Credits Only
+              {isMl ? 'വരവ് മാത്രം' : 'Credits Only'}
             </button>
             <button
               onClick={() => setTypeFilter('debit')}
@@ -987,7 +1019,7 @@ export default function FinancialLedgerPage() {
                 typeFilter === 'debit' ? 'bg-rose-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Debits Only
+              {isMl ? 'ചിലവ് മാത്രം' : 'Debits Only'}
             </button>
           </div>
 
@@ -997,10 +1029,10 @@ export default function FinancialLedgerPage() {
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none w-full md:w-auto"
           >
-            <option value="all">All Categories</option>
+            <option value="all">{isMl ? 'എല്ലാ വിഭാഗങ്ങളും' : 'All Categories'}</option>
             {categories.map((c) => (
               <option key={c} value={c}>
-                {c}
+                {getCategoryLabel(c)}
               </option>
             ))}
           </select>
@@ -1010,7 +1042,7 @@ export default function FinancialLedgerPage() {
             <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by receipt no (e.g. REC-202607-U042), head name, house, or amount..."
+              placeholder={isMl ? 'റസീത് നമ്പർ (ഉദാ: REC-202607-U042), നാഥൻ, വീട്, തുക എന്നിവ തിരയുക...' : 'Search by receipt no (e.g. REC-202607-U042), head name, house, or amount...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
@@ -1023,14 +1055,15 @@ export default function FinancialLedgerPage() {
           <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 text-xs">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-slate-600">
-                Showing <strong className="text-slate-900">{filteredLedger.length}</strong> of{' '}
-                <strong className="text-slate-900">{ledger.length}</strong> entries:
+                {isMl
+                  ? <><strong className="text-slate-900">{ledger.length}</strong> ൽ <strong className="text-slate-900">{filteredLedger.length}</strong> രേഖകൾ കാണിക്കുന്നു:</>
+                  : <>Showing <strong className="text-slate-900">{filteredLedger.length}</strong> of <strong className="text-slate-900">{ledger.length}</strong> entries:</>}
               </span>
 
               {(startDate || endDate) && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-medium border border-emerald-200">
                   <Calendar className="h-3 w-3 text-emerald-600" />
-                  {startDate ? formatDate(startDate) : 'Start'} – {endDate ? formatDate(endDate) : 'End'}
+                  {startDate ? formatDate(startDate) : (isMl ? 'തുടക്കം' : 'Start')} – {endDate ? formatDate(endDate) : (isMl ? 'അവസാനം' : 'End')}
                   <button
                     type="button"
                     onClick={() => applyDatePreset('all')}
@@ -1044,7 +1077,7 @@ export default function FinancialLedgerPage() {
 
               {typeFilter !== 'all' && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 text-[11px] font-medium border border-slate-300">
-                  Type: {typeFilter === 'credit' ? 'Credits' : 'Debits'}
+                  {isMl ? 'ഇനം:' : 'Type:'} {typeFilter === 'credit' ? (isMl ? 'വരവ്' : 'Credits') : (isMl ? 'ചിലവ്' : 'Debits')}
                   <button
                     type="button"
                     onClick={() => setTypeFilter('all')}
@@ -1058,7 +1091,7 @@ export default function FinancialLedgerPage() {
 
               {categoryFilter !== 'all' && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 text-[11px] font-medium border border-slate-300">
-                  Category: {categoryFilter}
+                  {isMl ? 'വിഭാഗം:' : 'Category:'} {getCategoryLabel(categoryFilter)}
                   <button
                     type="button"
                     onClick={() => setCategoryFilter('all')}
@@ -1072,7 +1105,7 @@ export default function FinancialLedgerPage() {
 
               {searchQuery.trim() && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 text-[11px] font-medium border border-slate-300">
-                  Search: &ldquo;{searchQuery.trim()}&rdquo;
+                  {isMl ? 'തിരഞ്ഞത്:' : 'Search:'} &ldquo;{searchQuery.trim()}&rdquo;
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
@@ -1091,7 +1124,7 @@ export default function FinancialLedgerPage() {
               className="inline-flex items-center gap-1.5 text-xs text-rose-600 hover:text-rose-700 font-semibold cursor-pointer py-1 px-2 rounded-lg hover:bg-rose-50 transition-colors ml-auto"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              Reset All Filters
+              {isMl ? 'ഫിൽട്ടറുകൾ ഒഴിവാക്കുക' : 'Reset All Filters'}
             </button>
           </div>
         )}
@@ -1103,20 +1136,20 @@ export default function FinancialLedgerPage() {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
               <tr>
-                <th className="py-3.5 px-6">Date & Time</th>
-                <th className="py-3.5 px-4">Type</th>
-                <th className="py-3.5 px-4">Category</th>
-                <th className="py-3.5 px-4">Household & Head of House</th>
-                <th className="py-3.5 px-4">Description / Reference</th>
-                <th className="py-3.5 px-6 text-right">Amount</th>
-                <th className="py-3.5 px-4 text-center">Actions</th>
+                <th className="py-3.5 px-6">{isMl ? 'തീയതി & സമയം' : 'Date & Time'}</th>
+                <th className="py-3.5 px-4">{isMl ? 'ഇനം' : 'Type'}</th>
+                <th className="py-3.5 px-4">{isMl ? 'വിഭാഗം' : 'Category'}</th>
+                <th className="py-3.5 px-4">{isMl ? 'കുടുംബവും കുടുംബനാഥനും' : 'Household & Head of House'}</th>
+                <th className="py-3.5 px-4">{isMl ? 'വിവരണം / റഫറൻസ്' : 'Description / Reference'}</th>
+                <th className="py-3.5 px-6 text-right">{isMl ? 'തുക' : 'Amount'}</th>
+                <th className="py-3.5 px-4 text-center">{isMl ? 'നടപടികൾ' : 'Actions'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredLedger.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-10 text-center text-slate-400">
-                    No ledger transactions matching your criteria.
+                    {isMl ? 'തിരഞ്ഞെടുത്ത ഫിൽട്ടറിൽ ഇടപാടുകളൊന്നും കണ്ടെത്താനായില്ല.' : 'No ledger transactions matching your criteria.'}
                   </td>
                 </tr>
               ) : (
@@ -1130,12 +1163,12 @@ export default function FinancialLedgerPage() {
 
                       <td className="py-3.5 px-4">
                         <Badge variant={item.type} size="sm">
-                          {item.type}
+                          {isMl ? (item.type === 'credit' ? 'വരവ്' : 'ചിലവ്') : item.type}
                         </Badge>
                       </td>
 
                       <td className="py-3.5 px-4 font-bold text-slate-800">
-                        {item.category}
+                        {getCategoryLabel(item.category)}
                       </td>
 
                       <td className="py-3.5 px-4">
@@ -1178,9 +1211,9 @@ export default function FinancialLedgerPage() {
                                       setReceiptModalOpen(true);
                                     }}
                                     className="text-[10px] text-emerald-700 hover:text-emerald-900 underline font-semibold cursor-pointer"
-                                    title="View & Print Official Digital Receipt"
+                                    title={isMl ? 'ഔദ്യോഗിക ഡിജിറ്റൽ റസീത് കാണുക & പ്രിന്റ് ചെയ്യുക' : 'View & Print Official Digital Receipt'}
                                   >
-                                    View Receipt
+                                    {isMl ? 'റസീത് കാണുക' : 'View Receipt'}
                                   </button>
                                 )}
                               </div>
@@ -1189,7 +1222,7 @@ export default function FinancialLedgerPage() {
                         ) : resolved.isDuesOrHouse ? (
                           <div className="text-slate-400 text-xs">
                             <span className="font-mono text-slate-600">
-                              {resolved.regNo || resolved.houseName || 'House Dues'}
+                              {resolved.regNo || resolved.houseName || (isMl ? 'വരിസംഖ്യ' : 'House Dues')}
                             </span>
                             {resolved.receiptNo && (
                               <div className="mt-0.5 font-mono text-[10px] text-emerald-800 font-bold">
@@ -1198,7 +1231,7 @@ export default function FinancialLedgerPage() {
                             )}
                           </div>
                         ) : (
-                          <span className="text-slate-400 italic text-[11px]">Mosque / General</span>
+                          <span className="text-slate-400 italic text-[11px]">{isMl ? 'മഹല്ല് പൊതുവായത്' : 'Mosque / General'}</span>
                         )}
                       </td>
 
@@ -1219,7 +1252,7 @@ export default function FinancialLedgerPage() {
                           type="button"
                           onClick={() => handleOpenDelete(item)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="Delete this transaction entry"
+                          title={isMl ? 'ഈ ഇടപാട് ഒഴിവാക്കുക' : 'Delete this transaction entry'}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -1237,14 +1270,14 @@ export default function FinancialLedgerPage() {
       <Modal
         isOpen={entryModalOpen}
         onClose={() => setEntryModalOpen(false)}
-        title="Post Manual Transaction Entry"
-        description="Record offline donations, cash dues, or mosque operational expenditures into the ledger."
+        title={isMl ? 'പുതിയ ഇടപാട് രേഖപ്പെടുത്തുക' : 'Post Manual Transaction Entry'}
+        description={isMl ? 'ഓഫ്‌ലൈൻ സംഭാവനകൾ, നേരിട്ടുള്ള വരിസംഖ്യ, അല്ലെങ്കിൽ പള്ളി ചെലവുകൾ ലെഡ്ജറിൽ രേഖപ്പെടുത്തുക.' : 'Record offline donations, cash dues, or mosque operational expenditures into the ledger.'}
       >
         <form onSubmit={handleCreateEntry} className="space-y-4 text-xs">
           {/* Credit vs Debit Toggle */}
           <div>
             <label className="block font-semibold text-slate-700 mb-1.5">
-              Transaction Nature *
+              {isMl ? 'ഇടപാടിന്റെ സ്വഭാവം *' : 'Transaction Nature *'}
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -1259,7 +1292,7 @@ export default function FinancialLedgerPage() {
                   }`}
               >
                 <ArrowDownLeft className="h-4 w-4 text-emerald-600" />
-                Credit (Income / Inflow)
+                {isMl ? 'വരവ് (ക്രെഡിറ്റ് / ഇൻകം)' : 'Credit (Income / Inflow)'}
               </button>
 
               <button
@@ -1274,14 +1307,16 @@ export default function FinancialLedgerPage() {
                   }`}
               >
                 <ArrowUpRight className="h-4 w-4 text-rose-600" />
-                Debit (Expense / Outflow)
+                {isMl ? 'ചിലവ് (ഡെബിറ്റ് / എക്സ്പെൻസ്)' : 'Debit (Expense / Outflow)'}
               </button>
             </div>
           </div>
 
           {/* Category */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-1.5">Category *</label>
+            <label className="block font-semibold text-slate-700 mb-1.5">
+              {isMl ? 'വിഭാഗം (Category) *' : 'Category *'}
+            </label>
             <select
               value={category}
               onChange={(e) => {
@@ -1295,20 +1330,20 @@ export default function FinancialLedgerPage() {
             >
               {entryType === 'credit' ? (
                 <>
-                  <option value="Donation">Public / Well-wisher Donation</option>
-                  <option value="House Monthly Due">House Monthly Due (Offline Cash)</option>
-                  <option value="Madrasa Collection">Madrasa Education Fund</option>
-                  <option value="Friday Collection">Friday Jumua Collection</option>
-                  <option value="Other">Other (Will mention in description)</option>
+                  <option value="Donation">{isMl ? 'പൊതു / അഭ്യുദയകാംക്ഷി സംഭാവന' : 'Public / Well-wisher Donation'}</option>
+                  <option value="House Monthly Due">{isMl ? 'പ്രതിമാസ വരിസംഖ്യ (ഓഫ്‌ലൈൻ ക്യാഷ്)' : 'House Monthly Due (Offline Cash)'}</option>
+                  <option value="Madrasa Collection">{isMl ? 'മദ്രസ വിദ്യാഭ്യാസ ഫണ്ട്' : 'Madrasa Education Fund'}</option>
+                  <option value="Friday Collection">{isMl ? 'വെള്ളിയാഴ്ച ജുമുഅ പിരിവ്' : 'Friday Jumua Collection'}</option>
+                  <option value="Other">{isMl ? 'മറ്റുള്ളവ (വിവരണത്തിൽ വ്യക്തമാക്കുക)' : 'Other (Will mention in description)'}</option>
                 </>
               ) : (
                 <>
-                  <option value="Maintenance">Mosque / Madrasa Maintenance</option>
-                  <option value="Electricity">KSEB Electricity & Water</option>
-                  <option value="Relief Aid">Medical & Relief Financial Aid</option>
-                  <option value="Salaries">Staff / Imam / Muazzin Stipend</option>
-                  <option value="Sound System">Azaan Speaker & Sound Repair</option>
-                  <option value="Other">Other (Will mention in description)</option>
+                  <option value="Maintenance">{isMl ? 'പള്ളി / മദ്രസ അറ്റകുറ്റപ്പണി' : 'Mosque / Madrasa Maintenance'}</option>
+                  <option value="Electricity">{isMl ? 'കെ.എസ്.ഇ.ബി വൈദ്യുതി & വെള്ളം ബിൽ' : 'KSEB Electricity & Water'}</option>
+                  <option value="Relief Aid">{isMl ? 'ചികിത്സാ & ദുരിതാശ്വാസ ധനസഹായം' : 'Medical & Relief Financial Aid'}</option>
+                  <option value="Salaries">{isMl ? 'ജീവനക്കാരുടെ ശമ്പളം / അലവൻസ്' : 'Staff / Imam / Muazzin Stipend'}</option>
+                  <option value="Sound System">{isMl ? 'ബാങ്ക് മൈക്ക് & സൗണ്ട് സിസ്റ്റം റിപ്പയർ' : 'Azaan Speaker & Sound Repair'}</option>
+                  <option value="Other">{isMl ? 'മറ്റുള്ളവ (വിവരണത്തിൽ വ്യക്തമാക്കുക)' : 'Other (Will mention in description)'}</option>
                 </>
               )}
             </select>
@@ -1318,7 +1353,7 @@ export default function FinancialLedgerPage() {
           {entryType === 'credit' && category === 'House Monthly Due' && (
             <div>
               <label className="block font-semibold text-slate-700 mb-1.5">
-                Select Household (Head of Family) *
+                {isMl ? 'കുടുംബനാഥനെ / വീട് തിരഞ്ഞെടുക്കുക *' : 'Select Household (Head of Family) *'}
               </label>
               <select
                 value={selectedHouseId}
@@ -1332,16 +1367,18 @@ export default function FinancialLedgerPage() {
                     const dueAmt = DataService.getMonthlyDueAmount(curMonth);
                     if (!amount) setAmount(String(dueAmt));
                     setDescription(
-                      `Monthly Dues (Offline Cash) - Month: ${curMonth} | House: ${targetH.mahallu_reg_no} - ${targetH.house_name} | Head: ${headName}`
+                      isMl
+                        ? `പ്രതിമാസ വരിസംഖ്യ (ഓഫ്‌ലൈൻ ക്യാഷ്) - മാസം: ${curMonth} | വീട്: ${targetH.mahallu_reg_no} - ${targetH.house_name} | കുടുംബനാഥൻ: ${headName}`
+                        : `Monthly Dues (Offline Cash) - Month: ${curMonth} | House: ${targetH.mahallu_reg_no} - ${targetH.house_name} | Head: ${headName}`
                     );
                   }
                 }}
                 className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
               >
-                <option value="">-- Choose Household (Sorted by Reg No) --</option>
+                <option value="">{isMl ? '-- വീട് തിരഞ്ഞെടുക്കുക (രജി. നമ്പർ ക്രമത്തിൽ) --' : '-- Choose Household (Sorted by Reg No) --'}</option>
                 {houses.map((h) => (
                   <option key={h.id} value={h.id}>
-                    {h.mahallu_reg_no} - {h.house_name} (Head: {getHouseHeadName(h)})
+                    {h.mahallu_reg_no} - {h.house_name} ({isMl ? 'നാഥൻ' : 'Head'}: {getHouseHeadName(h)})
                   </option>
                 ))}
               </select>
@@ -1350,7 +1387,7 @@ export default function FinancialLedgerPage() {
 
           {/* Amount */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-1.5">Amount (INR ₹) *</label>
+            <label className="block font-semibold text-slate-700 mb-1.5">{isMl ? 'തുക (INR ₹) *' : 'Amount (INR ₹) *'}</label>
             <input
               type="number"
               step="0.01"
@@ -1366,11 +1403,11 @@ export default function FinancialLedgerPage() {
           {/* Detailed Description */}
           <div>
             <label className="block font-semibold text-slate-700 mb-1.5">
-              Audit Description & Purpose *
+              {isMl ? 'ഓഡിറ്റ് വിവരണം & ലക്ഷ്യം *' : 'Audit Description & Purpose *'}
             </label>
             <textarea
               rows={3}
-              placeholder="e.g. Offline cash contribution by sponsor or Invoice #489 paid for minaret repair"
+              placeholder={isMl ? 'ഉദാ: സ്പോൺസർ നൽകിയ തുക അല്ലെങ്കിൽ മിനാരം റിപ്പയർ ബിൽ #489' : 'e.g. Offline cash contribution by sponsor or Invoice #489 paid for minaret repair'}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
@@ -1384,10 +1421,10 @@ export default function FinancialLedgerPage() {
               variant="outline"
               onClick={() => setEntryModalOpen(false)}
             >
-              Cancel
+              {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
             </Button>
             <Button type="submit" variant="primary" isLoading={isSubmitting}>
-              Post to Ledger
+              {isMl ? 'ലെഡ്ജറിലേക്ക് ചേർക്കുക' : 'Post to Ledger'}
             </Button>
           </div>
         </form>
@@ -1402,8 +1439,8 @@ export default function FinancialLedgerPage() {
             setItemToDelete(null);
           }
         }}
-        title="Delete Ledger Transaction"
-        description="Are you sure you want to delete this payment or transaction from the financial ledger?"
+        title={isMl ? 'ഇടപാട് ഒഴിവാക്കുക' : 'Delete Ledger Transaction'}
+        description={isMl ? 'ഈ പെയ്‌മെന്റ് അല്ലെങ്കിൽ ഇടപാട് മഹല്ല് വരവ്-ചിലവ് രജിസ്റ്ററിൽ നിന്ന് നീക്കം ചെയ്യണമെന്ന് ഉറപ്പാണോ?' : 'Are you sure you want to delete this payment or transaction from the financial ledger?'}
         maxWidth="md"
       >
         {itemToDelete && (
@@ -1412,10 +1449,12 @@ export default function FinancialLedgerPage() {
             <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 space-y-1">
               <div className="flex items-center gap-1.5 font-bold text-xs text-rose-950">
                 <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
-                <span>Financial Ledger Audit Notice</span>
+                <span>{isMl ? 'ഫിനാൻഷ്യൽ ലെഡ്ജർ ഓഡിറ്റ് മുന്നറിയിപ്പ്' : 'Financial Ledger Audit Notice'}</span>
               </div>
               <p className="text-[11px] leading-relaxed text-rose-800">
-                Deleting this record will immediately update the Mahallu accounts, recalculate total inflow, outflow, and treasury balance.
+                {isMl
+                  ? 'ഈ രേഖ ഒഴിവാക്കുന്നത് മഹല്ല് അക്കൗണ്ടുകൾ ഉടൻ അപ്‌ഡേറ്റ് ചെയ്യുകയും ആകെ വരവ്, ചിലവ്, ട്രഷറി ബാലൻസ് എന്നിവ പുനർനിർണ്ണയിക്കുകയും ചെയ്യും.'
+                  : 'Deleting this record will immediately update the Mahallu accounts, recalculate total inflow, outflow, and treasury balance.'}
               </p>
             </div>
 
@@ -1424,9 +1463,9 @@ export default function FinancialLedgerPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Badge variant={itemToDelete.type} size="sm">
-                    {itemToDelete.type}
+                    {itemToDelete.type === 'credit' ? (isMl ? 'വരവ്' : 'credit') : (isMl ? 'ചിലവ്' : 'debit')}
                   </Badge>
-                  <span className="font-bold text-slate-900 text-sm">{itemToDelete.category}</span>
+                  <span className="font-bold text-slate-900 text-sm">{getCategoryLabel(itemToDelete.category)}</span>
                 </div>
                 <span
                   className={`font-black text-base ${
@@ -1443,7 +1482,7 @@ export default function FinancialLedgerPage() {
                   return (
                     <>
                       <div className="text-[11px] text-slate-600 pt-1.5 border-t border-slate-200 flex items-center justify-between">
-                        <span>Head of Family:</span>
+                        <span>{isMl ? 'കുടുംബനാഥൻ:' : 'Head of Family:'}</span>
                         <strong className="text-slate-900 flex items-center gap-1 font-bold">
                           <User className="h-3 w-3 text-emerald-700" />
                           {resolved.headName} ({resolved.houseName || resolved.regNo})
@@ -1451,7 +1490,7 @@ export default function FinancialLedgerPage() {
                       </div>
                       {resolved.receiptNo && (
                         <div className="text-[11px] text-slate-600 pt-1.5 border-t border-slate-200 flex items-center justify-between">
-                          <span>Receipt Number:</span>
+                          <span>{isMl ? 'റസീത് നമ്പർ:' : 'Receipt Number:'}</span>
                           <strong className="text-emerald-800 font-mono font-bold flex items-center gap-1">
                             <Receipt className="h-3 w-3 text-emerald-600" />
                             {resolved.receiptNo}
@@ -1465,14 +1504,14 @@ export default function FinancialLedgerPage() {
               })()}
 
               <div className="text-[11px] text-slate-600 pt-1.5 border-t border-slate-200 flex items-center justify-between">
-                <span>Transaction Date:</span>
+                <span>{isMl ? 'ഇടപാട് തീയതി:' : 'Transaction Date:'}</span>
                 <strong className="text-slate-800">{formatDateTime(itemToDelete.created_at)}</strong>
               </div>
 
               {itemToDelete.description && (
                 <div className="text-[11px] text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200">
                   <span className="font-semibold text-slate-400 block text-[10px] uppercase tracking-wider mb-0.5">
-                    Description & Reference
+                    {isMl ? 'വിവരണം & റഫറൻസ്' : 'Description & Reference'}
                   </span>
                   {itemToDelete.description}
                 </div>
@@ -1489,9 +1528,11 @@ export default function FinancialLedgerPage() {
                   className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4 border-slate-300 cursor-pointer"
                 />
                 <div className="text-[11px] text-amber-950">
-                  <span className="font-bold block">Revert linked household due to Pending (Unpaid)</span>
+                  <span className="font-bold block">{isMl ? "ബന്ധപ്പെട്ട വീടിന്റെ കുടിശ്ശിക 'അടച്ചിട്ടില്ല' എന്ന് പുനഃസ്ഥാപിക്കുക" : 'Revert linked household due to Pending (Unpaid)'}</span>
                   <span className="text-amber-800">
-                    Marks the household's monthly fee as pending/unpaid again so it is accurately reflected on the defaulters and payment records.
+                    {isMl
+                      ? "വീടിന്റെ പ്രതിമാസ വരിസംഖ്യ വീണ്ടും കുടിശ്ശികയായി അടയാളപ്പെടുത്തുന്നു, അതിനാൽ ഇത് ഡിഫോൾട്ടേഴ്സ് ലിസ്റ്റിലും പെയ്‌മെന്റ് രേഖകളിലും കൃത്യമായി കാണിക്കും."
+                      : "Marks the household's monthly fee as pending/unpaid again so it is accurately reflected on the defaulters and payment records."}
                   </span>
                 </div>
               </label>
@@ -1509,7 +1550,7 @@ export default function FinancialLedgerPage() {
                 }}
                 disabled={isDeleting}
               >
-                Cancel
+                {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
               </Button>
               <Button
                 type="button"
@@ -1520,7 +1561,7 @@ export default function FinancialLedgerPage() {
                 className="gap-1.5 cursor-pointer"
               >
                 <Trash2 className="h-4 w-4" />
-                Delete Transaction
+                {isMl ? 'ഇടപാട് ഒഴിവാക്കുക' : 'Delete Transaction'}
               </Button>
             </div>
           </div>
@@ -1530,7 +1571,7 @@ export default function FinancialLedgerPage() {
       <Modal
         isOpen={receiptModalOpen}
         onClose={() => setReceiptModalOpen(false)}
-        title="Official Mahallu Electronic Receipt"
+        title={isMl ? 'ഔദ്യോഗിക മഹല്ല് ഇലക്ട്രോണിക് റസീത്' : 'Official Mahallu Electronic Receipt'}
         maxWidth="2xl"
       >
         {receiptData && (

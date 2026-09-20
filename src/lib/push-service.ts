@@ -335,7 +335,7 @@ export async function broadcastPushNotification(
 // =========================================================================
 
 /**
- * 1. Payment Submitted: Notify Admins & Resident
+ * 1. Payment Submitted: Notify Admins & Resident (Malayalam)
  */
 export async function notifyPaymentSubmitted(params: {
   houseName: string;
@@ -352,8 +352,8 @@ export async function notifyPaymentSubmitted(params: {
   await broadcastPushNotification(
     (s) => s.role === 'admin',
     {
-      title: '💰 New Payment Submitted',
-      body: `${houseName} (${regNo}) paid ₹${amount} (UTR: ${utr}) for ${title}. Tap to verify.`,
+      title: '💰 പുതിയ പേയ്‌മെന്റ് സമർപ്പിച്ചു',
+      body: `${houseName} (${regNo}) ₹${amount} അടച്ചു (UTR: ${utr}) - ${title}. പരിശോധിക്കാൻ ക്ലിക്ക് ചെയ്യുക.`,
       url: '/admin/payments',
       tag: `payment-sub-${utr}`,
     }
@@ -364,8 +364,8 @@ export async function notifyPaymentSubmitted(params: {
     await broadcastPushNotification(
       (s) => isResidentMatch(s, userId, houseId),
       {
-        title: '⏳ Payment Reference Received',
-        body: `Your payment of ₹${amount} for ${title} has been submitted for administrative verification.`,
+        title: '⏳ പേയ്‌മെന്റ് റഫറൻസ് ലഭിച്ചു',
+        body: `${title} ഇനത്തിൽ ₹${amount} ന്റെ പേയ്‌മെന്റ് പരിശോധനക്കായി മഹല്ല് ഓഫീസിലേക്ക് സമർപ്പിച്ചു.`,
         url: '/dashboard/payments',
         tag: `payment-ack-${utr}`,
       }
@@ -374,7 +374,7 @@ export async function notifyPaymentSubmitted(params: {
 }
 
 /**
- * 2. Payment Verified: Notify Resident
+ * 2. Payment Verified: Notify Resident (Malayalam)
  */
 export async function notifyPaymentVerified(params: {
   houseName: string;
@@ -389,8 +389,8 @@ export async function notifyPaymentVerified(params: {
   await broadcastPushNotification(
     (s) => isResidentMatch(s, userId, houseId),
     {
-      title: '✅ Payment Verified & Credited!',
-      body: `Alhamdulillah! Your payment of ₹${amount} for ${title} has been verified and your digital receipt is ready.`,
+      title: '✅ പേയ്‌മെന്റ് സ്ഥിരീകരിച്ചു!',
+      body: `അൽഹംദുലില്ലാഹ്! ${title} ഇനത്തിലേക്കുള്ള ₹${amount} അടവ് സ്ഥിരീകരിച്ചു. ഡിജിറ്റൽ രസീത് ലഭ്യമാണ്.`,
       url: '/dashboard/payments',
       tag: 'payment-verified',
     }
@@ -398,7 +398,7 @@ export async function notifyPaymentVerified(params: {
 }
 
 /**
- * 3. Payment Rejected: Notify Resident
+ * 3. Payment Rejected: Notify Resident (Malayalam)
  */
 export async function notifyPaymentRejected(params: {
   houseName: string;
@@ -414,8 +414,8 @@ export async function notifyPaymentRejected(params: {
   await broadcastPushNotification(
     (s) => isResidentMatch(s, userId, houseId),
     {
-      title: '❌ Payment Reference Not Approved',
-      body: `Your payment reference for ${title} could not be verified: ${reason}. Tap to resubmit.`,
+      title: '❌ പേയ്‌മെന്റ് റഫറൻസ് നിരസിച്ചു',
+      body: `${title} ഇനത്തിലുള്ള പേയ്‌മെന്റ് അംഗീകരിക്കാൻ കഴിഞ്ഞില്ല: ${reason}. വീണ്ടും സമർപ്പിക്കുക.`,
       url: '/dashboard/payments',
       tag: 'payment-rejected',
     }
@@ -423,7 +423,7 @@ export async function notifyPaymentRejected(params: {
 }
 
 /**
- * 4. Special Collection Request Published: Notify ALL Residents
+ * 4. Special Collection Request Published: Notify ALL Residents (Malayalam)
  */
 export async function notifySpecialRequestCreated(params: {
   title: string;
@@ -437,8 +437,8 @@ export async function notifySpecialRequestCreated(params: {
   await broadcastPushNotification(
     (s) => s.role === 'resident',
     {
-      title: `📢 New Collection Drive: ${title}`,
-      body: `Kunjikkulam Juma Masjid has announced "${title}"${amtText} under ${category}. Tap to view & contribute.`,
+      title: `📢 പുതിയ പിരിവ്: ${title}`,
+      body: `കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് മഹല്ല് "${title}"${amtText} പിരിവ് പ്രഖ്യാപിച്ചു (${category}). സഹായിക്കാനും പങ്കുചേരാനും ക്ലിക്ക് ചെയ്യുക.`,
       url: '/dashboard/payments',
       tag: `special-request-${Date.now()}`,
     }
@@ -446,7 +446,7 @@ export async function notifySpecialRequestCreated(params: {
 }
 
 /**
- * 5. Marriage Certificate Application Submitted: Notify Admins & Resident
+ * 5. Marriage Certificate Application Submitted: Notify Admins & Resident (Malayalam)
  */
 export async function notifyMarriageAppSubmitted(params: {
   houseName: string;
@@ -463,8 +463,8 @@ export async function notifyMarriageAppSubmitted(params: {
   await broadcastPushNotification(
     (s) => s.role === 'admin',
     {
-      title: '📜 New Marriage Certificate Application',
-      body: `${groom} & ${bride} (${houseName} - ${regNo}). Nikah: ${dateOfNikah}. Tap to review.`,
+      title: '📜 പുതിയ വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ',
+      body: `${groom} & ${bride} (${houseName} - ${regNo}). നിക്കാഹ്: ${dateOfNikah}. പരിശോധിക്കാൻ ക്ലിക്ക് ചെയ്യുക.`,
       url: '/admin/marriage-certificates',
       tag: 'marriage-app-new',
     }
@@ -475,8 +475,8 @@ export async function notifyMarriageAppSubmitted(params: {
     await broadcastPushNotification(
       (s) => isResidentMatch(s, userId, houseId),
       {
-        title: '📜 Marriage Application Submitted',
-        body: `Your marriage certificate application for ${groom} & ${bride} has been submitted for committee review.`,
+        title: '📜 വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സമർപ്പിച്ചു',
+        body: `${groom} & ${bride} ദമ്പതികളുടെ വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ കമ്മിറ്റിയുടെ പരിശോധനക്കായി സമർപ്പിച്ചു.`,
         url: '/dashboard/marriage-certificate',
         tag: 'marriage-app-submitted',
       }
@@ -485,7 +485,7 @@ export async function notifyMarriageAppSubmitted(params: {
 }
 
 /**
- * 6. Marriage Certificate Approved: Notify Resident
+ * 6. Marriage Certificate Approved: Notify Resident (Malayalam)
  */
 export async function notifyMarriageAppApproved(params: {
   houseName: string;
@@ -500,8 +500,8 @@ export async function notifyMarriageAppApproved(params: {
   await broadcastPushNotification(
     (s) => isResidentMatch(s, userId, houseId),
     {
-      title: '🎉 Marriage Certificate Approved!',
-      body: `Application for ${groom} & ${bride} has been approved. Certificate Ref: ${certNo}. Tap to view details.`,
+      title: '🎉 വിവാഹ സർട്ടിഫിക്കറ്റ് അംഗീകരിച്ചു!',
+      body: `${groom} & ${bride} ദമ്പതികളുടെ അപേക്ഷ അംഗീകരിച്ചു. സർട്ടിഫിക്കറ്റ് നമ്പർ: ${certNo}. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റാൻ മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക.`,
       url: '/dashboard/marriage-certificate',
       tag: 'marriage-app-approved',
     }
@@ -509,7 +509,7 @@ export async function notifyMarriageAppApproved(params: {
 }
 
 /**
- * 7. Marriage Certificate Rejected: Notify Resident
+ * 7. Marriage Certificate Rejected: Notify Resident (Malayalam)
  */
 export async function notifyMarriageAppRejected(params: {
   groom: string;
@@ -523,8 +523,8 @@ export async function notifyMarriageAppRejected(params: {
   await broadcastPushNotification(
     (s) => isResidentMatch(s, userId, houseId),
     {
-      title: '⚠️ Marriage Application Needs Revision',
-      body: `Application for ${groom} & ${bride} requires correction: ${reason}. Tap to view details.`,
+      title: '⚠️ വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷയിൽ തിരുത്തൽ ആവശ്യമാണ്',
+      body: `${groom} & ${bride} ദമ്പതികളുടെ അപേക്ഷയിൽ തിരുത്തൽ ആവശ്യമാണ്: ${reason}. വിശദാംശങ്ങൾ കാണാൻ ക്ലിക്ക് ചെയ്യുക.`,
       url: '/dashboard/marriage-certificate',
       tag: 'marriage-app-rejected',
     }
@@ -532,7 +532,7 @@ export async function notifyMarriageAppRejected(params: {
 }
 
 /**
- * 8. Household Registration Submitted: Notify Admins & Resident
+ * 8. Household Registration Submitted: Notify Admins & Resident (Malayalam)
  */
 export async function notifyRegistrationSubmitted(params: {
   houseName: string;
@@ -546,8 +546,8 @@ export async function notifyRegistrationSubmitted(params: {
   await broadcastPushNotification(
     (s) => s.role === 'admin',
     {
-      title: '🏠 New Household Registration',
-      body: `${houseName} (${division}) submitted registration (Phone: ${phone}) and awaits verification.`,
+      title: '🏠 പുതിയ കുടുംബ രജിസ്ട്രേഷൻ',
+      body: `${houseName} (${division}) കുടുംബ രജിസ്ട്രേഷൻ സമർപ്പിച്ചു (ഫോൺ: ${phone}). അംഗീകാരത്തിനായി കാത്തിരിക്കുന്നു.`,
       url: '/admin/verification',
       tag: 'reg-submitted-admin',
     }
@@ -558,8 +558,8 @@ export async function notifyRegistrationSubmitted(params: {
     await broadcastPushNotification(
       (s) => isResidentMatch(s, userId),
       {
-        title: '🏠 Registration Under Review',
-        body: `Your household registration for ${houseName} has been received. You will be notified once verified by the committee.`,
+        title: '🏠 രജിസ്ട്രേഷൻ പരിശോധനയിലാണ്',
+        body: `${houseName} കുടുംബത്തിന്റെ രജിസ്ട്രേഷൻ ലഭിച്ചു. മഹല്ല് കമ്മിറ്റി പരിശോധിച്ച ശേഷം അറിയിപ്പ് ലഭിക്കുന്നതാണ്.`,
         url: '/onboarding/pending',
         tag: 'reg-submitted-user',
       }
@@ -568,7 +568,7 @@ export async function notifyRegistrationSubmitted(params: {
 }
 
 /**
- * 9. Household Registration Approved: Notify Resident
+ * 9. Household Registration Approved: Notify Resident (Malayalam)
  */
 export async function notifyRegistrationApproved(params: {
   houseName: string;
@@ -581,8 +581,8 @@ export async function notifyRegistrationApproved(params: {
   await broadcastPushNotification(
     (s) => isResidentMatch(s, userId, houseId),
     {
-      title: '🎉 Household Profile Approved!',
-      body: `Welcome to Kunjikkulam Juma Masjid! Your household profile (${houseName} - ${regNo}) is now verified.`,
+      title: '🎉 കുടുംബ പ്രൊഫൈൽ അംഗീകരിച്ചു!',
+      body: `കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് മഹല്ലിലേക്ക് സ്വാഗതം! നിങ്ങളുടെ കുടുംബ പ്രൊഫൈൽ (${houseName} - ${regNo}) അംഗീകരിച്ചു.`,
       url: '/dashboard',
       tag: 'reg-approved',
     }
@@ -590,7 +590,7 @@ export async function notifyRegistrationApproved(params: {
 }
 
 /**
- * 10. Household Registration Rejected: Notify Resident
+ * 10. Household Registration Rejected: Notify Resident (Malayalam)
  */
 export async function notifyRegistrationRejected(params: {
   houseName: string;
@@ -603,8 +603,8 @@ export async function notifyRegistrationRejected(params: {
   await broadcastPushNotification(
     (s) => isResidentMatch(s, userId, houseId),
     {
-      title: '❌ Household Registration Update',
-      body: `Registration for ${houseName} could not be approved: ${reason}. Please contact the Mahallu office.`,
+      title: '❌ കുടുംബ രജിസ്ട്രേഷൻ നിരസിച്ചു',
+      body: `${houseName} കുടുംബത്തിന്റെ രജിസ്ട്രേഷൻ അംഗീകരിക്കാൻ കഴിഞ്ഞില്ല: ${reason}. മഹല്ല് ഓഫീസുമായി ബന്ധപ്പെടുക.`,
       url: '/onboarding',
       tag: 'reg-rejected',
     }
@@ -612,7 +612,7 @@ export async function notifyRegistrationRejected(params: {
 }
 
 /**
- * 11. Profile Update Submitted: Notify Admins & Resident
+ * 11. Profile Update Submitted: Notify Admins & Resident (Malayalam)
  */
 export async function notifyProfileUpdateSubmitted(params: {
   houseName: string;
@@ -626,8 +626,8 @@ export async function notifyProfileUpdateSubmitted(params: {
   await broadcastPushNotification(
     (s) => s.role === 'admin',
     {
-      title: '🔄 Profile Change Request',
-      body: `${houseName} (${regNo}) requested updates to family/house records. Tap to review.`,
+      title: '🔄 പ്രൊഫൈൽ മാറ്റങ്ങൾക്കുള്ള അപേക്ഷ',
+      body: `${houseName} (${regNo}) കുടുംബ വിവരങ്ങളിൽ മാറ്റങ്ങൾ വരുത്താൻ അപേക്ഷിച്ചു. പരിശോധിക്കാൻ ക്ലിക്ക് ചെയ്യുക.`,
       url: '/admin/verification',
       tag: 'profile-update-admin',
     }
@@ -638,8 +638,8 @@ export async function notifyProfileUpdateSubmitted(params: {
     await broadcastPushNotification(
       (s) => isResidentMatch(s, userId, houseId),
       {
-        title: '🔄 Change Request Submitted',
-        body: `Your profile update for ${houseName} has been submitted to the Mahallu committee.`,
+        title: '🔄 മാറ്റങ്ങൾക്കുള്ള അപേക്ഷ സമർപ്പിച്ചു',
+        body: `${houseName} കുടുംബ വിവരങ്ങളിൽ മാറ്റങ്ങൾ വരുത്താനുള്ള അപേക്ഷ മഹല്ല് കമ്മിറ്റിക്ക് സമർപ്പിച്ചു.`,
         url: '/dashboard',
         tag: 'profile-update-user',
       }
@@ -648,7 +648,7 @@ export async function notifyProfileUpdateSubmitted(params: {
 }
 
 /**
- * 12. Profile Update Reviewed: Notify Resident
+ * 12. Profile Update Reviewed: Notify Resident (Malayalam)
  */
 export async function notifyProfileUpdateReviewed(params: {
   houseName: string;
@@ -664,10 +664,10 @@ export async function notifyProfileUpdateReviewed(params: {
   await broadcastPushNotification(
     (s) => isResidentMatch(s, userId, houseId),
     {
-      title: isApproved ? '✅ Profile Changes Approved!' : '❌ Profile Changes Rejected',
+      title: isApproved ? '✅ പ്രൊഫൈൽ മാറ്റങ്ങൾ അംഗീകരിച്ചു!' : '❌ പ്രൊഫൈൽ മാറ്റങ്ങൾ നിരസിച്ചു',
       body: isApproved
-        ? 'Your requested household changes have been verified and applied to the official registry.'
-        : `Your profile change request was not approved: ${reason || 'Details could not be verified'}.`,
+        ? 'നിങ്ങൾ ആവശ്യപ്പെട്ട കുടുംബ വിവരങ്ങളിലെ മാറ്റങ്ങൾ പരിശോധിച്ച് ഔദ്യോഗിക രജിസ്റ്ററിൽ പുതുക്കിയിട്ടുണ്ട്.'
+        : `നിങ്ങളുടെ പ്രൊഫൈൽ മാറ്റങ്ങൾ അംഗീകരിക്കാൻ കഴിഞ്ഞില്ല: ${reason || 'വിവരങ്ങൾ സ്ഥിരീകരിക്കാൻ കഴിഞ്ഞില്ല'}.`,
       url: '/dashboard',
       tag: 'profile-update-reviewed',
     }

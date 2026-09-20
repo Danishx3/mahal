@@ -23,6 +23,15 @@ export const DIVISION_LABELS: Record<Division, string> = {
   meenamkuzhiyil_north: 'Meenamkuzhiyil North',
 };
 
+export const DIVISION_LABELS_ML: Record<Division, string> = {
+  alungal: 'ആലുങ്ങൽ',
+  prammal: 'പറമ്മൽ',
+  kayanikkara: 'കായനിക്കര',
+  mariyad: 'മരിയാട്',
+  meenamkuzhiyil_south: 'മീനംകുഴിയിൽ സൗത്ത്',
+  meenamkuzhiyil_north: 'മീനംകുഴിയിൽ നോർത്ത്',
+};
+
 export type ProfileStatus =
   | 'pending_verification'
   | 'approved'

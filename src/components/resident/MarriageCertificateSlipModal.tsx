@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { MarriageCertificateApplication } from '@/lib/supabase/types';
+import { useLanguage } from '@/lib/context/LanguageContext';
 import { formatDateTime } from '@/lib/utils';
 import { Printer, CheckCircle2, FileCheck, X, Building2, User, Calendar, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +18,8 @@ export function MarriageCertificateSlipModal({
   isOpen,
   onClose,
 }: MarriageCertificateSlipModalProps) {
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
   if (!isOpen || !application) return null;
 
   const certNumber = application.certificate_number || `MHL-MC-${new Date().getFullYear()}-PENDING`;
@@ -265,33 +268,33 @@ export function MarriageCertificateSlipModal({
               <div class="header-left">
                 <div class="masjid-emblem">🕌</div>
                 <div class="title-wrap">
-                  <h1>Kunjikkulam Juma Masjid</h1>
-                  <p>Mahallu Committee • Nikah & Marriage Registry</p>
+                  <h1>${isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്' : 'Kunjikkulam Juma Masjid'}</h1>
+                  <p>${isMl ? 'മഹല്ല് കമ്മിറ്റി • നിക്കാഹ് & വിവാഹ രജിസ്ട്രി' : 'Mahallu Committee • Nikah & Marriage Registry'}</p>
                 </div>
               </div>
               <div class="header-right">
-                <div class="status-badge">${isApproved ? 'Accepted & Approved' : 'Pending Review'}</div>
+                <div class="status-badge">${isMl ? (isApproved ? 'അംഗീകരിച്ചു (Approved)' : 'പരിശോധനയിലാണ്') : (isApproved ? 'Accepted & Approved' : 'Pending Review')}</div>
                 <div class="cert-no">Ref: ${certNumber}</div>
               </div>
             </div>
 
             <div class="doc-title-bar">
-              <h2>Marriage Certificate Application Acknowledgment</h2>
-              <p>വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സ്വീകൃതി പത്രം</p>
+              <h2>${isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സ്വീകൃതി പത്രം' : 'Marriage Certificate Application Acknowledgment'}</h2>
+              <p>${isMl ? 'Marriage Certificate Application Acknowledgment' : 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സ്വീകൃതി പത്രം'}</p>
             </div>
 
             ${
               isApproved
                 ? `
             <div class="banner-box">
-              <div class="banner-title">🎉 Your application is accepted, contact mahal committee for certificate</div>
-              <div class="banner-sub">നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുന്നതിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.</div>
+              <div class="banner-title">🎉 ${isMl ? 'നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു, സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക' : 'Your application is accepted, contact mahal committee for certificate'}</div>
+              <div class="banner-sub">${isMl ? 'നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുന്നതിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.' : 'നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുന്നതിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.'}</div>
             </div>
             `
                 : `
             <div class="banner-box">
-              <div class="banner-title">⏳ Application Under Verification</div>
-              <div class="banner-sub">നിങ്ങളുടെ അപേക്ഷ മഹല്ല് കമ്മിറ്റിയുടെ പരിശോധനയിലാണ്.</div>
+              <div class="banner-title">⏳ ${isMl ? 'അപേക്ഷ പരിശോധനയിലാണ്' : 'Application Under Verification'}</div>
+              <div class="banner-sub">${isMl ? 'നിങ്ങളുടെ അപേക്ഷ മഹല്ല് കമ്മിറ്റിയുടെ പരിശോധനയിലാണ്.' : 'നിങ്ങളുടെ അപേക്ഷ മഹല്ല് കമ്മിറ്റിയുടെ പരിശോധനയിലാണ്.'}</div>
             </div>
             `
             }
@@ -299,36 +302,36 @@ export function MarriageCertificateSlipModal({
             <table class="table-section">
               <thead>
                 <tr>
-                  <th colspan="2">Couple &amp; Nikah Details</th>
+                  <th colspan="2">${isMl ? 'ദമ്പതികളുടെയും നിക്കാഹിന്റെയും വിവരങ്ങൾ' : 'Couple & Nikah Details'}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td class="label-col">Husband Name (Groom)</td>
+                  <td class="label-col">${isMl ? 'വരന്റെ പേര്' : 'Husband Name (Groom)'}</td>
                   <td class="value-col">${application.husband_name}</td>
                 </tr>
                 <tr>
-                  <td class="label-col">Husband Date of Birth</td>
+                  <td class="label-col">${isMl ? 'വരന്റെ ജനനത്തീയതി' : 'Husband Date of Birth'}</td>
                   <td class="value-col">${application.husband_dob}</td>
                 </tr>
                 <tr>
-                  <td class="label-col">Wife Full Name (Bride)</td>
+                  <td class="label-col">${isMl ? 'വധുവിന്റെ പേര്' : 'Wife Full Name (Bride)'}</td>
                   <td class="value-col">${application.wife_full_name} (${application.wife_initial})</td>
                 </tr>
                 <tr>
-                  <td class="label-col">Wife Date of Birth</td>
+                  <td class="label-col">${isMl ? 'വധുവിന്റെ ജനനത്തീയതി' : 'Wife Date of Birth'}</td>
                   <td class="value-col">${application.wife_dob}</td>
                 </tr>
                 <tr>
-                  <td class="label-col">Wife Father's Name</td>
+                  <td class="label-col">${isMl ? 'വധുവിന്റെ പിതാവ്' : "Wife Father's Name"}</td>
                   <td class="value-col">${application.wife_father_name}</td>
                 </tr>
                 <tr>
-                  <td class="label-col">Wife Permanent Address</td>
+                  <td class="label-col">${isMl ? 'വധുവിന്റെ സ്ഥിര മേൽവിലാസം' : 'Wife Permanent Address'}</td>
                   <td class="value-col">${application.wife_address}</td>
                 </tr>
                 <tr>
-                  <td class="label-col">Date of Nikah Ceremony</td>
+                  <td class="label-col">${isMl ? 'നിക്കാഹ് തീയതി' : 'Date of Nikah Ceremony'}</td>
                   <td class="value-col" style="color: #065f46;">${application.date_of_nikah}</td>
                 </tr>
               </tbody>
@@ -337,27 +340,27 @@ export function MarriageCertificateSlipModal({
             <table class="table-section">
               <thead>
                 <tr>
-                  <th colspan="2">Household &amp; Application Particulars</th>
+                  <th colspan="2">${isMl ? 'കുടുംബ വിവരങ്ങളും അപേക്ഷാ വിവരങ്ങളും' : 'Household & Application Particulars'}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td class="label-col">Household Name / Reg No.</td>
-                  <td class="value-col">${application.house_name} • Reg No: ${application.mahallu_reg_no}</td>
+                  <td class="label-col">${isMl ? 'കുടുംബം / മഹല്ല് രജി. നമ്പർ' : 'Household Name / Reg No.'}</td>
+                  <td class="value-col">${application.house_name} • ${isMl ? 'മഹല്ല് രജി. നമ്പർ:' : 'Reg No:'} ${application.mahallu_reg_no}</td>
                 </tr>
                 <tr>
-                  <td class="label-col">Applicant Contact</td>
-                  <td class="value-col">Phone: ${application.applicant_phone} | Email: ${application.applicant_email}</td>
+                  <td class="label-col">${isMl ? 'ബന്ധപ്പെടാനുള്ള വിവരങ്ങൾ' : 'Applicant Contact'}</td>
+                  <td class="value-col">${isMl ? 'ഫോൺ:' : 'Phone:'} ${application.applicant_phone} | ${isMl ? 'ഇമെയിൽ:' : 'Email:'} ${application.applicant_email}</td>
                 </tr>
                 <tr>
-                  <td class="label-col">Application Submitted At</td>
+                  <td class="label-col">${isMl ? 'അപേക്ഷ സമർപ്പിച്ചത്' : 'Application Submitted At'}</td>
                   <td class="value-col">${submittedAtFormatted}</td>
                 </tr>
                 ${
                   reviewedAtFormatted
                     ? `
                 <tr>
-                  <td class="label-col">Committee Approval Date</td>
+                  <td class="label-col">${isMl ? 'അംഗീകരിച്ച തീയതി' : 'Committee Approval Date'}</td>
                   <td class="value-col">${reviewedAtFormatted}</td>
                 </tr>
                 `
@@ -367,7 +370,7 @@ export function MarriageCertificateSlipModal({
                   application.admin_notes
                     ? `
                 <tr>
-                  <td class="label-col">Committee Remarks</td>
+                  <td class="label-col">${isMl ? 'കമ്മിറ്റിയുടെ കുറിപ്പ്' : 'Committee Remarks'}</td>
                   <td class="value-col">${application.admin_notes}</td>
                 </tr>
                 `
@@ -380,19 +383,19 @@ export function MarriageCertificateSlipModal({
             <div class="signatures-row">
               <div class="sig-box">
                 <div class="sig-line"></div>
-                <div class="sig-label">Applicant Signature</div>
+                <div class="sig-label">${isMl ? 'അപേക്ഷകന്റെ ഒപ്പ്' : 'Applicant Signature'}</div>
               </div>
               <div class="seal-box">
-                Mahallu<br/>Seal
+                ${isMl ? 'മഹല്ല്<br/>സീൽ' : 'Mahallu<br/>Seal'}
               </div>
               <div class="sig-box">
                 <div class="sig-line"></div>
-                <div class="sig-label">General Secretary / Qazi</div>
+                <div class="sig-label">${isMl ? 'ജനറൽ സെക്രട്ടറി / ഖാസി' : 'General Secretary / Qazi'}</div>
               </div>
             </div>
 
             <div class="footer-line">
-              Generated on ${new Date().toLocaleDateString()} • Official Digital Registry Slip • Kunjikkulam Juma Masjid Mahallu
+              ${isMl ? 'തയ്യാറാക്കിയത്' : 'Generated on'} ${new Date().toLocaleDateString()} • ${isMl ? 'ഔദ്യോഗിക ഡിജിറ്റൽ രജിസ്ട്രി സ്ലിപ്പ് • കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് മഹല്ല്' : 'Official Digital Registry Slip • Kunjikkulam Juma Masjid Mahallu'}
             </div>
           </div>
         </body>
@@ -419,7 +422,9 @@ export function MarriageCertificateSlipModal({
               <FileCheck className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold tracking-tight">Marriage Certificate Acknowledgment</h2>
+              <h2 className="text-sm font-bold tracking-tight">
+                {isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ് അക്നോളജ്മെന്റ്' : 'Marriage Certificate Acknowledgment'}
+              </h2>
               <p className="text-[11px] text-slate-400 font-mono">Ref: {certNumber}</p>
             </div>
           </div>
@@ -437,12 +442,14 @@ export function MarriageCertificateSlipModal({
           <div className="text-center pb-4 border-b border-slate-100">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-2 border border-emerald-200/80">
               <Building2 className="h-3.5 w-3.5 text-emerald-600" />
-              Kunjikkulam Juma Masjid Mahallu Committee
+              {isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് മഹല്ല് കമ്മിറ്റി' : 'Kunjikkulam Juma Masjid Mahallu Committee'}
             </div>
             <h1 className="text-lg sm:text-xl font-black text-slate-900">
-              Marriage Certificate Application Acknowledgment
+              {isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സ്വീകൃതി പത്രം' : 'Marriage Certificate Application Acknowledgment'}
             </h1>
-            <p className="text-xs text-slate-500 font-medium">വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സ്വീകൃതി പത്രം</p>
+            <p className="text-xs text-slate-500 font-medium">
+              {isMl ? 'Marriage Certificate Application Acknowledgment' : 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സ്വീകൃതി പത്രം'}
+            </p>
           </div>
 
           {/* Status Message */}
@@ -450,17 +457,23 @@ export function MarriageCertificateSlipModal({
             <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4 text-center space-y-1">
               <p className="text-sm sm:text-base font-extrabold text-emerald-950 flex items-center justify-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                Your application is accepted, contact mahal committee for certificate
+                {isMl
+                  ? 'നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു, സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക'
+                  : 'Your application is accepted, contact mahal committee for certificate'}
               </p>
               <p className="text-xs font-semibold text-emerald-800">
-                നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുന്നതിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.
+                {isMl
+                  ? 'നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുന്നതിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.'
+                  : 'നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുന്നതിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.'}
               </p>
             </div>
           ) : (
             <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 text-center space-y-1">
-              <p className="text-sm font-bold text-amber-950">Application Under Verification</p>
+              <p className="text-sm font-bold text-amber-950">
+                {isMl ? 'അപേക്ഷ പരിശോധനയിലാണ്' : 'Application Under Verification'}
+              </p>
               <p className="text-xs text-amber-800">
-                നിങ്ങളുടെ അപേക്ഷ മഹല്ല് കമ്മിറ്റിയുടെ പരിശോധനയിലാണ്.
+                {isMl ? 'നിങ്ങളുടെ അപേക്ഷ മഹല്ല് കമ്മിറ്റിയുടെ പരിശോധനയിലാണ്.' : 'നിങ്ങളുടെ അപേക്ഷ മഹല്ല് കമ്മിറ്റിയുടെ പരിശോധനയിലാണ്.'}
               </p>
             </div>
           )}
@@ -469,35 +482,35 @@ export function MarriageCertificateSlipModal({
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-3">
             <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
               <User className="h-3.5 w-3.5 text-emerald-700" />
-              Applicant &amp; Couple Details
+              {isMl ? 'അപേക്ഷകരുടെയും ദമ്പതികളുടെയും വിവരങ്ങൾ' : 'Applicant & Couple Details'}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
               <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Husband (Groom)</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">{isMl ? 'വരൻ (ഭർത്താവ്)' : 'Husband (Groom)'}</span>
                 <span className="font-bold text-slate-900">{application.husband_name}</span>
-                <span className="text-slate-500 block text-[11px] mt-0.5">DOB: {application.husband_dob}</span>
+                <span className="text-slate-500 block text-[11px] mt-0.5">{isMl ? 'ജനനം:' : 'DOB:'} {application.husband_dob}</span>
               </div>
               <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Wife (Bride)</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">{isMl ? 'വധു (ഭാര്യ)' : 'Wife (Bride)'}</span>
                 <span className="font-bold text-slate-900">{application.wife_full_name} ({application.wife_initial})</span>
-                <span className="text-slate-500 block text-[11px] mt-0.5">DOB: {application.wife_dob}</span>
+                <span className="text-slate-500 block text-[11px] mt-0.5">{isMl ? 'ജനനം:' : 'DOB:'} {application.wife_dob}</span>
               </div>
               <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Wife&apos;s Father</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">{isMl ? 'വധുവിന്റെ പിതാവ്' : "Wife's Father"}</span>
                 <span className="font-semibold text-slate-800">{application.wife_father_name}</span>
               </div>
               <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Date of Nikah</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">{isMl ? 'നിക്കാഹ് തീയതി' : 'Date of Nikah'}</span>
                 <span className="font-bold text-emerald-800">{application.date_of_nikah}</span>
               </div>
               <div className="bg-white p-2.5 rounded-xl border border-slate-200 sm:col-span-2">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Wife Permanent Address</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">{isMl ? 'വധുവിന്റെ സ്ഥിര മേൽവിലാസം' : 'Wife Permanent Address'}</span>
                 <span className="font-medium text-slate-800">{application.wife_address}</span>
               </div>
               <div className="bg-white p-2.5 rounded-xl border border-slate-200 sm:col-span-2">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">Household &amp; Contact</span>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">{isMl ? 'കുടുംബ വിവരങ്ങൾ' : 'Household & Contact'}</span>
                 <span className="font-medium text-slate-800">
-                  {application.house_name} (Reg No: {application.mahallu_reg_no}) • {application.applicant_phone} • {application.applicant_email}
+                  {application.house_name} ({isMl ? 'രജി. നമ്പർ:' : 'Reg No:'} {application.mahallu_reg_no}) • {application.applicant_phone} • {application.applicant_email}
                 </span>
               </div>
             </div>
@@ -506,7 +519,7 @@ export function MarriageCertificateSlipModal({
           {/* Committee Note if any */}
           {application.admin_notes && (
             <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-950">
-              <span className="font-bold block text-emerald-900 mb-0.5">Committee Notes:</span>
+              <span className="font-bold block text-emerald-900 mb-0.5">{isMl ? 'കമ്മിറ്റിയുടെ കുറിപ്പ്:' : 'Committee Notes:'}</span>
               <p>{application.admin_notes}</p>
             </div>
           )}
@@ -516,7 +529,7 @@ export function MarriageCertificateSlipModal({
         {/* Modal Bottom Actions */}
         <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3">
           <Button variant="outline" onClick={onClose}>
-            Close
+            {isMl ? 'ക്ലോസ് ചെയ്യുക' : 'Close'}
           </Button>
           <Button
             variant="primary"
@@ -524,7 +537,7 @@ export function MarriageCertificateSlipModal({
             className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold flex items-center gap-2 shadow-sm"
           >
             <Printer className="h-4 w-4" />
-            Print Acknowledgment / Save PDF
+            {isMl ? 'അക്നോളജ്മെന്റ് പ്രിന്റ് ചെയ്യുക / PDF' : 'Print Acknowledgment / Save PDF'}
           </Button>
         </div>
       </div>

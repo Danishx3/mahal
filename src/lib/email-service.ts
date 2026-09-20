@@ -121,15 +121,29 @@ export async function verifySmtpConnection(): Promise<{ ok: boolean; message: st
   }
 }
 
+const MALAYALAM_MONTHS = [
+  'ജനുവരി',
+  'ഫെബ്രുവരി',
+  'മാർച്ച്',
+  'ഏപ്രിൽ',
+  'മെയ്',
+  'ജൂൺ',
+  'ജൂലൈ',
+  'ഓഗസ്റ്റ്',
+  'സെപ്റ്റംബർ',
+  'ഒക്ടോബർ',
+  'നവംബർ',
+  'ഡിസംബർ',
+];
+
 /**
- * Format month '2026-09' to 'September 2026'
+ * Format month '2026-09' to 'സെപ്റ്റംബർ 2026'
  */
 function formatMonthName(monthStr: string): string {
   try {
     const [y, m] = monthStr.split('-').map(Number);
-    if (!isNaN(y) && !isNaN(m)) {
-      const date = new Date(y, m - 1, 1);
-      return date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    if (!isNaN(y) && !isNaN(m) && m >= 1 && m <= 12) {
+      return `${MALAYALAM_MONTHS[m - 1]} ${y}`;
     }
   } catch { }
   return monthStr;
@@ -166,7 +180,7 @@ export function getEmailBaseUrl(customUrl?: string): string {
 }
 
 /**
- * Generate responsive, modern HTML email template for Mahallu monthly dues reminder
+ * Generate responsive, modern HTML email template for Mahallu monthly dues reminder (Malayalam)
  */
 export function generateReminderEmailHtml(payload: ReminderEmailPayload): string {
   const { houseName, regNo, month, amount = 100, customMessage, siteUrl } = payload;
@@ -177,24 +191,24 @@ export function generateReminderEmailHtml(payload: ReminderEmailPayload): string
 
   return `
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ml">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mahallu Monthly Dues Reminder</title>
+  <title>മാസവരി കുടിശ്ശിക അറിയിപ്പ്</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; color: #1e293b; }
+    body { font-family: 'Noto Sans Malayalam', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; color: #1e293b; }
     .container { max-width: 600px; margin: 24px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
     .header { background: linear-gradient(135deg, #064e3b 0%, #047857 100%); padding: 32px 24px; text-align: center; color: #ffffff; }
     .emblem { display: inline-block; width: 44px; height: 44px; line-height: 44px; border-radius: 50%; background: rgba(255,255,255,0.15); margin-bottom: 12px; font-size: 22px; }
-    .title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin: 0; color: #ffffff; text-transform: uppercase; }
+    .title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin: 0; color: #ffffff; }
     .subtitle { font-size: 13px; color: #a7f3d0; margin-top: 6px; font-weight: 500; }
     .content { padding: 32px 28px; }
     .greeting { font-size: 16px; font-weight: 600; color: #0f172a; margin-bottom: 16px; }
     .card { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin: 20px 0; }
     .due-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 10px; margin-bottom: 10px; font-size: 14px; }
     .due-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-    .badge { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .badge { background: #fee2e2; color: #991b1b; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
     .amount { font-size: 26px; font-weight: 800; color: #047857; margin: 4px 0; }
     .upi-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin: 20px 0; }
     .upi-id { font-family: monospace; font-size: 15px; font-weight: 700; color: #047857; background: #ecfdf5; padding: 6px 10px; border-radius: 6px; display: inline-block; }
@@ -208,38 +222,42 @@ export function generateReminderEmailHtml(payload: ReminderEmailPayload): string
     <!-- Header -->
     <div class="header">
       <div class="emblem">🕌</div>
-      <h1 class="title">Kunjikkulam Juma Masjid</h1>
-      <div class="subtitle">Official Membership Dues Notice • മാസവരി കുടിശ്ശിക അറിയിപ്പ്</div>
+      <h1 class="title">കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്</h1>
+      <div class="subtitle">ഔദ്യോഗിക മാസവരി കുടിശ്ശിക അറിയിപ്പ്</div>
     </div>
 
     <!-- Content -->
     <div class="content">
+      <div class="greeting">അസ്സലാമു അലൈക്കും,</div>
+      <p style="font-size: 14px; color: #334155; line-height: 1.6; margin-top: 0;">
+        താഴെ പറയുന്ന മാസവരി തുക മഹല്ല് ഫണ്ടിലേക്ക് അടയ്ക്കാനുള്ള വിവരം ഓർമ്മിപ്പിക്കുന്നു.
+      </p>
 
       <!-- Dues Details Card -->
       <div class="card">
-        <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #047857; margin-bottom: 12px;">
-          Subscription Notice Details
+        <div style="font-size: 12px; font-weight: 700; color: #047857; margin-bottom: 12px;">
+          മാസവരി വിവരങ്ങൾ
         </div>
         <table width="100%" cellpadding="6" cellspacing="0" style="font-size: 14px; color: #334155;">
           <tr>
-            <td style="color: #64748b; width: 40%;">Household Name:</td>
+            <td style="color: #64748b; width: 45%;">കുടുംബ പേര്:</td>
             <td style="font-weight: 700; color: #0f172a;">${houseName}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Mahallu Reg. No:</td>
+            <td style="color: #64748b;">മഹല്ല് രജിസ്റ്റർ നമ്പർ:</td>
             <td style="font-weight: 700; font-family: monospace; color: #047857;">${regNo}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Billing Cycle:</td>
+            <td style="color: #64748b;">അടയ്ക്കേണ്ട മാസം:</td>
             <td style="font-weight: 700; color: #0f172a;">${formattedMonth} (${month})</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Amount Payable:</td>
+            <td style="color: #64748b;">അടയ്ക്കാനുള്ള തുക:</td>
             <td><span class="amount">₹${amount}</span></td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Payment Status:</td>
-            <td><span class="badge">Unpaid</span></td>
+            <td style="color: #64748b;">പേയ്‌മെന്റ് സ്റ്റാറ്റസ്:</td>
+            <td><span class="badge">കുടിശ്ശിക (Unpaid)</span></td>
           </tr>
         </table>
       </div>
@@ -247,28 +265,38 @@ export function generateReminderEmailHtml(payload: ReminderEmailPayload): string
       <!-- Custom Admin Note (if any) -->
       ${customMessage
       ? `<div style="padding: 14px; background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 6px; font-size: 13px; color: #92400e; margin: 16px 0; line-height: 1.5;">
-              <strong>Note from Mahallu Committee:</strong><br/>
+              <strong>മഹല്ല് കമ്മിറ്റി അറിയിപ്പ്:</strong><br/>
               ${customMessage}
              </div>`
       : ''
     }
 
+      <!-- UPI Payment Info -->
+      <div class="upi-box">
+        <div style="font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 6px;">
+          UPI വഴി പണമടയ്ക്കാം:
+        </div>
+        <div class="upi-id">${upiId}</div>
+        <div style="font-size: 12px; color: #64748b; margin-top: 6px;">
+          Google Pay, PhonePe, Paytm എന്നിവ വഴി അടച്ച ശേഷം UTR നമ്പർ പോർട്ടലിൽ രേഖപ്പെടുത്തുക.
+        </div>
+      </div>
 
       <!-- Action Button -->
       <a href="${paymentLink}" class="cta-btn" target="_blank">
-        Submit Payment Reference on Portal →
+        പോർട്ടലിൽ പേയ്‌മെന്റ് വിവരങ്ങൾ രേഖപ്പെടുത്തുക →
       </a>
     </div>
 
     <!-- Footer -->
     <div class="footer">
-      <div><strong>Kunjikkulam Juma Masjid Central Office</strong></div>
-      <div style="margin-top: 4px;">Main Road, Mahallu Complex • Contact: +91 98470 12345</div>
+      <div><strong>കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് സെൻട്രൽ ഓഫീസ്</strong></div>
+      <div style="margin-top: 4px;">മെയിൻ റോഡ്, മഹല്ല് കോംപ്ലക്സ് • ഫോൺ: +91 98470 12345</div>
       <div class="dua">
-        "May Allah bless your household with peace, prosperity, and barakah."
+        "അല്ലാഹു നിങ്ങളുടെ കുടുംബത്തിൽ ഐശ്വര്യവും ശാന്തിയും ബറകത്തും വർഷിക്കട്ടെ."
       </div>
       <div style="margin-top: 12px; font-size: 11px; color: #94a3b8;">
-        This is an automated system notification. If you have already made this payment, kindly verify that your UTR is submitted on the portal.
+        ഇതൊരു ഓട്ടോമേറ്റഡ് സിസ്റ്റം അറിയിപ്പാണ്. നിങ്ങൾ ഇതിനകം ഈ തുക അടച്ചിട്ടുണ്ടെങ്കിൽ, ദയവായി പോർട്ടലിൽ UTR സമർപ്പിച്ചിട്ടുണ്ടെന്ന് ഉറപ്പുവരുത്തുക.
       </div>
     </div>
   </div>
@@ -285,9 +313,9 @@ export async function sendReminderEmail(payload: ReminderEmailPayload): Promise<
   const upiId = payload.upiId || 'kunjikkulam@upi';
   const from = getSmtpFrom();
   const formattedMonth = formatMonthName(month);
-  const subject = `Kunjikkulam Juma Masjid: Payment Due Reminder (${formattedMonth}) - ${houseName}`;
+  const subject = `കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്: മാസവരി കുടിശ്ശിക അറിയിപ്പ് (${formattedMonth}) - ${houseName}`;
   const html = generateReminderEmailHtml(payload);
-  const text = `Assalamu Alaikum. This is a reminder from Kunjikkulam Juma Masjid for ${houseName} (${regNo}) regarding monthly membership dues of ₹${amount} for ${formattedMonth}. Kindly transfer to ${upiId} and submit your UTR on the portal: ${getEmailBaseUrl(payload.siteUrl)}/dashboard/payments. Jazakallahu Khair.`;
+  const text = `അസ്സലാമു അലൈക്കും. കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് മഹല്ലിൽ നിന്നുള്ള മാസവരി അറിയിപ്പ്: ${houseName} (${regNo}) കുടുംബത്തിന്റെ ${formattedMonth} മാസത്തെ മാസവരി തുക ₹${amount} അടയ്ക്കാനുണ്ട്. തുക ${upiId} ലേക്ക് നൽകി പോർട്ടലിൽ (${getEmailBaseUrl(payload.siteUrl)}/dashboard/payments) UTR രേഖപ്പെടുത്തണമെന്ന് അഭ്യർത്ഥിക്കുന്നു. ജസാക്കല്ലാഹു ഖൈർ.`;
 
   const transporter = getMailTransporter();
 
@@ -372,7 +400,7 @@ export async function sendBatchReminderEmails(
 }
 
 /**
- * Send an email notification to admin(s) when a household submits a new marriage certificate application.
+ * Send an email notification to admin(s) when a household submits a new marriage certificate application. (Malayalam)
  */
 export async function sendMarriageApplicationSubmittedAdminEmail(
   application: {
@@ -401,31 +429,30 @@ export async function sendMarriageApplicationSubmittedAdminEmail(
     new Set(
       [...adminEmails, fallbackAdmin]
         .map((e) => e?.trim().toLowerCase())
-
         .filter((e): e is string => Boolean(e && e.includes('@')))
     )
   );
 
   const baseUrl = getEmailBaseUrl();
   const adminReviewUrl = `${baseUrl}/admin/marriage-certificates`;
-  const subject = `[Mahallu Portal] New Marriage Certificate Application: ${application.husband_name} & ${application.wife_full_name} (${application.mahallu_reg_no})`;
+  const subject = `[മഹല്ല് പോർട്ടൽ] പുതിയ വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ: ${application.husband_name} & ${application.wife_full_name} (${application.mahallu_reg_no})`;
 
   const html = `
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ml">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Marriage Certificate Application</title>
+  <title>പുതിയ വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; color: #1e293b; }
+    body { font-family: 'Noto Sans Malayalam', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; color: #1e293b; }
     .container { max-width: 600px; margin: 24px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
     .header { background: linear-gradient(135deg, #064e3b 0%, #047857 100%); padding: 30px 24px; text-align: center; color: #ffffff; }
     .emblem { display: inline-block; width: 44px; height: 44px; line-height: 44px; border-radius: 50%; background: rgba(255,255,255,0.15); margin-bottom: 10px; font-size: 22px; }
-    .title { font-size: 20px; font-weight: 800; margin: 0; color: #ffffff; text-transform: uppercase; }
+    .title { font-size: 20px; font-weight: 800; margin: 0; color: #ffffff; }
     .subtitle { font-size: 13px; color: #a7f3d0; margin-top: 4px; }
     .content { padding: 28px 24px; }
-    .badge { display: inline-block; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 16px; }
+    .badge { display: inline-block; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; margin-bottom: 16px; }
     .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 16px 0; }
     .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #e2e8f0; font-size: 13px; }
     .row:last-child { border-bottom: none; }
@@ -439,74 +466,74 @@ export async function sendMarriageApplicationSubmittedAdminEmail(
   <div class="container">
     <div class="header">
       <div class="emblem">🕌</div>
-      <h1 class="title">Kunjikkulam Juma Masjid</h1>
-      <div class="subtitle">Official Administration Portal • വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ</div>
+      <h1 class="title">കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്</h1>
+      <div class="subtitle">അഡ്മിനിസ്ട്രേഷൻ പോർട്ടൽ • വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ</div>
     </div>
     <div class="content">
-      <span class="badge">New Application Received</span>
-      <p style="font-size: 14px; color: #334155; line-height: 1.5; margin-top: 0;">
-        Assalamu Alaikum, a new online marriage certificate application has been submitted by household <strong>${application.house_name}</strong> (${application.mahallu_reg_no}) and is awaiting administrative verification.
+      <span class="badge">പുതിയ അപേക്ഷ ലഭിച്ചു</span>
+      <p style="font-size: 14px; color: #334155; line-height: 1.6; margin-top: 0;">
+        അസ്സലാമു അലൈക്കും, <strong>${application.house_name}</strong> (${application.mahallu_reg_no}) കുടുംബത്തിൽ നിന്നും പുതിയ വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ ലഭിച്ചിട്ടുണ്ട്. ദയവായി പരിശോധിച്ച് തുടർനടപടികൾ സ്വീകരിക്കുക.
       </p>
 
       <div class="card">
-        <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #047857; margin-bottom: 10px;">
-          Groom & Bride Information
+        <div style="font-size: 12px; font-weight: 700; color: #047857; margin-bottom: 10px;">
+          വരന്റെയും വധുവിന്റെയും വിവരങ്ങൾ
         </div>
         <table width="100%" cellpadding="6" cellspacing="0" style="font-size: 13px;">
           <tr>
-            <td style="color: #64748b; width: 40%;">Household Name:</td>
+            <td style="color: #64748b; width: 40%;">കുടുംബ പേര്:</td>
             <td style="font-weight: 700; color: #0f172a;">${application.house_name}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Mahallu Reg. No:</td>
+            <td style="color: #64748b;">മഹല്ല് രജിസ്റ്റർ നമ്പർ:</td>
             <td style="font-weight: 700; color: #047857; font-family: monospace;">${application.mahallu_reg_no}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Husband (Groom):</td>
+            <td style="color: #64748b;">വരൻ (ഭർത്താവ്):</td>
             <td style="font-weight: 700; color: #0f172a;">${application.husband_name}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Husband DOB:</td>
+            <td style="color: #64748b;">വരന്റെ ജനനത്തീയതി:</td>
             <td style="font-weight: 600; color: #334155;">${application.husband_dob}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Wife (Bride):</td>
+            <td style="color: #64748b;">വധു (ഭാര്യ):</td>
             <td style="font-weight: 700; color: #0f172a;">${application.wife_full_name}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Wife Initial (Full Form):</td>
+            <td style="color: #64748b;">വധുവിന്റെ ഇനീഷ്യൽ (പൂർണ്ണരൂപം):</td>
             <td style="font-weight: 600; color: #334155;">${application.wife_initial}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Wife's Father:</td>
+            <td style="color: #64748b;">വധുവിന്റെ പിതാവ്:</td>
             <td style="font-weight: 600; color: #334155;">${application.wife_father_name}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Wife's Address:</td>
+            <td style="color: #64748b;">വധുവിന്റെ വിലാസം:</td>
             <td style="font-weight: 500; color: #334155;">${application.wife_address}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Wife DOB:</td>
+            <td style="color: #64748b;">വധുവിന്റെ ജനനത്തീയതി:</td>
             <td style="font-weight: 600; color: #334155;">${application.wife_dob}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Date of Nikah:</td>
+            <td style="color: #64748b;">നിക്കാഹ് തീയതി:</td>
             <td style="font-weight: 700; color: #047857;">${application.date_of_nikah}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Applicant Phone:</td>
+            <td style="color: #64748b;">അപേക്ഷകന്റെ ഫോൺ:</td>
             <td style="font-weight: 600; color: #334155;">${application.applicant_phone}</td>
           </tr>
         </table>
       </div>
 
       <a href="${adminReviewUrl}" class="cta-btn" target="_blank">
-        Review & Approve in Admin Console →
+        അഡ്മിൻ കൺസോളിൽ പരിശോധിച്ച് അംഗീകരിക്കുക →
       </a>
     </div>
 
     <div class="footer">
-      Kunjikkulam Juma Masjid Mahallu Administration System • Automated Internal Alert
+      കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് മഹല്ല് അഡ്മിനിസ്ട്രേഷൻ സിസ്റ്റം • ഓട്ടോമേറ്റഡ് ഇൻഫർമേഷൻ
     </div>
   </div>
 </body>
@@ -529,7 +556,7 @@ export async function sendMarriageApplicationSubmittedAdminEmail(
         to: recipient,
         subject,
         html,
-        text: `Assalamu Alaikum. A new marriage certificate application was submitted for ${application.husband_name} and ${application.wife_full_name} (${application.mahallu_reg_no}, Nikah date: ${application.date_of_nikah}). Please review in the Admin Console: ${adminReviewUrl}`,
+        text: `അസ്സലാമു അലൈക്കും. ${application.husband_name} & ${application.wife_full_name} എന്നിവരുടെ വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സമർപ്പിച്ചിട്ടുണ്ട് (${application.mahallu_reg_no}, നിക്കാഹ്: ${application.date_of_nikah}). ദയവായി അഡ്മിൻ കൺസോളിൽ പരിശോധിക്കുക: ${adminReviewUrl}`,
       });
       console.log(`[EMAIL SENT - ADMIN NOTIFICATION] To: ${recipient}`);
       sentCount++;
@@ -542,7 +569,7 @@ export async function sendMarriageApplicationSubmittedAdminEmail(
 }
 
 /**
- * Send an email notification to user when their marriage certificate application is approved by admin.
+ * Send an email notification to user when their marriage certificate application is approved by admin. (Malayalam)
  */
 export async function sendMarriageApplicationApprovedUserEmail(
   application: {
@@ -563,31 +590,31 @@ export async function sendMarriageApplicationApprovedUserEmail(
   const from = getSmtpFrom();
   const to = application.applicant_email.trim();
   const certNumber = application.certificate_number || `MHL-MC-${new Date().getFullYear()}-001`;
-  const subject = `🎉 Marriage Certificate Application Approved - Kunjikkulam Juma Masjid`;
+  const subject = `🎉 വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ അംഗീകരിച്ചു - കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്`;
   const baseUrl = getEmailBaseUrl();
   const portalUrl = `${baseUrl}/dashboard/marriage-certificate`;
 
   const html = `
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ml">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Marriage Certificate Approved</title>
+  <title>വിവാഹ സർട്ടിഫിക്കറ്റ് അംഗീകരിച്ചു</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; color: #1e293b; }
+    body { font-family: 'Noto Sans Malayalam', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f8fafc; color: #1e293b; }
     .container { max-width: 600px; margin: 24px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
     .header { background: linear-gradient(135deg, #064e3b 0%, #047857 100%); padding: 32px 24px; text-align: center; color: #ffffff; }
     .emblem { display: inline-block; width: 48px; height: 48px; line-height: 48px; border-radius: 50%; background: rgba(255,255,255,0.2); margin-bottom: 10px; font-size: 24px; }
-    .title { font-size: 22px; font-weight: 800; margin: 0; color: #ffffff; text-transform: uppercase; }
+    .title { font-size: 22px; font-weight: 800; margin: 0; color: #ffffff; }
     .subtitle { font-size: 13px; color: #a7f3d0; margin-top: 4px; font-weight: 500; }
     .content { padding: 30px 24px; }
     .celebration-box { background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px; }
-    .celebration-title { font-size: 17px; font-weight: 800; color: #166534; margin: 0 0 6px 0; }
-    .celebration-text { font-size: 14px; font-weight: 600; color: #15803d; margin: 0; }
+    .celebration-title { font-size: 18px; font-weight: 800; color: #166534; margin: 0 0 6px 0; }
+    .celebration-text { font-size: 15px; font-weight: 600; color: #15803d; margin: 0; }
     .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 16px 0; }
     .cta-btn { display: block; box-sizing: border-box; text-align: center; background: #047857; color: #ffffff !important; text-decoration: none; padding: 14px 24px; border-radius: 10px; font-weight: 700; font-size: 14px; margin-top: 20px; }
-    .office-box { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 14px; border-radius: 6px; font-size: 13px; color: #92400e; margin: 20px 0; line-height: 1.5; }
+    .office-box { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 14px; border-radius: 6px; font-size: 13px; color: #92400e; margin: 20px 0; line-height: 1.6; }
     .footer { background: #f8fafc; padding: 24px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #f1f5f9; }
     .dua { font-style: italic; color: #047857; margin-top: 8px; font-weight: 500; }
   </style>
@@ -596,70 +623,67 @@ export async function sendMarriageApplicationApprovedUserEmail(
   <div class="container">
     <div class="header">
       <div class="emblem">✨</div>
-      <h1 class="title">Kunjikkulam Juma Masjid</h1>
-      <div class="subtitle">Official Marriage Registry • വിവാഹ സർട്ടിഫിക്കറ്റ് അംഗീകരിച്ചു</div>
+      <h1 class="title">കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്</h1>
+      <div class="subtitle">ഔദ്യോഗിക വിവാഹ രജിസ്ട്രി • വിവാഹ സർട്ടിഫിക്കറ്റ് അംഗീകരിച്ചു</div>
     </div>
 
     <div class="content">
       <div class="celebration-box">
-        <p class="celebration-title">Application Approved! 🎉</p>
+        <p class="celebration-title">അപേക്ഷ അംഗീകരിച്ചു! 🎉</p>
         <p class="celebration-text">
-          Your application is accepted, contact mahal committee for certificate
-        </p>
-        <p style="font-size: 12px; color: #166534; margin-top: 6px; font-style: italic;">
-          (നിങ്ങളുടെ അപേക്ഷ അംഗീകരിച്ചു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുന്നതിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.)
+          നിങ്ങളുടെ വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സ്വീകരിച്ചു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുന്നതിനായി മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക.
         </p>
       </div>
 
       <div class="card">
-        <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #047857; margin-bottom: 10px;">
-          Certificate & Registry Details
+        <div style="font-size: 12px; font-weight: 700; color: #047857; margin-bottom: 10px;">
+          സർട്ടിഫിക്കറ്റ് & രജിസ്ട്രി വിവരങ്ങൾ
         </div>
         <table width="100%" cellpadding="6" cellspacing="0" style="font-size: 13px; color: #334155;">
           <tr>
-            <td style="color: #64748b; width: 42%;">Certificate Ref. No:</td>
+            <td style="color: #64748b; width: 45%;">സർട്ടിഫിക്കറ്റ് റഫറൻസ് നമ്പർ:</td>
             <td style="font-weight: 800; color: #047857; font-family: monospace; font-size: 14px;">${certNumber}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Husband (Groom):</td>
+            <td style="color: #64748b;">വരൻ (ഭർത്താവ്):</td>
             <td style="font-weight: 700; color: #0f172a;">${application.husband_name}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Wife (Bride):</td>
+            <td style="color: #64748b;">വധു (ഭാര്യ):</td>
             <td style="font-weight: 700; color: #0f172a;">${application.wife_full_name}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Date of Nikah:</td>
+            <td style="color: #64748b;">നിക്കാഹ് തീയതി:</td>
             <td style="font-weight: 700; color: #0f172a;">${application.date_of_nikah}</td>
           </tr>
           <tr>
-            <td style="color: #64748b;">Household Name:</td>
+            <td style="color: #64748b;">കുടുംബ പേര്:</td>
             <td style="font-weight: 600; color: #0f172a;">${application.house_name} (${application.mahallu_reg_no})</td>
           </tr>
           ${application.admin_notes ? `
           <tr>
-            <td style="color: #64748b;">Committee Remarks:</td>
+            <td style="color: #64748b;">കമ്മിറ്റി കുറിപ്പ്:</td>
             <td style="font-weight: 500; color: #047857;">${application.admin_notes}</td>
           </tr>` : ''}
         </table>
       </div>
 
       <div class="office-box">
-        <strong>Certificate Collection:</strong><br/>
-        Your marriage certificate application is accepted. Please contact the Mahallu Committee to collect your certificate. Reference number: <strong>${certNumber}</strong>.
+        <strong>സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റാൻ:</strong><br/>
+        നിങ്ങളുടെ വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ അംഗീകരിച്ചിരിക്കുന്നു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റാൻ റഫറൻസ് നമ്പറുമായി (${certNumber}) മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.
       </div>
 
       <a href="${portalUrl}" class="cta-btn" target="_blank">
-        View Application in Resident Portal →
+        റെസിഡന്റ് പോർട്ടലിൽ കാണുക →
       </a>
     </div>
 
     <div class="footer">
-      <div><strong>Kunjikkulam Juma Masjid Central Office</strong></div>
-      <div style="margin-top: 4px;">Main Road, Mahallu Complex • Contact: +91 98470 12345</div>
+      <div><strong>കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് സെൻട്രൽ ഓഫീസ്</strong></div>
+      <div style="margin-top: 4px;">മെയിൻ റോഡ്, മഹല്ല് കോംപ്ലക്സ് • ഫോൺ: +91 98470 12345</div>
       <div class="dua">
         "بارك الله لك وبارك عليك وجمع بينكما في خير"
-        <br/>"May Allah bless your union with peace, love, and righteousness."
+        <br/>"അല്ലാഹു നിങ്ങളുടെ ദാമ്പത്യജീവിതത്തിൽ ശാന്തിയും സ്നേഹവും ബറകത്തും വർഷിക്കട്ടെ."
       </div>
     </div>
   </div>
@@ -680,7 +704,7 @@ export async function sendMarriageApplicationApprovedUserEmail(
       to,
       subject,
       html,
-      text: `Assalamu Alaikum. Your marriage certificate application for ${application.husband_name} and ${application.wife_full_name} has been approved. Your application is accepted, contact mahal committee for certificate (Certificate No: ${certNumber}). Portal link: ${portalUrl}`,
+      text: `അസ്സലാമു അലൈക്കും. ${application.husband_name} & ${application.wife_full_name} എന്നിവരുടെ വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ അംഗീകരിച്ചു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റാൻ മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക (റഫറൻസ് നമ്പർ: ${certNumber}). പോർട്ടൽ ലിങ്ക്: ${portalUrl}`,
     });
     console.log(`[EMAIL SENT - USER APPROVAL] MessageId: ${info.messageId} | To: ${to}`);
     return { success: true };

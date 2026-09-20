@@ -4,8 +4,8 @@ import { LoadingScreen } from '@/components/ui/LoadingAnimation';
 export default function DashboardLoading() {
   return (
     <LoadingScreen
-      title="Resident Portal"
-      message="Synchronizing household records, dues & receipts..."
+      title="റെസിഡന്റ് പോർട്ടൽ"
+      message="കുടുംബ വിവരങ്ങളും വരിസംഖ്യയും ലോഡ് ചെയ്യുന്നു..."
       minHeight="min-h-[70vh]"
     />
   );

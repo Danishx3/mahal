@@ -18,10 +18,13 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
+import { useLanguage } from '@/lib/context/LanguageContext';
 
 export function Footer() {
   const pathname = usePathname();
   const { user, isAdmin } = useAuth();
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
 
   // Hide footer on internal admin/dashboard workspaces to preserve application screen real estate
   const hideOnPaths = ['/admin', '/dashboard'];
@@ -38,10 +41,10 @@ export function Footer() {
       : '/dashboard';
 
   const primaryDashboardLabel = !user
-    ? 'Access Portal'
+    ? (isMl ? 'ലോഗിൻ പോർട്ടൽ' : 'Access Portal')
     : isAdmin
-      ? 'Admin Console'
-      : 'Resident Dashboard';
+      ? (isMl ? 'അഡ്മിൻ കൺസോൾ' : 'Admin Console')
+      : (isMl ? 'റെസിഡന്റ് ഡാഷ്‌ബോർഡ്' : 'Resident Dashboard');
 
   return (
     <footer className="relative bg-[#070f1e] text-slate-400 overflow-hidden no-print border-t border-slate-800/80">
@@ -69,34 +72,33 @@ export function Footer() {
               </div>
               <div className="leading-tight">
                 <p className="font-bold text-white text-base tracking-tight group-hover:text-emerald-300 transition-colors">
-                  Kunjikkulam Juma Masjid
+                  {isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്' : 'Kunjikkulam Juma Masjid'}
                 </p>
                 <p className="text-[10px] text-emerald-400 font-semibold tracking-widest uppercase">
-                  Mahallu Jama&apos;ath
+                  {isMl ? 'മഹല്ല് ജമാഅത്ത്' : "Mahallu Jama'ath"}
                 </p>
               </div>
             </Link>
 
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
-              An advanced digital governance platform unifying household census, automated
-              dues tracking, UPI reconciliation, and community double-entry ledger.
+              {isMl
+                ? 'കുടുംബ സെൻസസ്, മാസവരി കുടിശ്ശിക ട്രാക്കിംഗ്, UPI പേയ്‌മെന്റുകൾ, മഹല്ല് വരവ്-ചിലവ് കണക്കുകൾ എന്നിവ ഏകോപിപ്പിക്കുന്ന ഡിജിറ്റൽ പ്ലാറ്റ്‌ഫോം.'
+                : 'An advanced digital governance platform unifying household census, automated dues tracking, UPI reconciliation, and community double-entry ledger.'}
             </p>
-
-
           </div>
 
           {/* Column 2: Navigation Shortcuts */}
           <div className="space-y-4">
             <h4 className="text-xs font-bold text-slate-200 uppercase tracking-widest flex items-center gap-2">
               <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Navigation</span>
+              <span>{isMl ? 'നാവിഗേഷൻ' : 'Navigation'}</span>
             </h4>
             <ul className="space-y-2.5">
               {[
-                { label: 'Portal Homepage', href: '/', icon: Home },
+                { label: isMl ? 'ഹോം പേജ്' : 'Portal Homepage', href: '/', icon: Home },
                 { label: primaryDashboardLabel, href: primaryDashboardHref, icon: Landmark },
-                { label: 'Register Household', href: '/onboarding', icon: Users },
-                { label: 'Sign In / Account', href: '/auth/login', icon: ArrowRight },
+                { label: isMl ? 'കുടുംബ രജിസ്ട്രേഷൻ' : 'Register Household', href: '/onboarding', icon: Users },
+                { label: isMl ? 'ലോഗിൻ / അക്കൗണ്ട്' : 'Sign In / Account', href: '/auth/login', icon: ArrowRight },
               ].map((item) => (
                 <li key={item.label}>
                   <Link
@@ -115,16 +117,25 @@ export function Footer() {
           <div className="space-y-4">
             <h4 className="text-xs font-bold text-slate-200 uppercase tracking-widest flex items-center gap-2">
               <CreditCard className="h-3.5 w-3.5 text-teal-400" />
-              <span>Platform Modules</span>
+              <span>{isMl ? 'പ്രധാന സേവനങ്ങൾ' : 'Platform Modules'}</span>
             </h4>
             <ul className="space-y-2.5 text-xs text-slate-400">
-              {[
-                'Household Census Registry',
-                'Monthly ₹100 Dues Tracking',
-                'UPI QR Generation & Verification',
-                'Double-Entry Financial Ledger',
-                'Automated Defaulter Alerts',
-              ].map((feature) => (
+              {(isMl
+                ? [
+                    'കുടുംബ സെൻസസ് രജിസ്ട്രി',
+                    'പ്രതിമാസ വരിസംഖ്യ ട്രാക്കിംഗ്',
+                    'UPI QR പേയ്‌മെന്റ് & ഡിജിറ്റൽ രസീതുകൾ',
+                    'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷകൾ',
+                    'വരവ്-ചിലവ് ഫിനാൻഷ്യൽ ലെഡ്ജർ',
+                  ]
+                : [
+                    'Household Census Registry',
+                    'Monthly ₹100 Dues Tracking',
+                    'UPI QR Generation & Verification',
+                    'Double-Entry Financial Ledger',
+                    'Automated Defaulter Alerts',
+                  ]
+              ).map((feature) => (
                 <li key={feature} className="flex items-center gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80 flex-shrink-0" />
                   <span>{feature}</span>
@@ -137,18 +148,23 @@ export function Footer() {
           <div className="space-y-4">
             <h4 className="text-xs font-bold text-slate-200 uppercase tracking-widest flex items-center gap-2">
               <MapPin className="h-3.5 w-3.5 text-amber-400" />
-              <span>Jurisdiction</span>
+              <span>{isMl ? 'മഹല്ല് പരിധി' : 'Jurisdiction'}</span>
             </h4>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Serving 6 designated local divisions across Kunjikkulam Mahallu with full data privacy
-              and committee oversight.
+              {isMl
+                ? 'കുഞ്ഞിക്കുളം മഹല്ല് പരിധിയിലെ 6 ഡിവിഷനുകളിലെ കുടുംബങ്ങൾക്കായി പൂർണ്ണ സുരക്ഷയോടും മേൽനോട്ടത്തോടും കൂടി പ്രവർത്തിക്കുന്നു.'
+                : 'Serving 6 designated local divisions across Kunjikkulam Mahallu with full data privacy and committee oversight.'}
             </p>
-
-
           </div>
         </div>
 
-
+        {/* Bottom copyright line */}
+        <div className="py-6 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <p>© {currentYear} കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് മഹല്ല് കമ്മിറ്റി. {isMl ? 'എല്ലാ അവകാശങ്ങളും നിക്ഷിപ്തം.' : 'All rights reserved.'}</p>
+          <div className="flex items-center gap-1.5 text-slate-400">
+            <span>Made for Mahallu Community</span>
+          </div>
+        </div>
       </div>
     </footer>
   );

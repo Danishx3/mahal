@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { DataService, ProfileUpdateRequest } from '@/lib/data-service';
-import { HouseWithDetails, DIVISION_LABELS, Division } from '@/lib/supabase/types';
+import { HouseWithDetails, DIVISION_LABELS, DIVISION_LABELS_ML, Division } from '@/lib/supabase/types';
 import { formatDate, formatDateTime } from '@/lib/utils';
+import { useLanguage } from '@/lib/context/LanguageContext';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
@@ -30,6 +31,8 @@ import {
 } from 'lucide-react';
 
 export default function ProfileVerificationHub() {
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<'registrations' | 'updates'>('registrations');
   const [pendingHouses, setPendingHouses] = useState<HouseWithDetails[]>([]);
@@ -91,14 +94,24 @@ export default function ProfileVerificationHub() {
     try {
       const success = await DataService.approveProfile(houseId);
       if (success) {
-        toast('Household profile approved successfully! Portal access unlocked.', 'success');
+        toast(
+          isMl
+            ? 'കുടുംബ പ്രൊഫൈൽ വിജയകരമായി അംഗീകരിച്ചു! പോർട്ടൽ പ്രവേശനം അനുവദിച്ചു.'
+            : 'Household profile approved successfully! Portal access unlocked.',
+          'success'
+        );
         setDrawerOpen(false);
         await loadPending();
       } else {
-        toast('Failed to approve profile. Please try again.', 'error');
+        toast(
+          isMl
+            ? 'പ്രൊഫൈൽ അംഗീകരിക്കുന്നതിൽ പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.'
+            : 'Failed to approve profile. Please try again.',
+          'error'
+        );
       }
     } catch (err: any) {
-      toast(err?.message || 'Failed to approve profile', 'error');
+      toast(err?.message || (isMl ? 'പ്രൊഫൈൽ അംഗീകരിക്കുന്നതിൽ പരാജയപ്പെട്ടു' : 'Failed to approve profile'), 'error');
     } finally {
       setApprovingId(null);
     }
@@ -115,7 +128,10 @@ export default function ProfileVerificationHub() {
     if (!houseToReject) return;
 
     if (!rejectionReason.trim()) {
-      toast('Please provide a reason for rejecting this profile', 'error');
+      toast(
+        isMl ? 'പ്രൊഫൈൽ നിരസിക്കുന്നതിനുള്ള കാരണം നൽകുക' : 'Please provide a reason for rejecting this profile',
+        'error'
+      );
       return;
     }
 
@@ -123,15 +139,20 @@ export default function ProfileVerificationHub() {
     try {
       const success = await DataService.rejectProfile(houseToReject.id, rejectionReason.trim());
       if (success) {
-        toast('Profile rejected with explanation returned to applicant.', 'info');
+        toast(
+          isMl
+            ? 'കാരണം വ്യക്തമാക്കി അപേക്ഷകന് അറിയിപ്പ് നൽകി പ്രൊഫൈൽ നിരസിച്ചു.'
+            : 'Profile rejected with explanation returned to applicant.',
+          'info'
+        );
         setRejectModalOpen(false);
         setDrawerOpen(false);
         await loadPending();
       } else {
-        toast('Failed to reject profile', 'error');
+        toast(isMl ? 'പ്രൊഫൈൽ നിരസിക്കുന്നതിൽ പരാജയപ്പെട്ടു' : 'Failed to reject profile', 'error');
       }
     } catch (err: any) {
-      toast(err?.message || 'Failed to reject profile', 'error');
+      toast(err?.message || (isMl ? 'പ്രൊഫൈൽ നിരസിക്കുന്നതിൽ പരാജയപ്പെട്ടു' : 'Failed to reject profile'), 'error');
     } finally {
       setIsRejecting(false);
     }
@@ -149,17 +170,21 @@ export default function ProfileVerificationHub() {
       await DataService.approveProfileUpdateAsync(update.id);
       const memberMsg =
         update.requested_members && update.requested_members.length > 0
-          ? ` and updated ${update.requested_members.length} family census records`
+          ? isMl
+            ? ` കൂടാതെ ${update.requested_members.length} കുടുംബാംഗങ്ങളുടെ സെൻസസ് രേഖകളും പുതുക്കി`
+            : ` and updated ${update.requested_members.length} family census records`
           : '';
       toast(
-        `Approved dwelling updates for ${update.requested_details.house_name}${memberMsg}! Records are now officially updated.`,
+        isMl
+          ? `${update.requested_details.house_name} ന്റെ മേൽവിലാസ വിവരങ്ങൾ ഔദ്യോഗികമായി പുതുക്കി${memberMsg}!`
+          : `Approved dwelling updates for ${update.requested_details.house_name}${memberMsg}! Records are now officially updated.`,
         'success'
       );
       setUpdateReviewModalOpen(false);
       setSelectedUpdate(null);
       await loadPending();
     } catch (err: any) {
-      toast(err?.message || 'Failed to approve update', 'error');
+      toast(err?.message || (isMl ? 'തിരുത്തൽ അംഗീകരിക്കുന്നതിൽ പരാജയപ്പെട്ടു' : 'Failed to approve update'), 'error');
     } finally {
       setApprovingUpdateId(null);
     }
@@ -175,20 +200,23 @@ export default function ProfileVerificationHub() {
     e.preventDefault();
     if (!updateToReject) return;
     if (!updateRejectionReason.trim()) {
-      toast('Please provide an explanation for rejecting these edits', 'error');
+      toast(
+        isMl ? 'മാറ്റങ്ങൾ നിരസിക്കുന്നതിനുള്ള കാരണം നൽകുക' : 'Please provide an explanation for rejecting these edits',
+        'error'
+      );
       return;
     }
 
     setIsRejectingUpdate(true);
     try {
       await DataService.rejectProfileUpdateAsync(updateToReject.id, updateRejectionReason.trim());
-      toast('Profile update request rejected.', 'info');
+      toast(isMl ? 'പ്രൊഫൈൽ മാറ്റ അപേക്ഷ നിരസിച്ചു.' : 'Profile update request rejected.', 'info');
       setRejectUpdateModalOpen(false);
       setUpdateReviewModalOpen(false);
       setUpdateToReject(null);
       await loadPending();
     } catch (err: any) {
-      toast(err?.message || 'Failed to reject update', 'error');
+      toast(err?.message || (isMl ? 'തിരുത്തൽ നിരസിക്കുന്നതിൽ പരാജയപ്പെട്ടു' : 'Failed to reject update'), 'error');
     } finally {
       setIsRejectingUpdate(false);
     }
@@ -203,18 +231,18 @@ export default function ProfileVerificationHub() {
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              Profile Verification Hub
+              {isMl ? 'പ്രൊഫൈൽ വെരിഫിക്കേഷൻ ഹബ്ബ്' : 'Profile Verification Hub'}
             </h1>
             <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-xs font-bold">
-              {totalPending} Total Pending
+              {isMl ? `ആകെ ${totalPending} അപേക്ഷകൾ` : `${totalPending} Total Pending`}
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Audit new resident registration applications and verify requested dwelling & contact record updates.
+            {isMl
+              ? 'പുതിയ കുടുംബ രജിസ്ട്രേഷൻ അപേക്ഷകളും മേൽവിലാസം, ഫോൺ നമ്പർ, കുടുംബാംഗങ്ങൾ എന്നിവയിലെ തിരുത്തലുകളും പരിശോധിച്ച് അംഗീകരിക്കുക.'
+              : 'Audit new resident registration applications and verify requested dwelling & contact record updates.'}
           </p>
         </div>
-
-
       </div>
 
       {/* Verification Navigation Tabs */}
@@ -223,18 +251,20 @@ export default function ProfileVerificationHub() {
         <button
           type="button"
           onClick={() => setActiveTab('registrations')}
-          className={`pb-3 px-3 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-2 whitespace-nowrap ${activeTab === 'registrations'
+          className={`pb-3 px-3 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+            activeTab === 'registrations'
               ? 'border-emerald-700 text-emerald-800'
               : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
+          }`}
         >
           <UserCheck className="h-4 w-4" />
-          <span>New Registrations</span>
+          <span>{isMl ? 'പുതിയ രജിസ്ട്രേഷനുകൾ' : 'New Registrations'}</span>
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${activeTab === 'registrations'
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              activeTab === 'registrations'
                 ? 'bg-emerald-100 text-emerald-900'
                 : 'bg-slate-100 text-slate-600'
-              }`}
+            }`}
           >
             {pendingHouses.length}
           </span>
@@ -243,18 +273,20 @@ export default function ProfileVerificationHub() {
         <button
           type="button"
           onClick={() => setActiveTab('updates')}
-          className={`pb-3 px-3 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-2 whitespace-nowrap ${activeTab === 'updates'
+          className={`pb-3 px-3 text-xs font-bold border-b-2 transition-colors cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+            activeTab === 'updates'
               ? 'border-emerald-700 text-emerald-800'
               : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
+          }`}
         >
           <Pencil className="h-4 w-4" />
-          <span>Dwelling &amp; Contact Edit Requests</span>
+          <span>{isMl ? 'മേൽവിലാസ & വിവര തിരുത്തലുകൾ' : 'Dwelling & Contact Edit Requests'}</span>
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${activeTab === 'updates'
+            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              activeTab === 'updates'
                 ? 'bg-emerald-100 text-emerald-900'
                 : 'bg-slate-100 text-slate-600'
-              }`}
+            }`}
           >
             {pendingUpdates.length}
           </span>
@@ -269,12 +301,12 @@ export default function ProfileVerificationHub() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
                 <tr>
-                  <th className="py-3.5 px-6">Household / Reg No</th>
-                  <th className="py-3.5 px-4">Head of Family</th>
-                  <th className="py-3.5 px-4">Division</th>
-                  <th className="py-3.5 px-4">Members</th>
-                  <th className="py-3.5 px-4">Submitted At</th>
-                  <th className="py-3.5 px-6 text-right">Actions</th>
+                  <th className="py-3.5 px-6">{isMl ? 'കുടുംബം / രജി. നമ്പർ' : 'Household / Reg No'}</th>
+                  <th className="py-3.5 px-4">{isMl ? 'കുടുംബനാഥൻ' : 'Head of Family'}</th>
+                  <th className="py-3.5 px-4">{isMl ? 'ഡിവിഷൻ' : 'Division'}</th>
+                  <th className="py-3.5 px-4">{isMl ? 'അംഗങ്ങൾ' : 'Members'}</th>
+                  <th className="py-3.5 px-4">{isMl ? 'സമർപ്പിച്ച തീയതി' : 'Submitted At'}</th>
+                  <th className="py-3.5 px-6 text-right">{isMl ? 'നടപടികൾ' : 'Actions'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -286,10 +318,12 @@ export default function ProfileVerificationHub() {
                           <CheckCircle2 className="h-6 w-6" />
                         </div>
                         <p className="text-sm font-semibold text-slate-900">
-                          All Household Profiles Verified
+                          {isMl ? 'എല്ലാ പ്രൊഫൈലുകളും പരിശോധിച്ചു കഴിഞ്ഞു' : 'All Household Profiles Verified'}
                         </p>
                         <p className="text-xs text-slate-400">
-                          There are currently no new registration requests in the review queue.
+                          {isMl
+                            ? 'പരിശോധനയ്ക്കായി പുതിയ രജിസ്ട്രേഷൻ അപേക്ഷകളൊന്നും നിലവിലില്ല.'
+                            : 'There are currently no new registration requests in the review queue.'}
                         </p>
                       </div>
                     </td>
@@ -299,12 +333,15 @@ export default function ProfileVerificationHub() {
                     const head =
                       house.family_members.find((m) => m.is_head_of_family) ||
                       house.family_members[0];
+                    const divName = isMl
+                      ? (DIVISION_LABELS_ML[house.division as Division] || house.division)
+                      : (DIVISION_LABELS[house.division as Division] || house.division);
                     return (
                       <tr key={house.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-3.5 px-6">
                           <div className="font-bold text-slate-900">{house.house_name}</div>
                           <div className="text-[11px] text-slate-500 font-mono">
-                            {house.mahallu_reg_no} • Ward: {house.house_number}
+                            {house.mahallu_reg_no} • {isMl ? 'വാർഡ്' : 'Ward'}: {house.house_number}
                           </div>
                         </td>
 
@@ -316,13 +353,13 @@ export default function ProfileVerificationHub() {
                         <td className="py-3.5 px-4">
                           <span className="inline-flex items-center gap-1 font-medium text-slate-700">
                             <MapPin className="h-3 w-3 text-slate-400" />
-                            {DIVISION_LABELS[house.division as Division]}
+                            {divName}
                           </span>
                         </td>
 
                         <td className="py-3.5 px-4">
                           <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold text-[11px]">
-                            {house.family_members.length} members
+                            {house.family_members.length} {isMl ? 'അംഗങ്ങൾ' : 'members'}
                           </span>
                         </td>
 
@@ -339,7 +376,7 @@ export default function ProfileVerificationHub() {
                               className="gap-1 text-slate-700 cursor-pointer"
                             >
                               <Eye className="h-3.5 w-3.5 text-slate-500" />
-                              View Details
+                              {isMl ? 'വിശദാംശങ്ങൾ' : 'View Details'}
                             </Button>
 
                             <Button
@@ -351,7 +388,7 @@ export default function ProfileVerificationHub() {
                               className="gap-1 bg-emerald-700 hover:bg-emerald-800 cursor-pointer"
                             >
                               <CheckCircle2 className="h-3.5 w-3.5" />
-                              Approve
+                              {isMl ? 'അംഗീകരിക്കുക' : 'Approve'}
                             </Button>
 
                             <Button
@@ -361,7 +398,7 @@ export default function ProfileVerificationHub() {
                               className="gap-1 cursor-pointer"
                             >
                               <XCircle className="h-3.5 w-3.5" />
-                              Reject
+                              {isMl ? 'നിരസിക്കുക' : 'Reject'}
                             </Button>
                           </div>
                         </td>
@@ -378,14 +415,21 @@ export default function ProfileVerificationHub() {
             {pendingHouses.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs">
                 <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
-                <p className="font-semibold text-slate-800">All Registrations Verified</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">No pending registration requests.</p>
+                <p className="font-semibold text-slate-800">
+                  {isMl ? 'എല്ലാ രജിസ്ട്രേഷനുകളും പരിശോധിച്ചു കഴിഞ്ഞു' : 'All Registrations Verified'}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  {isMl ? 'പുതിയ അപേക്ഷകളൊന്നും നിലവിലില്ല.' : 'No pending registration requests.'}
+                </p>
               </div>
             ) : (
               pendingHouses.map((house) => {
                 const head =
                   house.family_members.find((m) => m.is_head_of_family) ||
                   house.family_members[0];
+                const divName = isMl
+                  ? (DIVISION_LABELS_ML[house.division as Division] || house.division)
+                  : (DIVISION_LABELS[house.division as Division] || house.division);
                 return (
                   <div key={house.id} className="p-4 space-y-3 hover:bg-slate-50/60 transition-colors">
                     <div className="flex items-start justify-between gap-2">
@@ -394,18 +438,20 @@ export default function ProfileVerificationHub() {
                         <p className="text-xs font-mono text-emerald-800 font-bold mt-0.5">
                           {house.mahallu_reg_no}
                           <span className="font-sans font-normal text-slate-400 ml-1">
-                            • Ward {house.house_number}
+                            • {isMl ? 'വാർഡ്' : 'Ward'} {house.house_number}
                           </span>
                         </p>
                       </div>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200 shrink-0">
-                        Pending
+                        {isMl ? 'പരിശോധനയിൽ' : 'Pending'}
                       </span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50/90 p-3 rounded-xl border border-slate-100">
                       <div>
-                        <span className="text-[10px] text-slate-400 block uppercase font-medium">Head of Family</span>
+                        <span className="text-[10px] text-slate-400 block uppercase font-medium">
+                          {isMl ? 'കുടുംബനാഥൻ' : 'Head of Family'}
+                        </span>
                         <span className="font-semibold text-slate-800">{head?.name || '—'}</span>
                         {house.phone && (
                           <a
@@ -418,18 +464,20 @@ export default function ProfileVerificationHub() {
                         )}
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 block uppercase font-medium">Division &amp; Census</span>
+                        <span className="text-[10px] text-slate-400 block uppercase font-medium">
+                          {isMl ? 'ഡിവിഷനും അംഗങ്ങളും' : 'Division & Census'}
+                        </span>
                         <span className="font-medium text-slate-700 block">
-                          {DIVISION_LABELS[house.division as Division]}
+                          {divName}
                         </span>
                         <span className="text-[11px] text-slate-500 font-semibold">
-                          {house.family_members.length} member(s)
+                          {house.family_members.length} {isMl ? 'അംഗങ്ങൾ' : 'member(s)'}
                         </span>
                       </div>
                     </div>
 
                     <div className="text-[11px] text-slate-400">
-                      Submitted: {formatDateTime(house.created_at)}
+                      {isMl ? 'സമർപ്പിച്ചത്:' : 'Submitted:'} {formatDateTime(house.created_at)}
                     </div>
 
                     {/* Action Buttons: 3-column responsive touch grid */}
@@ -441,7 +489,7 @@ export default function ProfileVerificationHub() {
                         className="w-full justify-center gap-1 text-xs min-h-[40px] px-1"
                       >
                         <Eye className="h-3.5 w-3.5" />
-                        <span className="truncate">Details</span>
+                        <span className="truncate">{isMl ? 'വിശദാംശങ്ങൾ' : 'Details'}</span>
                       </Button>
 
                       <Button
@@ -453,7 +501,7 @@ export default function ProfileVerificationHub() {
                         className="w-full justify-center gap-1 text-xs min-h-[40px] bg-emerald-700 hover:bg-emerald-800 px-1"
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        <span className="truncate">Approve</span>
+                        <span className="truncate">{isMl ? 'അംഗീകരിക്കുക' : 'Approve'}</span>
                       </Button>
 
                       <Button
@@ -463,7 +511,7 @@ export default function ProfileVerificationHub() {
                         className="w-full justify-center gap-1 text-xs min-h-[40px] px-1"
                       >
                         <XCircle className="h-3.5 w-3.5" />
-                        <span className="truncate">Reject</span>
+                        <span className="truncate">{isMl ? 'നിരസിക്കുക' : 'Reject'}</span>
                       </Button>
                     </div>
                   </div>
@@ -482,11 +530,11 @@ export default function ProfileVerificationHub() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
                 <tr>
-                  <th className="py-3.5 px-6">Household &amp; Reg No</th>
-                  <th className="py-3.5 px-4">Requested Modifications</th>
-                  <th className="py-3.5 px-4">Submitted Contact</th>
-                  <th className="py-3.5 px-4">Submitted Date</th>
-                  <th className="py-3.5 px-6 text-right">Verification Actions</th>
+                  <th className="py-3.5 px-6">{isMl ? 'കുടുംബം & രജി. നമ്പർ' : 'Household & Reg No'}</th>
+                  <th className="py-3.5 px-4">{isMl ? 'ആവശ്യപ്പെട്ട മാറ്റങ്ങൾ' : 'Requested Modifications'}</th>
+                  <th className="py-3.5 px-4">{isMl ? 'ഫോൺ നമ്പർ' : 'Submitted Contact'}</th>
+                  <th className="py-3.5 px-4">{isMl ? 'സമർപ്പിച്ച തീയതി' : 'Submitted Date'}</th>
+                  <th className="py-3.5 px-6 text-right">{isMl ? 'നടപടികൾ' : 'Verification Actions'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -498,10 +546,12 @@ export default function ProfileVerificationHub() {
                           <CheckCircle2 className="h-6 w-6" />
                         </div>
                         <p className="text-sm font-semibold text-slate-900">
-                          All Profile Edit Requests Verified
+                          {isMl ? 'എല്ലാ തിരുത്തലുകളും പരിശോധിച്ചു കഴിഞ്ഞു' : 'All Profile Edit Requests Verified'}
                         </p>
                         <p className="text-xs text-slate-400">
-                          There are currently no dwelling record update requests pending verification.
+                          {isMl
+                            ? 'പരിശോധനയ്ക്കായി പ്രൊഫൈൽ മാറ്റ അപേക്ഷകളൊന്നും നിലവിലില്ല.'
+                            : 'There are currently no dwelling record update requests pending verification.'}
                         </p>
                       </div>
                     </td>
@@ -510,13 +560,13 @@ export default function ProfileVerificationHub() {
                   pendingUpdates.map((update) => {
                     const changes: string[] = [];
                     if (update.requested_details.house_name !== update.current_details.house_name)
-                      changes.push('House Name');
+                      changes.push(isMl ? 'വീട്ടുപേര്' : 'House Name');
                     if (update.requested_details.house_number !== update.current_details.house_number)
-                      changes.push('Ward / Door No');
+                      changes.push(isMl ? 'വാർഡ് / വീട്ടുനമ്പർ' : 'Ward / Door No');
                     if (update.requested_details.phone !== update.current_details.phone)
-                      changes.push('Phone');
+                      changes.push(isMl ? 'ഫോൺ' : 'Phone');
                     if (update.requested_details.division !== update.current_details.division)
-                      changes.push('Division');
+                      changes.push(isMl ? 'ഡിവിഷൻ' : 'Division');
 
                     const curCount = update.current_members?.length || 0;
                     const reqCount = update.requested_members?.length || 0;
@@ -528,7 +578,9 @@ export default function ProfileVerificationHub() {
 
                     if (hasMemberChanges) {
                       changes.push(
-                        `Census (${curCount !== reqCount ? `${curCount}→${reqCount}` : `${reqCount} members`})`
+                        isMl
+                          ? `സെൻസസ് (${curCount !== reqCount ? `${curCount}→${reqCount}` : `${reqCount} അംഗങ്ങൾ`})`
+                          : `Census (${curCount !== reqCount ? `${curCount}→${reqCount}` : `${reqCount} members`})`
                       );
                     }
 
@@ -548,16 +600,19 @@ export default function ProfileVerificationHub() {
                             {changes.map((c) => (
                               <span
                                 key={c}
-                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${c.startsWith('Census')
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                                  c.startsWith('Census') || c.startsWith('സെൻസസ്')
                                     ? 'bg-purple-100 text-purple-900 border-purple-200'
                                     : 'bg-amber-100 text-amber-900 border-amber-200'
-                                  }`}
+                                }`}
                               >
                                 {c}
                               </span>
                             ))}
                             {changes.length === 0 && (
-                              <span className="text-slate-400 text-[11px]">No field changes</span>
+                              <span className="text-slate-400 text-[11px]">
+                                {isMl ? 'മാറ്റങ്ങളില്ല' : 'No field changes'}
+                              </span>
                             )}
                           </div>
                         </td>
@@ -568,7 +623,7 @@ export default function ProfileVerificationHub() {
                           </div>
                           {update.note && (
                             <div className="text-[11px] text-slate-500 truncate max-w-xs" title={update.note}>
-                              Note: {update.note}
+                              {isMl ? 'കുറിപ്പ്:' : 'Note:'} {update.note}
                             </div>
                           )}
                         </td>
@@ -586,7 +641,7 @@ export default function ProfileVerificationHub() {
                               className="gap-1 text-slate-700 cursor-pointer"
                             >
                               <Eye className="h-3.5 w-3.5 text-slate-500" />
-                              Review Changes
+                              {isMl ? 'മാറ്റങ്ങൾ കാണുക' : 'Review Changes'}
                             </Button>
 
                             <Button
@@ -598,7 +653,7 @@ export default function ProfileVerificationHub() {
                               className="gap-1 bg-emerald-700 hover:bg-emerald-800 cursor-pointer"
                             >
                               <CheckCircle2 className="h-3.5 w-3.5" />
-                              Approve
+                              {isMl ? 'അംഗീകരിക്കുക' : 'Approve'}
                             </Button>
 
                             <Button
@@ -608,7 +663,7 @@ export default function ProfileVerificationHub() {
                               className="gap-1 cursor-pointer"
                             >
                               <XCircle className="h-3.5 w-3.5" />
-                              Reject
+                              {isMl ? 'നിരസിക്കുക' : 'Reject'}
                             </Button>
                           </div>
                         </td>
@@ -625,20 +680,24 @@ export default function ProfileVerificationHub() {
             {pendingUpdates.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs">
                 <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
-                <p className="font-semibold text-slate-800">All Updates Verified</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">No dwelling update requests pending review.</p>
+                <p className="font-semibold text-slate-800">
+                  {isMl ? 'എല്ലാ തിരുത്തലുകളും പരിശോധിച്ചു കഴിഞ്ഞു' : 'All Updates Verified'}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  {isMl ? 'പരിശോധനയ്ക്കായി പ്രൊഫൈൽ മാറ്റ അപേക്ഷകളൊന്നും നിലവിലില്ല.' : 'No dwelling update requests pending review.'}
+                </p>
               </div>
             ) : (
               pendingUpdates.map((update) => {
                 const changes: string[] = [];
                 if (update.requested_details.house_name !== update.current_details.house_name)
-                  changes.push('House Name');
+                  changes.push(isMl ? 'വീട്ടുപേര്' : 'House Name');
                 if (update.requested_details.house_number !== update.current_details.house_number)
-                  changes.push('Ward / Door No');
+                  changes.push(isMl ? 'വാർഡ് / വീട്ടുനമ്പർ' : 'Ward / Door No');
                 if (update.requested_details.phone !== update.current_details.phone)
-                  changes.push('Phone');
+                  changes.push(isMl ? 'ഫോൺ' : 'Phone');
                 if (update.requested_details.division !== update.current_details.division)
-                  changes.push('Division');
+                  changes.push(isMl ? 'ഡിവിഷൻ' : 'Division');
 
                 const curCount = update.current_members?.length || 0;
                 const reqCount = update.requested_members?.length || 0;
@@ -650,7 +709,9 @@ export default function ProfileVerificationHub() {
 
                 if (hasMemberChanges) {
                   changes.push(
-                    `Census (${curCount !== reqCount ? `${curCount}→${reqCount}` : `${reqCount} members`})`
+                    isMl
+                      ? `സെൻസസ് (${curCount !== reqCount ? `${curCount}→${reqCount}` : `${reqCount} അംഗങ്ങൾ`})`
+                      : `Census (${curCount !== reqCount ? `${curCount}→${reqCount}` : `${reqCount} members`})`
                   );
                 }
 
@@ -666,23 +727,24 @@ export default function ProfileVerificationHub() {
                         </p>
                       </div>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-200 shrink-0">
-                        Profile Update
+                        {isMl ? 'വിവര തിരുത്തൽ' : 'Profile Update'}
                       </span>
                     </div>
 
                     {/* Requested Changes Tags */}
                     <div className="bg-slate-50/90 p-3 rounded-xl border border-slate-100 space-y-1.5 text-xs">
                       <span className="text-[10px] text-slate-400 uppercase font-semibold block">
-                        Changes Requested:
+                        {isMl ? 'ആവശ്യപ്പെട്ട മാറ്റങ്ങൾ:' : 'Changes Requested:'}
                       </span>
                       <div className="flex flex-wrap gap-1">
                         {changes.map((c) => (
                           <span
                             key={c}
-                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${c.startsWith('Census')
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                              c.startsWith('Census') || c.startsWith('സെൻസസ്')
                                 ? 'bg-purple-100 text-purple-900 border-purple-200'
                                 : 'bg-amber-100 text-amber-900 border-amber-200'
-                              }`}
+                            }`}
                           >
                             {c}
                           </span>
@@ -696,7 +758,7 @@ export default function ProfileVerificationHub() {
                     </div>
 
                     <div className="text-[11px] text-slate-400">
-                      Submitted: {formatDateTime(update.submitted_at)}
+                      {isMl ? 'സമർപ്പിച്ചത്:' : 'Submitted:'} {formatDateTime(update.submitted_at)}
                     </div>
 
                     {/* Mobile Action Buttons */}
@@ -708,7 +770,7 @@ export default function ProfileVerificationHub() {
                         className="w-full justify-center gap-1 text-xs min-h-[40px] px-1"
                       >
                         <Eye className="h-3.5 w-3.5" />
-                        <span className="truncate">Review</span>
+                        <span className="truncate">{isMl ? 'മാറ്റങ്ങൾ' : 'Review'}</span>
                       </Button>
 
                       <Button
@@ -720,7 +782,7 @@ export default function ProfileVerificationHub() {
                         className="w-full justify-center gap-1 text-xs min-h-[40px] bg-emerald-700 hover:bg-emerald-800 px-1"
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        <span className="truncate">Approve</span>
+                        <span className="truncate">{isMl ? 'അംഗീകരിക്കുക' : 'Approve'}</span>
                       </Button>
 
                       <Button
@@ -730,7 +792,7 @@ export default function ProfileVerificationHub() {
                         className="w-full justify-center gap-1 text-xs min-h-[40px] px-1"
                       >
                         <XCircle className="h-3.5 w-3.5" />
-                        <span className="truncate">Reject</span>
+                        <span className="truncate">{isMl ? 'നിരസിക്കുക' : 'Reject'}</span>
                       </Button>
                     </div>
                   </div>
@@ -747,8 +809,12 @@ export default function ProfileVerificationHub() {
         onClose={() => {
           if (!approvingUpdateId) setUpdateReviewModalOpen(false);
         }}
-        title="Verify Household Profile & Census Updates"
-        description="Review submitted dwelling updates and family census changes against existing official records before approving."
+        title={isMl ? 'കുടുംബ വിവരങ്ങളിലെ തിരുത്തലുകൾ പരിശോധിക്കുക' : 'Verify Household Profile & Census Updates'}
+        description={
+          isMl
+            ? 'ഔദ്യോഗിക രേഖകളുമായി താരതമ്യം ചെയ്ത് മേൽവിലാസ വിവരങ്ങളും സെൻസസ് മാറ്റങ്ങളും പരിശോധിച്ച് ഉറപ്പാക്കുക.'
+            : 'Review submitted dwelling updates and family census changes against existing official records before approving.'
+        }
         maxWidth="4xl"
       >
         {selectedUpdate && (
@@ -757,14 +823,14 @@ export default function ProfileVerificationHub() {
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
               <div>
                 <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                  Mahallu Household Registration
+                  {isMl ? 'മഹല്ല് രജിസ്ട്രേഷൻ നമ്പർ' : 'Mahallu Household Registration'}
                 </span>
                 <span className="font-mono font-bold text-sm text-emerald-800">
                   {selectedUpdate.mahallu_reg_no}
                 </span>
               </div>
               <span className="text-[11px] text-slate-500">
-                Submitted: <strong>{formatDateTime(selectedUpdate.submitted_at)}</strong>
+                {isMl ? 'സമർപ്പിച്ചത്:' : 'Submitted:'} <strong>{formatDateTime(selectedUpdate.submitted_at)}</strong>
               </span>
             </div>
 
@@ -773,10 +839,10 @@ export default function ProfileVerificationHub() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
                   <tr>
-                    <th className="py-2.5 px-3">Field</th>
-                    <th className="py-2.5 px-3">Current Record</th>
-                    <th className="py-2.5 px-3">Requested Update</th>
-                    <th className="py-2.5 px-3 text-center">Status</th>
+                    <th className="py-2.5 px-3">{isMl ? 'വിവരം' : 'Field'}</th>
+                    <th className="py-2.5 px-3">{isMl ? 'നിലവിലെ രേഖ' : 'Current Record'}</th>
+                    <th className="py-2.5 px-3">{isMl ? 'പുതിയ വിവരം' : 'Requested Update'}</th>
+                    <th className="py-2.5 px-3 text-center">{isMl ? 'നില' : 'Status'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -784,12 +850,14 @@ export default function ProfileVerificationHub() {
                   <tr
                     className={
                       selectedUpdate.requested_details.house_name !==
-                        selectedUpdate.current_details.house_name
+                      selectedUpdate.current_details.house_name
                         ? 'bg-emerald-50/40'
                         : ''
                     }
                   >
-                    <td className="py-2.5 px-3 font-semibold text-slate-700">House Name</td>
+                    <td className="py-2.5 px-3 font-semibold text-slate-700">
+                      {isMl ? 'വീട്ടുപേര്' : 'House Name'}
+                    </td>
                     <td className="py-2.5 px-3 text-slate-600">
                       {selectedUpdate.current_details.house_name || '—'}
                     </td>
@@ -798,12 +866,12 @@ export default function ProfileVerificationHub() {
                     </td>
                     <td className="py-2.5 px-3 text-center">
                       {selectedUpdate.requested_details.house_name !==
-                        selectedUpdate.current_details.house_name ? (
+                      selectedUpdate.current_details.house_name ? (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                          Modified
+                          {isMl ? 'മാറ്റം വരുത്തി' : 'Modified'}
                         </span>
                       ) : (
-                        <span className="text-slate-400 text-[10px]">Unchanged</span>
+                        <span className="text-slate-400 text-[10px]">{isMl ? 'മാറ്റമില്ല' : 'Unchanged'}</span>
                       )}
                     </td>
                   </tr>
@@ -812,12 +880,14 @@ export default function ProfileVerificationHub() {
                   <tr
                     className={
                       selectedUpdate.requested_details.house_number !==
-                        selectedUpdate.current_details.house_number
+                      selectedUpdate.current_details.house_number
                         ? 'bg-emerald-50/40'
                         : ''
                     }
                   >
-                    <td className="py-2.5 px-3 font-semibold text-slate-700">Ward / Door</td>
+                    <td className="py-2.5 px-3 font-semibold text-slate-700">
+                      {isMl ? 'വാർഡ് / വീട്ടുനമ്പർ' : 'Ward / Door'}
+                    </td>
                     <td className="py-2.5 px-3 text-slate-600">
                       {selectedUpdate.current_details.house_number || '—'}
                     </td>
@@ -826,12 +896,12 @@ export default function ProfileVerificationHub() {
                     </td>
                     <td className="py-2.5 px-3 text-center">
                       {selectedUpdate.requested_details.house_number !==
-                        selectedUpdate.current_details.house_number ? (
+                      selectedUpdate.current_details.house_number ? (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                          Modified
+                          {isMl ? 'മാറ്റം വരുത്തി' : 'Modified'}
                         </span>
                       ) : (
-                        <span className="text-slate-400 text-[10px]">Unchanged</span>
+                        <span className="text-slate-400 text-[10px]">{isMl ? 'മാറ്റമില്ല' : 'Unchanged'}</span>
                       )}
                     </td>
                   </tr>
@@ -840,12 +910,14 @@ export default function ProfileVerificationHub() {
                   <tr
                     className={
                       selectedUpdate.requested_details.phone !==
-                        selectedUpdate.current_details.phone
+                      selectedUpdate.current_details.phone
                         ? 'bg-emerald-50/40'
                         : ''
                     }
                   >
-                    <td className="py-2.5 px-3 font-semibold text-slate-700">Contact Phone</td>
+                    <td className="py-2.5 px-3 font-semibold text-slate-700">
+                      {isMl ? 'ഫോൺ നമ്പർ' : 'Contact Phone'}
+                    </td>
                     <td className="py-2.5 px-3 text-slate-600 font-mono">
                       {selectedUpdate.current_details.phone || '—'}
                     </td>
@@ -854,12 +926,12 @@ export default function ProfileVerificationHub() {
                     </td>
                     <td className="py-2.5 px-3 text-center">
                       {selectedUpdate.requested_details.phone !==
-                        selectedUpdate.current_details.phone ? (
+                      selectedUpdate.current_details.phone ? (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                          Modified
+                          {isMl ? 'മാറ്റം വരുത്തി' : 'Modified'}
                         </span>
                       ) : (
-                        <span className="text-slate-400 text-[10px]">Unchanged</span>
+                        <span className="text-slate-400 text-[10px]">{isMl ? 'മാറ്റമില്ല' : 'Unchanged'}</span>
                       )}
                     </td>
                   </tr>
@@ -868,28 +940,36 @@ export default function ProfileVerificationHub() {
                   <tr
                     className={
                       selectedUpdate.requested_details.division !==
-                        selectedUpdate.current_details.division
+                      selectedUpdate.current_details.division
                         ? 'bg-emerald-50/40'
                         : ''
                     }
                   >
-                    <td className="py-2.5 px-3 font-semibold text-slate-700">Division / Ward</td>
+                    <td className="py-2.5 px-3 font-semibold text-slate-700">
+                      {isMl ? 'ഡിവിഷൻ' : 'Division / Ward'}
+                    </td>
                     <td className="py-2.5 px-3 text-slate-600">
-                      {DIVISION_LABELS[selectedUpdate.current_details.division] ||
-                        selectedUpdate.current_details.division}
+                      {isMl
+                        ? (DIVISION_LABELS_ML[selectedUpdate.current_details.division as Division] ||
+                            selectedUpdate.current_details.division)
+                        : (DIVISION_LABELS[selectedUpdate.current_details.division as Division] ||
+                            selectedUpdate.current_details.division)}
                     </td>
                     <td className="py-2.5 px-3 font-bold text-slate-900">
-                      {DIVISION_LABELS[selectedUpdate.requested_details.division] ||
-                        selectedUpdate.requested_details.division}
+                      {isMl
+                        ? (DIVISION_LABELS_ML[selectedUpdate.requested_details.division as Division] ||
+                            selectedUpdate.requested_details.division)
+                        : (DIVISION_LABELS[selectedUpdate.requested_details.division as Division] ||
+                            selectedUpdate.requested_details.division)}
                     </td>
                     <td className="py-2.5 px-3 text-center">
                       {selectedUpdate.requested_details.division !==
-                        selectedUpdate.current_details.division ? (
+                      selectedUpdate.current_details.division ? (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                          Modified
+                          {isMl ? 'മാറ്റം വരുത്തി' : 'Modified'}
                         </span>
                       ) : (
-                        <span className="text-slate-400 text-[10px]">Unchanged</span>
+                        <span className="text-slate-400 text-[10px]">{isMl ? 'മാറ്റമില്ല' : 'Unchanged'}</span>
                       )}
                     </td>
                   </tr>
@@ -900,7 +980,9 @@ export default function ProfileVerificationHub() {
             {/* Resident's Note */}
             {selectedUpdate.note && (
               <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-950 space-y-1">
-                <span className="font-bold block text-[11px]">Explanation Note by Resident</span>
+                <span className="font-bold block text-[11px]">
+                  {isMl ? 'അപേക്ഷകന്റെ വിശദീകരണം' : 'Explanation Note by Resident'}
+                </span>
                 <p className="text-[11px] leading-relaxed text-amber-900">{selectedUpdate.note}</p>
               </div>
             )}
@@ -949,26 +1031,26 @@ export default function ProfileVerificationHub() {
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-emerald-700" />
                           <h3 className="font-bold text-xs text-slate-900">
-                            Family Members Census Audit
+                            {isMl ? 'കുടുംബാംഗങ്ങളുടെ സെൻസസ് പരിശോധന' : 'Family Members Census Audit'}
                           </h3>
                         </div>
                         <div className="flex items-center gap-2 text-[11px]">
                           <span className="text-slate-500">
-                            Current: <strong>{currentList.length}</strong> → Requested: <strong>{requestedList.length}</strong>
+                            {isMl ? 'നിലവിൽ:' : 'Current:'} <strong>{currentList.length}</strong> → {isMl ? 'പുതിയത്:' : 'Requested:'} <strong>{requestedList.length}</strong>
                           </span>
                           {addedCount > 0 && (
                             <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-                              +{addedCount} Added
+                              +{addedCount} {isMl ? 'പുതിയത്' : 'Added'}
                             </span>
                           )}
                           {modifiedCount > 0 && (
                             <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold text-[10px]">
-                              {modifiedCount} Modified
+                              {modifiedCount} {isMl ? 'മാറ്റം വരുത്തി' : 'Modified'}
                             </span>
                           )}
                           {removed.length > 0 && (
                             <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 font-bold text-[10px]">
-                              -{removed.length} Removed
+                              -{removed.length} {isMl ? 'ഒഴിവാക്കി' : 'Removed'}
                             </span>
                           )}
                         </div>
@@ -978,7 +1060,11 @@ export default function ProfileVerificationHub() {
                         <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 text-[11px] flex items-start gap-2">
                           <AlertCircle className="h-3.5 w-3.5 text-rose-600 shrink-0 mt-0.5" />
                           <div>
-                            <span className="font-bold">Member(s) Removed from Household ({removed.length}): </span>
+                            <span className="font-bold">
+                              {isMl
+                                ? `കുടുംബത്തിൽ നിന്ന് ഒഴിവാക്കിയ അംഗങ്ങൾ (${removed.length}): `
+                                : `Member(s) Removed from Household (${removed.length}): `}
+                            </span>
                             <span>{removed.map((m) => `${m.name} (${m.relationship})`).join(', ')}</span>
                           </div>
                         </div>
@@ -993,13 +1079,13 @@ export default function ProfileVerificationHub() {
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200 sticky top-0 z-10">
                         <tr>
-                          <th className="py-2.5 px-3">Name / Role</th>
-                          <th className="py-2.5 px-3">Relationship</th>
-                          <th className="py-2.5 px-3">Age</th>
-                          <th className="py-2.5 px-3">Status / Occupation</th>
-                          <th className="py-2.5 px-3">Education</th>
-                          <th className="py-2.5 px-3">Contact Phone</th>
-                          <th className="py-2.5 px-3 text-center">Status</th>
+                          <th className="py-2.5 px-3">{isMl ? 'പേര് / സ്ഥാനം' : 'Name / Role'}</th>
+                          <th className="py-2.5 px-3">{isMl ? 'ബന്ധം' : 'Relationship'}</th>
+                          <th className="py-2.5 px-3">{isMl ? 'പ്രായം' : 'Age'}</th>
+                          <th className="py-2.5 px-3">{isMl ? 'തൊഴിൽ / വൈവാഹികം' : 'Status / Occupation'}</th>
+                          <th className="py-2.5 px-3">{isMl ? 'വിദ്യാഭ്യാസം' : 'Education'}</th>
+                          <th className="py-2.5 px-3">{isMl ? 'ഫോൺ' : 'Contact Phone'}</th>
+                          <th className="py-2.5 px-3 text-center">{isMl ? 'നില' : 'Status'}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white">
@@ -1054,13 +1140,13 @@ export default function ProfileVerificationHub() {
                                   {m.is_head_of_family && (
                                     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
                                       <Crown className="h-3 w-3 text-amber-600" />
-                                      Head
+                                      {isMl ? 'കുടുംബനാഥൻ' : 'Head'}
                                     </span>
                                   )}
                                 </div>
                                 {existingMatch && existingMatch.name.trim() !== m.name.trim() && (
                                   <span className="text-[10px] text-slate-400 line-through block mt-0.5 font-normal">
-                                    was: {existingMatch.name}
+                                    {isMl ? 'മുമ്പ്:' : 'was:'} {existingMatch.name}
                                   </span>
                                 )}
                               </td>
@@ -1071,7 +1157,7 @@ export default function ProfileVerificationHub() {
                                 </span>
                                 {existingMatch && existingMatch.relationship !== m.relationship && (
                                   <span className="text-[10px] text-slate-400 line-through block font-normal">
-                                    was: {existingMatch.relationship}
+                                    {isMl ? 'മുമ്പ്:' : 'was:'} {existingMatch.relationship}
                                   </span>
                                 )}
                               </td>
@@ -1082,7 +1168,7 @@ export default function ProfileVerificationHub() {
                                 </span>
                                 {existingMatch && existingMatch.age !== m.age && (
                                   <span className="text-[10px] text-slate-400 line-through block font-normal">
-                                    was: {existingMatch.age ?? '—'}
+                                    {isMl ? 'മുമ്പ്:' : 'was:'} {existingMatch.age ?? '—'}
                                   </span>
                                 )}
                               </td>
@@ -1105,7 +1191,7 @@ export default function ProfileVerificationHub() {
                                     </span>
                                     {existingMatch && existingMatch.job_status !== m.job_status && (
                                       <span className="text-[9px] text-slate-400 line-through block font-normal">
-                                        was: {existingMatch.job_status}
+                                        {isMl ? 'മുമ്പ്:' : 'was:'} {existingMatch.job_status}
                                       </span>
                                     )}
                                   </div>
@@ -1120,7 +1206,7 @@ export default function ProfileVerificationHub() {
                                     </span>
                                     {existingMatch && existingMatch.general_education !== m.general_education && (
                                       <span className="text-[10px] text-slate-400 line-through block font-normal">
-                                        was: {existingMatch.general_education}
+                                        {isMl ? 'മുമ്പ്:' : 'was:'} {existingMatch.general_education}
                                       </span>
                                     )}
                                   </div>
@@ -1130,7 +1216,7 @@ export default function ProfileVerificationHub() {
                                     </span>
                                     {existingMatch && existingMatch.religious_education !== m.religious_education && (
                                       <span className="text-[9px] text-slate-400 line-through block font-normal">
-                                        was: {existingMatch.religious_education}
+                                        {isMl ? 'മുമ്പ്:' : 'was:'} {existingMatch.religious_education}
                                       </span>
                                     )}
                                   </div>
@@ -1143,7 +1229,7 @@ export default function ProfileVerificationHub() {
                                 </span>
                                 {existingMatch && (existingMatch.phone || '') !== (m.phone || '') && (
                                   <span className="text-[10px] text-slate-400 line-through block font-normal">
-                                    was: {existingMatch.phone || 'None'}
+                                    {isMl ? 'മുമ്പ്:' : 'was:'} {existingMatch.phone || 'None'}
                                   </span>
                                 )}
                               </td>
@@ -1151,12 +1237,12 @@ export default function ProfileVerificationHub() {
                               <td className="py-2.5 px-3 text-center">
                                 {isNew ? (
                                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                    + Added
+                                    +{isMl ? 'പുതിയത്' : 'Added'}
                                   </span>
                                 ) : isModified ? (
                                   <div className="flex flex-col items-center">
                                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                                      Modified
+                                      {isMl ? 'മാറ്റം വരുത്തി' : 'Modified'}
                                     </span>
                                     <span
                                       className="text-[9px] text-amber-800 mt-0.5 max-w-[80px] truncate font-medium"
@@ -1166,7 +1252,7 @@ export default function ProfileVerificationHub() {
                                     </span>
                                   </div>
                                 ) : (
-                                  <span className="text-slate-400 text-[10px]">Unchanged</span>
+                                  <span className="text-slate-400 text-[10px]">{isMl ? 'മാറ്റമില്ല' : 'Unchanged'}</span>
                                 )}
                               </td>
                             </tr>
@@ -1188,7 +1274,7 @@ export default function ProfileVerificationHub() {
                 onClick={() => setUpdateReviewModalOpen(false)}
                 disabled={approvingUpdateId !== null}
               >
-                Cancel
+                {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
               </Button>
               <Button
                 type="button"
@@ -1199,7 +1285,7 @@ export default function ProfileVerificationHub() {
                 className="gap-1 cursor-pointer"
               >
                 <XCircle className="h-4 w-4" />
-                Reject Request
+                {isMl ? 'അപേക്ഷ നിരസിക്കുക' : 'Reject Request'}
               </Button>
               <Button
                 type="button"
@@ -1211,7 +1297,7 @@ export default function ProfileVerificationHub() {
                 className="gap-1.5 bg-emerald-700 hover:bg-emerald-800 cursor-pointer"
               >
                 <Check className="h-4 w-4" />
-                Approve & Apply to Official Records
+                {isMl ? 'അംഗീകരിച്ച് ഔദ്യോഗികമായി ചേർക്കുക' : 'Approve & Apply to Official Records'}
               </Button>
             </div>
           </div>
@@ -1224,19 +1310,27 @@ export default function ProfileVerificationHub() {
         onClose={() => {
           if (!isRejectingUpdate) setRejectUpdateModalOpen(false);
         }}
-        title="Reject Profile Update Request"
-        description="Provide a reason explaining why the requested dwelling updates were rejected."
+        title={isMl ? 'പ്രൊഫൈൽ മാറ്റ അപേക്ഷ നിരസിക്കുക' : 'Reject Profile Update Request'}
+        description={
+          isMl
+            ? 'മാറ്റങ്ങൾ നിരസിക്കുന്നതിനുള്ള കാരണം രേഖപ്പെടുത്തുക.'
+            : 'Provide a reason explaining why the requested dwelling updates were rejected.'
+        }
       >
         <form onSubmit={handleConfirmRejectUpdate} className="space-y-4 text-xs">
           <div>
             <label className="block font-semibold text-slate-700 mb-1.5">
-              Reason for Rejection *
+              {isMl ? 'നിരസിക്കാനുള്ള കാരണം *' : 'Reason for Rejection *'}
             </label>
             <textarea
               rows={4}
               value={updateRejectionReason}
               onChange={(e) => setUpdateRejectionReason(e.target.value)}
-              placeholder="e.g. Door number mismatch with official ward roster, contact number must belong to approved family member..."
+              placeholder={
+                isMl
+                  ? 'ഉദാ: വാർഡ് രേഖകളുമായി വീട്ടുനമ്പറിൽ പൊരുത്തക്കേട്, കുടുംബാംഗങ്ങളുടെ അപൂർണ്ണ വിവരങ്ങൾ...'
+                  : 'e.g. Door number mismatch with official ward roster, contact number must belong to approved family member...'
+              }
               className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none"
               required
             />
@@ -1250,7 +1344,7 @@ export default function ProfileVerificationHub() {
               onClick={() => setRejectUpdateModalOpen(false)}
               disabled={isRejectingUpdate}
             >
-              Cancel
+              {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
             </Button>
             <Button
               type="submit"
@@ -1259,7 +1353,7 @@ export default function ProfileVerificationHub() {
               isLoading={isRejectingUpdate}
               disabled={isRejectingUpdate}
             >
-              Confirm Rejection
+              {isMl ? 'നിരസിക്കൽ സ്ഥിരീകരിക്കുക' : 'Confirm Rejection'}
             </Button>
           </div>
         </form>
@@ -1269,8 +1363,12 @@ export default function ProfileVerificationHub() {
       <Modal
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        title="Household Registration Audit"
-        description="Verify submitted address details and family members census before granting approval."
+        title={isMl ? 'കുടുംബ രജിസ്ട്രേഷൻ പരിശോധന' : 'Household Registration Audit'}
+        description={
+          isMl
+            ? 'അംഗീകരിക്കുന്നതിന് മുമ്പ് സമർപ്പിച്ച മേൽവിലാസ വിവരങ്ങളും കുടുംബാംഗങ്ങളുടെ സെൻസസും പരിശോധിക്കുക.'
+            : 'Verify submitted address details and family members census before granting approval.'
+        }
         maxWidth="2xl"
       >
         {selectedHouse && (
@@ -1278,35 +1376,37 @@ export default function ProfileVerificationHub() {
             {/* House Details Grid */}
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
               <h3 className="font-bold uppercase tracking-wider text-slate-400 text-[10px] mb-3">
-                Household Information
+                {isMl ? 'കുടുംബ വിവരങ്ങൾ' : 'Household Information'}
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
-                  <span className="text-slate-400 block">House Name</span>
+                  <span className="text-slate-400 block">{isMl ? 'വീട്ടുപേര്' : 'House Name'}</span>
                   <span className="font-bold text-slate-900">{selectedHouse.house_name}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block">House / Ward No</span>
+                  <span className="text-slate-400 block">{isMl ? 'വാർഡ് / വീട്ടുനമ്പർ' : 'House / Ward No'}</span>
                   <span className="font-semibold text-slate-800">{selectedHouse.house_number}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block">Registration No</span>
+                  <span className="text-slate-400 block">{isMl ? 'മഹല്ല് രജി. നമ്പർ' : 'Registration No'}</span>
                   <span className="font-mono font-bold text-emerald-800">
                     {selectedHouse.mahallu_reg_no}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block">Division</span>
+                  <span className="text-slate-400 block">{isMl ? 'ഡിവിഷൻ' : 'Division'}</span>
                   <span className="font-medium text-slate-700">
-                    {DIVISION_LABELS[selectedHouse.division as Division]}
+                    {isMl
+                      ? (DIVISION_LABELS_ML[selectedHouse.division as Division] || selectedHouse.division)
+                      : (DIVISION_LABELS[selectedHouse.division as Division] || selectedHouse.division)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block">Contact Phone</span>
+                  <span className="text-slate-400 block">{isMl ? 'ഫോൺ നമ്പർ' : 'Contact Phone'}</span>
                   <span className="font-semibold text-slate-800">{selectedHouse.phone}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block">Submission Date</span>
+                  <span className="text-slate-400 block">{isMl ? 'സമർപ്പിച്ച തീയതി' : 'Submission Date'}</span>
                   <span className="text-slate-700">
                     {formatDate(selectedHouse.created_at)}
                   </span>
@@ -1318,7 +1418,9 @@ export default function ProfileVerificationHub() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold uppercase tracking-wider text-slate-400 text-[10px]">
-                  Census Roster ({selectedHouse.family_members.length} Members)
+                  {isMl
+                    ? `കുടുംബാംഗങ്ങളുടെ സെൻസസ് (${selectedHouse.family_members.length} പേർ)`
+                    : `Census Roster (${selectedHouse.family_members.length} Members)`}
                 </h3>
               </div>
 
@@ -1326,11 +1428,11 @@ export default function ProfileVerificationHub() {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-100 text-slate-600 font-semibold border-b border-slate-200">
                     <tr>
-                      <th className="py-2.5 px-4">Name</th>
-                      <th className="py-2.5 px-3">Relation</th>
-                      <th className="py-2.5 px-3">Age</th>
-                      <th className="py-2.5 px-3">Marital</th>
-                      <th className="py-2.5 px-3">Job Status</th>
+                      <th className="py-2.5 px-4">{isMl ? 'പേര്' : 'Name'}</th>
+                      <th className="py-2.5 px-3">{isMl ? 'ബന്ധം' : 'Relation'}</th>
+                      <th className="py-2.5 px-3">{isMl ? 'പ്രായം' : 'Age'}</th>
+                      <th className="py-2.5 px-3">{isMl ? 'വൈവാഹികം' : 'Marital'}</th>
+                      <th className="py-2.5 px-3">{isMl ? 'തൊഴിൽ' : 'Job Status'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1342,7 +1444,7 @@ export default function ProfileVerificationHub() {
                             {m.is_head_of_family && (
                               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
                                 <Crown className="h-3 w-3" />
-                                Head
+                                {isMl ? 'കുടുംബനാഥൻ' : 'Head'}
                               </span>
                             )}
                           </div>
@@ -1366,12 +1468,12 @@ export default function ProfileVerificationHub() {
                 className="gap-1.5"
               >
                 <XCircle className="h-4 w-4" />
-                Reject Profile
+                {isMl ? 'നിരസിക്കുക' : 'Reject Profile'}
               </Button>
 
               <div className="flex items-center gap-2">
                 <Button variant="outline" onClick={() => setDrawerOpen(false)}>
-                  Close
+                  {isMl ? 'അടയ്ക്കുക' : 'Close'}
                 </Button>
                 <Button
                   variant="primary"
@@ -1381,7 +1483,7 @@ export default function ProfileVerificationHub() {
                   className="gap-1.5 bg-emerald-700 hover:bg-emerald-800"
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  Approve Profile
+                  {isMl ? 'പ്രൊഫൈൽ അംഗീകരിക്കുക' : 'Approve Profile'}
                 </Button>
               </div>
             </div>
@@ -1393,19 +1495,27 @@ export default function ProfileVerificationHub() {
       <Modal
         isOpen={rejectModalOpen}
         onClose={() => setRejectModalOpen(false)}
-        title="Reject Household Registration"
-        description="Provide a clear explanation note returned to the applicant."
+        title={isMl ? 'കുടുംബ രജിസ്ട്രേഷൻ നിരസിക്കുക' : 'Reject Household Registration'}
+        description={
+          isMl
+            ? 'അപേക്ഷകന് നൽകേണ്ട കൃത്യമായ കാരണം രേഖപ്പെടുത്തുക.'
+            : 'Provide a clear explanation note returned to the applicant.'
+        }
       >
         <form onSubmit={handleConfirmRejectRegistration} className="space-y-4 text-xs">
           <div>
             <label className="block font-semibold text-slate-700 mb-1.5">
-              Reason for Rejection *
+              {isMl ? 'നിരസിക്കാനുള്ള കാരണം *' : 'Reason for Rejection *'}
             </label>
             <textarea
               rows={4}
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="e.g. Incomplete family records, duplicate registration number, or verification required by ward member..."
+              placeholder={
+                isMl
+                  ? 'ഉദാ: അപൂർണ്ണമായ കുടുംബാംഗങ്ങളുടെ വിവരങ്ങൾ, ഡ്യൂപ്ലിക്കേറ്റ് രജിസ്ട്രേഷൻ, വാർഡ് മെമ്പറുടെ പരിശോധന ആവശ്യമാണ്...'
+                  : 'e.g. Incomplete family records, duplicate registration number, or verification required by ward member...'
+              }
               className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none"
               required
             />
@@ -1418,10 +1528,10 @@ export default function ProfileVerificationHub() {
               onClick={() => setRejectModalOpen(false)}
               disabled={isRejecting}
             >
-              Cancel
+              {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
             </Button>
             <Button type="submit" variant="destructive" isLoading={isRejecting} disabled={isRejecting}>
-              Confirm Rejection
+              {isMl ? 'നിരസിക്കൽ സ്ഥിരീകരിക്കുക' : 'Confirm Rejection'}
             </Button>
           </div>
         </form>

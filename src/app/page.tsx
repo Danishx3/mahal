@@ -18,9 +18,10 @@ import {
   Globe,
 } from 'lucide-react';
 import { DataService } from '@/lib/data-service';
-import { DIVISION_LABELS, Division } from '@/lib/supabase/types';
+import { DIVISION_LABELS, DIVISION_LABELS_ML, Division } from '@/lib/supabase/types';
 import { divisions } from '@/lib/schemas';
 import { useAuth } from '@/lib/context/AuthContext';
+import { useLanguage } from '@/lib/context/LanguageContext';
 
 
 /* ───── Scroll-reveal Hook ───── */
@@ -46,50 +47,10 @@ function useReveal() {
   return { ref, visible };
 }
 
-/* ─────────────────────────────────────────────────── */
-/* FEATURES DATA                                       */
-/* ─────────────────────────────────────────────────── */
-const FEATURES = [
-  {
-    icon: Home,
-    title: 'Household Registry',
-    desc: 'Complete census with family members, demographics, and employment tracking per household.',
-    color: 'from-emerald-500 to-teal-600',
-  },
-  {
-    icon: CreditCard,
-    title: 'Monthly Dues & UPI',
-    desc: 'Automated due tracking with UPI QR code generation and instant payment reconciliation.',
-    color: 'from-blue-500 to-indigo-600',
-  },
-  {
-    icon: FileSpreadsheet,
-    title: 'Financial Ledger',
-    desc: 'Double-entry bookkeeping with automated credit/debit entries for every transaction.',
-    color: 'from-violet-500 to-purple-600',
-  },
-  {
-    icon: Bell,
-    title: 'Smart Reminders',
-    desc: 'Automated defaulter detection and payment reminder system for unpaid households.',
-    color: 'from-amber-500 to-orange-600',
-  },
-  {
-    icon: BarChart3,
-    title: 'Analytics Dashboard',
-    desc: 'Real-time visualizations of payment trends, division breakdowns, and financial health.',
-    color: 'from-rose-500 to-pink-600',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Enterprise Security',
-    desc: 'PostgreSQL Row-Level Security with role-based access control and admin verification.',
-    color: 'from-cyan-500 to-sky-600',
-  },
-];
-
 export default function LandingPage() {
   const { user, house, isAdmin, isApproved, isPending } = useAuth();
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
   const [stats, setStats] = useState<any>(null);
 
   useEffect(() => {
@@ -140,18 +101,16 @@ export default function LandingPage() {
           : '/onboarding';
 
   const primaryLabel = !user
-    ? 'Access Resident Portal'
+    ? (isMl ? 'റെസിഡന്റ് പോർട്ടൽ പ്രവേശിക്കുക' : 'Access Resident Portal')
     : isAdmin
-      ? 'Admin Console'
+      ? (isMl ? 'അഡ്മിൻ കൺസോൾ' : 'Admin Console')
       : isApproved
-        ? 'My Household Dashboard'
+        ? (isMl ? 'എന്റെ കുടുംബ ഡാഷ്‌ബോർഡ്' : 'My Household Dashboard')
         : isPending
-          ? 'Verification Status'
-          : 'Register Household';
-
+          ? (isMl ? 'അംഗീകാര സ്റ്റാറ്റസ്' : 'Verification Status')
+          : (isMl ? 'കുടുംബ രജിസ്ട്രേഷൻ' : 'Register Household');
 
   const divisionsReveal = useReveal();
-  const featuresReveal = useReveal();
 
   return (
     <div className="flex-1 flex flex-col overflow-x-hidden">
@@ -191,27 +150,38 @@ export default function LandingPage() {
               </div>
               <div className="text-left leading-tight">
                 <span className="text-xs font-bold text-white tracking-tight block">
-                  Kunjikkulam Juma Masjid
+                  {isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്' : 'Kunjikkulam Juma Masjid'}
                 </span>
                 <span className="text-[10px] font-semibold text-emerald-400 tracking-wider uppercase block">
-                  Official Mahallu Portal
+                  {isMl ? 'ഔദ്യോഗിക മഹല്ല് പോർട്ടൽ' : 'Official Mahallu Portal'}
                 </span>
               </div>
             </div>
 
             {/* Heading */}
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15]">
-              <span className="text-white">Unified Mahallu</span>{' '}
-              <span className="text-emerald-400 block sm:inline font-black drop-shadow-sm">
-                Administration
-              </span>
+              {isMl ? (
+                <>
+                  <span className="text-white">ഏകോപിത മഹല്ല്</span>{' '}
+                  <span className="text-emerald-400 block sm:inline font-black drop-shadow-sm">
+                    അഡ്മിനിസ്ട്രേഷൻ
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-white">Unified Mahallu</span>{' '}
+                  <span className="text-emerald-400 block sm:inline font-black drop-shadow-sm">
+                    Administration
+                  </span>
+                </>
+              )}
             </h1>
 
             {/* Subheading */}
             <p className="text-base sm:text-lg text-slate-200 max-w-2xl mx-auto leading-relaxed">
-              A comprehensive portal for household registration, membership dues tracking,
-              UPI payment reconciliation, and double-entry financial management — built
-              for modern village governance.
+              {isMl
+                ? 'കുടുംബ രജിസ്ട്രേഷൻ, മാസവരി ട്രാക്കിംഗ്, UPI പേയ്‌മെന്റുകൾ, ഡിജിറ്റൽ വരവ്-ചിലവ് കണക്കുകൾ എന്നിവ ഏകോപിപ്പിക്കുന്ന ആധുനിക മഹല്ല് പോർട്ടൽ.'
+                : 'A comprehensive portal for household registration, membership dues tracking, UPI payment reconciliation, and double-entry financial management — built for modern village governance.'}
             </p>
 
             {/* Action Buttons */}
@@ -227,7 +197,7 @@ export default function LandingPage() {
                 <Link href="/onboarding">
                   <button className="inline-flex items-center gap-2.5 px-8 py-4 rounded-2xl bg-white/10 hover:bg-white/20 border-2 border-white/30 text-white font-bold text-base backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-lg shadow-black/20">
                     <Users className="h-5 w-5 text-emerald-300" />
-                    Register Household
+                    <span>{isMl ? 'കുടുംബ രജിസ്ട്രേഷൻ' : 'Register Household'}</span>
                   </button>
                 </Link>
               )}
@@ -264,14 +234,15 @@ export default function LandingPage() {
           <div className="text-center mb-14 space-y-3">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold uppercase tracking-widest border border-emerald-100">
               <MapPin className="h-3 w-3" />
-              Geographical Organization
+              {isMl ? 'ഭൂമിശാസ്ത്രപരമായ വിഭജനം' : 'Geographical Organization'}
             </span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900">
-              6 Administrative Divisions
+              {isMl ? '6 അഡ്മിനിസ്ട്രേറ്റീവ് ഡിവിഷനുകൾ' : '6 Administrative Divisions'}
             </h2>
             <p className="text-sm text-slate-500 max-w-lg mx-auto">
-              Every household is organized under a geographical division for efficient
-              local representation and welfare management.
+              {isMl
+                ? 'കാര്യക്ഷമമായ പ്രാദേശിക പ്രവർത്തനങ്ങൾക്കായി മഹല്ല് പരിധി 6 ഡിവിഷനുകളായി തിരിച്ചിരിക്കുന്നു.'
+                : 'Every household is organized under a geographical division for efficient local representation and welfare management.'}
             </p>
           </div>
 
@@ -289,6 +260,10 @@ export default function LandingPage() {
               );
               const barPercent = Math.round((houseCount / maxHouses) * 100);
 
+              const divLabel = isMl
+                ? (DIVISION_LABELS_ML[div as Division] || div)
+                : (DIVISION_LABELS[div as Division] || div);
+
               return (
                 <div
                   key={div}
@@ -303,9 +278,9 @@ export default function LandingPage() {
                       </div>
                       <div>
                         <h3 className="font-bold text-sm text-slate-900">
-                          {DIVISION_LABELS[div as Division]}
+                          {divLabel}
                         </h3>
-                        <p className="text-[11px] text-slate-400">Division</p>
+                        <p className="text-[11px] text-slate-400">{isMl ? 'ഡിവിഷൻ' : 'Division'}</p>
                       </div>
                     </div>
                     <span className="text-2xl font-extrabold text-emerald-600 tabular-nums">
@@ -325,9 +300,9 @@ export default function LandingPage() {
 
                   {/* Bottom stats */}
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Population</span>
+                    <span className="text-slate-400">{isMl ? 'ജനസംഖ്യ' : 'Population'}</span>
                     <span className="font-bold text-slate-700 tabular-nums">
-                      {popCount} residents
+                      {isMl ? `${popCount} അംഗങ്ങൾ` : `${popCount} residents`}
                     </span>
                   </div>
                 </div>
@@ -345,11 +320,12 @@ export default function LandingPage() {
 
         <div className="max-w-4xl mx-auto relative z-10 text-center space-y-6">
           <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
-            Ready to Join the Digital Mahallu?
+            {isMl ? 'ഡിജിറ്റൽ മഹല്ലിലേക്ക് സ്വാഗതം' : 'Ready to Join the Digital Mahallu?'}
           </h2>
           <p className="text-emerald-100 text-base sm:text-lg max-w-2xl mx-auto">
-            Register your household today and experience seamless dues management,
-            transparent financial records, and smart community governance.
+            {isMl
+              ? 'നിങ്ങളുടെ കുടുംബം ഇന്ന് തന്നെ രജിസ്റ്റർ ചെയ്യുക. ലളിതമായ മാസവരി അടവുകളും സുതാര്യമായ മഹല്ല് സേവനങ്ങളും നേടുക.'
+              : 'Register your household today and experience seamless dues management, transparent financial records, and smart community governance.'}
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
@@ -362,7 +338,7 @@ export default function LandingPage() {
             {!user && (
               <Link href="/onboarding">
                 <button className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white font-semibold text-sm hover:bg-white/20 backdrop-blur-sm transition-all duration-300 cursor-pointer">
-                  Register New Household
+                  {isMl ? 'പുതിയ കുടുംബ രജിസ്ട്രേഷൻ' : 'Register New Household'}
                 </button>
               </Link>
             )}

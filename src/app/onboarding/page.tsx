@@ -14,9 +14,10 @@ import {
 import { DataService } from '@/lib/data-service';
 import { useAuth } from '@/lib/context/AuthContext';
 import { createClient, hasSupabaseConfig } from '@/lib/supabase/client';
-import { DIVISION_LABELS, Division } from '@/lib/supabase/types';
+import { DIVISION_LABELS, DIVISION_LABELS_ML, Division } from '@/lib/supabase/types';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
+import { useLanguage } from '@/lib/context/LanguageContext';
 import {
   Home,
   Users,
@@ -64,6 +65,8 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user, profile, house, isApproved, isPending, isLoading, refreshProfile, signOut } = useAuth();
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -346,13 +349,15 @@ export default function OnboardingPage() {
 
             <div className="space-y-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-semibold">
-                Sign In Required
+                {isMl ? 'ലോഗിൻ ആവശ്യമാണ്' : 'Sign In Required'}
               </span>
               <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                Please Sign In to Register
+                {isMl ? 'രജിസ്റ്റർ ചെയ്യാൻ ലോഗിൻ ചെയ്യുക' : 'Please Sign In to Register'}
               </h1>
               <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-                To submit your household details and family census to the Mahallu directory, please sign in with your Google account.
+                {isMl
+                  ? 'നിങ്ങളുടെ കുടുംബ വിവരങ്ങളും സെൻസസും മഹല്ല് ഡയറക്ടറിയിലേക്ക് സമർപ്പിക്കുന്നതിനായി Google അക്കൗണ്ട് ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യുക.'
+                  : 'To submit your household details and family census to the Mahallu directory, please sign in with your Google account.'}
               </p>
             </div>
 
@@ -360,17 +365,20 @@ export default function OnboardingPage() {
             <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-left space-y-2.5">
               <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                 <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                Why Google Sign-In is Required:
+                {isMl ? 'എന്തുകൊണ്ട് Google ലോഗിൻ?' : 'Why Google Sign-In is Required:'}
               </div>
               <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
                 <li>
-                  <strong className="text-slate-800">Identity Security:</strong> Links your house records directly to your verified Google account.
+                  <strong className="text-slate-800">{isMl ? 'സുരക്ഷിതമായ ഐഡന്റിറ്റി:' : 'Identity Security:'}</strong>{' '}
+                  {isMl ? 'നിങ്ങളുടെ വീട്ടു വിവരങ്ങൾ Google അക്കൗണ്ടുമായി ബന്ധിപ്പിക്കുന്നു.' : 'Links your house records directly to your verified Google account.'}
                 </li>
                 <li>
-                  <strong className="text-slate-800">Dues & Receipts:</strong> Enables real-time tracking of monthly Mahallu dues and payment receipts.
+                  <strong className="text-slate-800">{isMl ? 'മാസവരി & രസീതുകൾ:' : 'Dues & Receipts:'}</strong>{' '}
+                  {isMl ? 'മാസവരി വിവരങ്ങളും ഡിജിറ്റൽ രസീതുകളും തത്സമയം ലഭ്യമാക്കുന്നു.' : 'Enables real-time tracking of monthly Mahallu dues and payment receipts.'}
                 </li>
                 <li>
-                  <strong className="text-slate-800">Verification Updates:</strong> Allows committee officials to verify your dwelling and family census.
+                  <strong className="text-slate-800">{isMl ? 'കമ്മിറ്റി വെരിഫിക്കേഷൻ:' : 'Verification Updates:'}</strong>{' '}
+                  {isMl ? 'മഹല്ല് ഭാരവാഹികൾക്ക് നിങ്ങളുടെ രേഖകൾ പരിശോധിക്കാൻ സാധിക്കുന്നു.' : 'Allows committee officials to verify your dwelling and family census.'}
                 </li>
               </ul>
             </div>
@@ -401,7 +409,7 @@ export default function OnboardingPage() {
                     d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
                   />
                 </svg>
-                Sign In with Google to Register
+                {isMl ? 'Google വഴി ലോഗിൻ ചെയ്യുക' : 'Sign In with Google to Register'}
               </Button>
 
               <div className="flex items-center justify-between pt-2">
@@ -410,14 +418,14 @@ export default function OnboardingPage() {
                   className="text-xs text-slate-500 hover:text-slate-800 transition-colors inline-flex items-center gap-1"
                 >
                   <ArrowLeft className="h-3 w-3" />
-                  Return to Home
+                  {isMl ? 'ഹോം പേജിലേക്ക്' : 'Return to Home'}
                 </Link>
 
                 <Link
                   href="/auth/login?redirect=/onboarding"
                   className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
                 >
-                  Go to Login Page &rarr;
+                  {isMl ? 'ലോഗിൻ പേജിലേക്ക് →' : 'Go to Login Page →'}
                 </Link>
               </div>
             </div>
@@ -444,22 +452,24 @@ export default function OnboardingPage() {
             </div>
             <div className="space-y-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-semibold">
-                Registration Under Review
+                {isMl ? 'രജിസ്ട്രേഷൻ പരിശോധനയിലാണ്' : 'Registration Under Review'}
               </span>
               <h1 className="text-xl font-bold text-slate-900">
-                Household Already Registered
+                {isMl ? 'കുടുംബം ഇതിനകം രജിസ്റ്റർ ചെയ്തിട്ടുണ്ട്' : 'Household Already Registered'}
               </h1>
               <p className="text-xs text-slate-500 leading-relaxed">
-                You have already registered household <strong>{effectiveHouse.house_name}</strong>. It is currently under administrative review by the Mahallu Committee.
+                {isMl
+                  ? `നിങ്ങൾ ഇതിനകം ${effectiveHouse.house_name} എന്ന കുടുംബം രജിസ്റ്റർ ചെയ്തിട്ടുണ്ട്. ഇത് നിലവിൽ മഹല്ല് കമ്മിറ്റിയുടെ പരിശോധനയിലാണ്.`
+                  : `You have already registered household ${effectiveHouse.house_name}. It is currently under administrative review by the Mahallu Committee.`}
               </p>
             </div>
             <div className="pt-2 flex flex-col gap-2">
               <Button onClick={() => router.push('/onboarding/pending')} className="gap-2">
-                Check Verification Status
+                {isMl ? 'വെരിഫിക്കേഷൻ സ്റ്റാറ്റസ് പരിശോധിക്കുക' : 'Check Verification Status'}
                 <ArrowRight className="h-4 w-4" />
               </Button>
               <Button variant="ghost" onClick={() => router.push('/')} className="text-xs">
-                Back to Home
+                {isMl ? 'ഹോം പേജിലേക്ക്' : 'Back to Home'}
               </Button>
             </div>
           </div>
@@ -476,22 +486,24 @@ export default function OnboardingPage() {
             </div>
             <div className="space-y-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold">
-                Household Active
+                {isMl ? 'കുടുംബം അംഗീകരിച്ചു' : 'Household Active'}
               </span>
               <h1 className="text-xl font-bold text-slate-900">
-                Registration Complete & Approved
+                {isMl ? 'രജിസ്ട്രേഷൻ വിജയകരമായി പൂർത്തിയായി' : 'Registration Complete & Approved'}
               </h1>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Your household <strong>{effectiveHouse.house_name}</strong> is verified. You have full access to the resident portal.
+                {isMl
+                  ? `നിങ്ങളുടെ കുടുംബ പ്രൊഫൈൽ (${effectiveHouse.house_name}) അംഗീകരിച്ചിരിക്കുന്നു.`
+                  : `Your household ${effectiveHouse.house_name} is verified. You have full access to the resident portal.`}
               </p>
             </div>
             <div className="pt-2 flex flex-col gap-2">
               <Button onClick={() => router.push('/dashboard')} className="gap-2">
-                Go to Resident Dashboard
+                {isMl ? 'റെസിഡന്റ് ഡാഷ്‌ബോർഡിലേക്ക്' : 'Go to Resident Dashboard'}
                 <ArrowRight className="h-4 w-4" />
               </Button>
               <Button variant="ghost" onClick={() => router.push('/')} className="text-xs">
-                Back to Home
+                {isMl ? 'ഹോം പേജിലേക്ക്' : 'Back to Home'}
               </Button>
             </div>
           </div>
@@ -507,13 +519,15 @@ export default function OnboardingPage() {
         <div className="text-center space-y-2">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold">
             <ShieldCheck className="h-3.5 w-3.5 text-emerald-700" />
-            Resident Registration Portal
+            {isMl ? 'റെസിഡന്റ് രജിസ്ട്രേഷൻ പോർട്ടൽ' : 'Resident Registration Portal'}
           </span>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Household & Family Census Onboarding
+            {isMl ? 'കുടുംബ സെൻസസ് രജിസ്ട്രേഷൻ' : 'Household & Family Census Onboarding'}
           </h1>
           <p className="text-sm text-slate-500 max-w-xl mx-auto">
-            Complete your house registration to join the Mahallu directory, track monthly membership dues, and access community services.
+            {isMl
+              ? 'മഹല്ല് ഡയറക്ടറിയിൽ ചേരുന്നതിനും മാസവരി വിവരങ്ങൾ അറിയുന്നതിനും നിങ്ങളുടെ കുടുംബ വിവരങ്ങൾ രേഖപ്പെടുത്തുക.'
+              : 'Complete your house registration to join the Mahallu directory, track monthly membership dues, and access community services.'}
           </p>
 
           {/* Authenticated Resident Identity Pill & Local Auto-Save Status */}
@@ -521,14 +535,15 @@ export default function OnboardingPage() {
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-slate-200 text-xs text-slate-600 shadow-xs">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               <span>
-                Signed in with Google as <strong className="text-slate-900">{user.email}</strong>
+                {isMl ? 'ലോഗിൻ ചെയ്ത അക്കൗണ്ട്:' : 'Signed in with Google as'}{' '}
+                <strong className="text-slate-900">{user.email}</strong>
               </span>
               <button
                 type="button"
                 onClick={() => signOut()}
                 className="text-rose-600 hover:text-rose-700 font-semibold ml-1.5 hover:underline cursor-pointer"
               >
-                Sign out
+                {isMl ? 'ലോഗ്ഔട്ട്' : 'Sign out'}
               </button>
             </div>
 
@@ -536,7 +551,7 @@ export default function OnboardingPage() {
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-800 font-medium animate-in fade-in">
                 <span className="flex items-center gap-1">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  Auto-saved in browser
+                  {isMl ? 'ഡ്രാഫ്റ്റ് സേവ് ചെയ്തു' : 'Auto-saved in browser'}
                 </span>
                 <span className="text-emerald-300">•</span>
                 <button
@@ -546,7 +561,7 @@ export default function OnboardingPage() {
                   title="Clear saved draft and start over"
                 >
                   <RotateCcw className="h-3 w-3" />
-                  Reset Form
+                  {isMl ? 'റീസെറ്റ് ചെയ്യുക' : 'Reset Form'}
                 </button>
               </div>
             )}
@@ -575,7 +590,7 @@ export default function OnboardingPage() {
                 1
               </div>
               <span className="text-xs font-semibold text-slate-800 hidden sm:inline">
-                House Info
+                {isMl ? 'വീട്ടു വിവരങ്ങൾ' : 'House Info'}
               </span>
             </div>
 
@@ -590,7 +605,7 @@ export default function OnboardingPage() {
                 2
               </div>
               <span className="text-xs font-semibold text-slate-800 hidden sm:inline">
-                Family Members
+                {isMl ? 'കുടുംബാംഗങ്ങൾ' : 'Family Members'}
               </span>
             </div>
 
@@ -605,7 +620,7 @@ export default function OnboardingPage() {
                 3
               </div>
               <span className="text-xs font-semibold text-slate-800 hidden sm:inline">
-                Review & Submit
+                {isMl ? 'പരിശോധന' : 'Review & Submit'}
               </span>
             </div>
           </div>
@@ -624,9 +639,13 @@ export default function OnboardingPage() {
                     <Home className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900">Step 1: House Information</h2>
+                    <h2 className="text-lg font-bold text-slate-900">
+                      {isMl ? 'ഘട്ടം 1: വീട്ടു വിവരങ്ങൾ' : 'Step 1: House Information'}
+                    </h2>
                     <p className="text-xs text-slate-500">
-                      Enter the official dwelling identifiers recognized by the Mahallu.
+                      {isMl
+                        ? 'മഹല്ല് രേഖകൾക്കായി നിങ്ങളുടെ വീട്ടു വിവരങ്ങൾ കൃത്യമായി നൽകുക.'
+                        : 'Enter the official dwelling identifiers recognized by the Mahallu.'}
                     </p>
                   </div>
                 </div>
@@ -636,11 +655,11 @@ export default function OnboardingPage() {
                 {/* House Name */}
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    House / Villa Name *
+                    {isMl ? 'വീട്ടുപേര് *' : 'House / Villa Name *'}
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g., Baitul Noor, Darul Aman, Al Rahma"
+                    placeholder={isMl ? 'ഉദാഹരണത്തിന്: ബൈത്തുൽ നൂർ, അൽ റഹ്മ' : 'e.g., Baitul Noor, Darul Aman, Al Rahma'}
                     className={`w-full px-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 ${errors.house?.house_name ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
                       }`}
                     {...register('house.house_name')}
@@ -656,11 +675,11 @@ export default function OnboardingPage() {
                 {/* House Number / Ward No */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Panchayat / Ward House Number *
+                    {isMl ? 'പഞ്ചായത്ത് / വാർഡ് വീട്ടു നമ്പർ *' : 'Panchayat / Ward House Number *'}
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g., VII/142 or Ward 4, Door 89"
+                    placeholder={isMl ? 'ഉദാഹരണത്തിന്: VII/142 അല്ലെങ്കിൽ വാർഡ് 4, ഡോർ 89' : 'e.g., VII/142 or Ward 4, Door 89'}
                     className={`w-full px-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 ${errors.house?.house_number ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
                       }`}
                     {...register('house.house_number')}
@@ -676,7 +695,7 @@ export default function OnboardingPage() {
                 {/* Mahallu Reg No */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Mahallu Registration Number *
+                    {isMl ? 'മഹല്ല് രജിസ്റ്റർ നമ്പർ *' : 'Mahallu Registration Number *'}
                   </label>
                   <input
                     type="text"
@@ -686,7 +705,7 @@ export default function OnboardingPage() {
                     {...register('house.mahallu_reg_no')}
                   />
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Must be unique in the Mahallu records.
+                    {isMl ? 'മഹല്ല് രേഖകളിലെ രജിസ്റ്റർ നമ്പർ നൽകുക.' : 'Must be unique in the Mahallu records.'}
                   </p>
                   {errors.house?.mahallu_reg_no && (
                     <p className="text-xs text-rose-600 mt-1 flex items-center gap-1">
@@ -699,7 +718,7 @@ export default function OnboardingPage() {
                 {/* Division Selector */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Mahallu Division / Ward *
+                    {isMl ? 'മഹല്ല് ഡിവിഷൻ / വാർഡ് *' : 'Mahallu Division / Ward *'}
                   </label>
                   <select
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600"
@@ -707,7 +726,7 @@ export default function OnboardingPage() {
                   >
                     {divisions.map((div) => (
                       <option key={div} value={div}>
-                        {DIVISION_LABELS[div]}
+                        {isMl ? (DIVISION_LABELS_ML[div] || div) : DIVISION_LABELS[div]}
                       </option>
                     ))}
                   </select>
@@ -719,7 +738,7 @@ export default function OnboardingPage() {
                 {/* Primary Contact Phone */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Primary Contact Phone *
+                    {isMl ? 'ഫോൺ നമ്പർ *' : 'Primary Contact Phone *'}
                   </label>
                   <input
                     type="tel"
@@ -740,7 +759,7 @@ export default function OnboardingPage() {
               {/* Step 1 Actions */}
               <div className="pt-6 border-t border-slate-100 flex justify-end">
                 <Button type="button" onClick={handleNextStep} className="gap-2">
-                  Continue to Family Members
+                  <span>{isMl ? 'കുടുംബാംഗങ്ങളുടെ വിവരങ്ങളിലേക്ക്' : 'Continue to Family Members'}</span>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -758,16 +777,22 @@ export default function OnboardingPage() {
                     <Users className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900">Step 2: Family Structure & Census</h2>
+                    <h2 className="text-lg font-bold text-slate-900">
+                      {isMl ? 'ഘട്ടം 2: കുടുംബാംഗങ്ങളുടെ വിവരങ്ങൾ' : 'Step 2: Family Structure & Census'}
+                    </h2>
                     <p className="text-xs text-slate-500">
-                      Record all permanent residents residing in this household.
+                      {isMl
+                        ? 'ഈ വീട്ടിൽ സ്ഥിരതാമസക്കാരായ എല്ലാ കുടുംബാംഗങ്ങളെയും ചേർക്കുക.'
+                        : 'Record all permanent residents residing in this household.'}
                     </p>
                   </div>
                 </div>
 
                 {/* Dynamic Member Counter */}
                 <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 self-start sm:self-auto">
-                  <span className="text-xs font-bold text-slate-700">Family Members Count:</span>
+                  <span className="text-xs font-bold text-slate-700">
+                    {isMl ? 'കുടുംബാംഗങ്ങളുടെ എണ്ണം:' : 'Family Members Count:'}
+                  </span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -811,12 +836,14 @@ export default function OnboardingPage() {
                             {index + 1}
                           </span>
                           <span className="font-bold text-sm text-slate-900">
-                            {isFirst ? 'Head of Family (Primary Contact)' : `Family Member #${index + 1}`}
+                            {isFirst
+                              ? (isMl ? 'കുടുംബനാഥൻ (പ്രധാന കോൺടാക്റ്റ്)' : 'Head of Family (Primary Contact)')
+                              : (isMl ? `കുടുംബാംഗം #${index + 1}` : `Family Member #${index + 1}`)}
                           </span>
                           {isFirst && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
                               <Crown className="h-3 w-3 text-amber-500" />
-                              Head of Household
+                              {isMl ? 'കുടുംബനാഥൻ' : 'Head of Household'}
                             </span>
                           )}
                         </div>
@@ -826,7 +853,7 @@ export default function OnboardingPage() {
                             type="button"
                             onClick={() => remove(index)}
                             className="text-slate-400 hover:text-rose-600 p-1 rounded-md hover:bg-rose-50 transition-colors"
-                            title="Remove Member"
+                            title={isMl ? 'അംഗത്തെ ഒഴിവാക്കുക' : 'Remove Member'}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -838,11 +865,11 @@ export default function OnboardingPage() {
                         {/* Full Name */}
                         <div className="sm:col-span-2">
                           <label className="block font-semibold text-slate-700 mb-1">
-                            Full Name *
+                            {isMl ? 'പൂർണ്ണ പേര് *' : 'Full Name *'}
                           </label>
                           <input
                             type="text"
-                            placeholder="Full name as per official ID"
+                            placeholder={isMl ? 'തിരിച്ചറിയൽ രേഖയിലുള്ള പേര്' : 'Full name as per official ID'}
                             className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs"
                             {...register(`members.${index}.name` as const)}
                           />
@@ -856,25 +883,25 @@ export default function OnboardingPage() {
                         {/* Relationship to Head */}
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">
-                            Relationship to Head *
+                            {isMl ? 'കുടുംബനാഥനുമായുള്ള ബന്ധം *' : 'Relationship to Head *'}
                           </label>
                           <select
                             className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs"
                             {...register(`members.${index}.relationship` as const)}
                           >
                             {isFirst ? (
-                              <option value="Self">Self (Head of Family)</option>
+                              <option value="Self">{isMl ? 'സ്വയം (കുടുംബനാഥൻ)' : 'Self (Head of Family)'}</option>
                             ) : (
                               <>
-                                <option value="Wife">Wife</option>
-                                <option value="Husband">Husband</option>
-                                <option value="Son">Son</option>
-                                <option value="Daughter">Daughter</option>
-                                <option value="Father">Father</option>
-                                <option value="Mother">Mother</option>
-                                <option value="Brother">Brother</option>
-                                <option value="Sister">Sister</option>
-                                <option value="Other">Other Relative</option>
+                                <option value="Wife">{isMl ? 'ഭാര്യ' : 'Wife'}</option>
+                                <option value="Husband">{isMl ? 'ഭർത്താവ്' : 'Husband'}</option>
+                                <option value="Son">{isMl ? 'മകൻ' : 'Son'}</option>
+                                <option value="Daughter">{isMl ? 'മകൾ' : 'Daughter'}</option>
+                                <option value="Father">{isMl ? 'പിതാവ്' : 'Father'}</option>
+                                <option value="Mother">{isMl ? 'മാതാവ്' : 'Mother'}</option>
+                                <option value="Brother">{isMl ? 'സഹോദരൻ' : 'Brother'}</option>
+                                <option value="Sister">{isMl ? 'സഹോദരി' : 'Sister'}</option>
+                                <option value="Other">{isMl ? 'മറ്റുള്ളവർ' : 'Other Relative'}</option>
                               </>
                             )}
                           </select>
@@ -883,7 +910,7 @@ export default function OnboardingPage() {
                         {/* Age */}
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">
-                            Age (Years) *
+                            {isMl ? 'വയസ്സ് *' : 'Age (Years) *'}
                           </label>
                           <input
                             type="number"
@@ -899,98 +926,87 @@ export default function OnboardingPage() {
                         {/* Marital Status */}
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">
-                            Marital Status *
+                            {isMl ? 'വിവാഹാവസ്ഥ *' : 'Marital Status *'}
                           </label>
                           <select
                             className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs capitalize"
                             {...register(`members.${index}.marital_status` as const)}
                           >
-                            {maritalStatuses.map((m) => (
-                              <option key={m} value={m}>
-                                {m}
-                              </option>
-                            ))}
+                            <option value="married">{isMl ? 'വിവാഹിതൻ/വിവാഹിത' : 'Married'}</option>
+                            <option value="single">{isMl ? 'അവിവാഹിതൻ/അവിവാഹിത' : 'Single'}</option>
+                            <option value="widowed">{isMl ? 'വിധവ/വിഭാര്യൻ' : 'Widowed'}</option>
+                            <option value="divorced">{isMl ? 'വിവാഹമോചിതൻ/വിവാഹമോചിത' : 'Divorced'}</option>
                           </select>
                         </div>
 
                         {/* Employment Status */}
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">
-                            Job / Employment *
+                            {isMl ? 'തൊഴിൽ / ജോലി *' : 'Job / Employment *'}
                           </label>
                           <select
                             className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs"
                             {...register(`members.${index}.job_status` as const)}
                           >
-                            <option value="Employed">Employed (Local)</option>
-                            <option value="Business">Business / Trade</option>
-                            <option value="Abroad">Abroad / NRI</option>
-                            <option value="Homemaker">Homemaker</option>
-                            <option value="Student">Student</option>
-                            <option value="Agriculture">Agriculture</option>
-                            <option value="Retired">Retired</option>
-                            <option value="Unemployed">Unemployed</option>
-                            <option value="Other">Other</option>
+                            <option value="Employed">{isMl ? 'ജോലി (നാട്ടിൽ)' : 'Employed (Local)'}</option>
+                            <option value="Business">{isMl ? 'ബിസിനസ്സ് / വ്യാപാരം' : 'Business / Trade'}</option>
+                            <option value="Abroad">{isMl ? 'പ്രവാസി (NRI)' : 'Abroad / NRI'}</option>
+                            <option value="Homemaker">{isMl ? 'വീട്ടമ്മ' : 'Homemaker'}</option>
+                            <option value="Student">{isMl ? 'വിദ്യാർത്ഥി' : 'Student'}</option>
+                            <option value="Agriculture">{isMl ? 'കൃഷി' : 'Agriculture'}</option>
+                            <option value="Retired">{isMl ? 'വിരമിച്ചു' : 'Retired'}</option>
+                            <option value="Unemployed">{isMl ? 'തൊഴിൽരഹിതൻ' : 'Unemployed'}</option>
+                            <option value="Other">{isMl ? 'മറ്റുള്ളവ' : 'Other'}</option>
                           </select>
                         </div>
 
                         {/* General Education */}
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">
-                            General Education *
+                            {isMl ? 'പൊതു വിദ്യാഭ്യാസം *' : 'General Education *'}
                           </label>
                           <select
                             className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs"
                             {...register(`members.${index}.general_education` as const)}
                           >
-
-
-                            <option value="Diploma">Diploma / ITI</option>
-                            <option value="Degree">Bachelor Degree (Graduate)</option>
-                            <option value="PG">Post Graduate (PG)</option>
-                            <option value="Professional">Professional (MBBS/B.Tech/CA)</option>
-                            <option value="Plus-Two">Plus Two</option>
-                            <option value="Plus-One">Plus One</option>
-                            <option value="SSLC">SSLC</option>
-                            <option value="9">9th</option>
-                            <option value="8">8th</option>
-                            <option value="7">7th</option>
-                            <option value="6">6th</option>
-                            <option value="5">5th</option>
-                            <option value="4">4th</option>
-                            <option value="3">3rd</option>
-                            <option value="2">2nd</option>
-                            <option value="1">1st</option>
-                            <option value="Other">Other</option>
+                            <option value="Professional">{isMl ? 'പ്രൊഫഷണൽ (MBBS/B.Tech/CA)' : 'Professional (MBBS/B.Tech/CA)'}</option>
+                            <option value="PG">{isMl ? 'ബിരുദാനന്തര ബിരുദം (PG)' : 'Post Graduate (PG)'}</option>
+                            <option value="Degree">{isMl ? 'ബിരുദം (Degree)' : 'Bachelor Degree (Graduate)'}</option>
+                            <option value="Diploma">{isMl ? 'ഡിപ്ലോമ / ITI' : 'Diploma / ITI'}</option>
+                            <option value="Plus-Two">{isMl ? 'പ്ലസ് ടു' : 'Plus Two'}</option>
+                            <option value="Plus-One">{isMl ? 'പ്ലസ് വൺ' : 'Plus One'}</option>
+                            <option value="SSLC">{isMl ? 'എസ്.എസ്.എൽ.സി' : 'SSLC'}</option>
+                            <option value="9">9th Standard</option>
+                            <option value="8">8th Standard</option>
+                            <option value="7">7th Standard</option>
+                            <option value="6">6th Standard</option>
+                            <option value="5">5th Standard</option>
+                            <option value="4">4th Standard</option>
+                            <option value="3">3rd Standard</option>
+                            <option value="2">2nd Standard</option>
+                            <option value="1">1st Standard</option>
+                            <option value="Other">{isMl ? 'മറ്റുള്ളവ' : 'Other'}</option>
                           </select>
                         </div>
 
                         {/* Religious Education */}
                         <div>
                           <label className="block font-semibold text-slate-700 mb-1">
-                            Religious Education *
+                            {isMl ? 'മത വിദ്യാഭ്യാസം *' : 'Religious Education *'}
                           </label>
                           <select
                             className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs"
                             {...register(`members.${index}.religious_education` as const)}
                           >
-                            <option value="Basic">Basic Quran Reading</option>
-                            <option value="Madrasa-1th">Madrasa 1th Standard</option>
-                            <option value="Madrasa-2th">Madrasa 2th Standard</option>
-                            <option value="Madrasa-3th">Madrasa 3th Standard</option>
-                            <option value="Madrasa-4th">Madrasa 4th Standard</option>
-                            <option value="Madrasa-5th">Madrasa 5th Standard</option>
-                            <option value="Madrasa-6th">Madrasa 6th Standard</option>
-                            <option value="Madrasa-7th">Madrasa 7th Standard</option>
-                            <option value="Madrasa-8th">Madrasa 8th Standard</option>
-                            <option value="Madrasa-9th">Madrasa 9th Standard</option>
-                            <option value="Madrasa-10th">Madrasa 10th Standard</option>
-                            <option value="Madrasa-11th">Madrasa 11th Standard</option>
-                            <option value="Madrasa-12th">Madrasa 12th Standard</option>
-                            <option value="Dars">Dars Student</option>
-                            <option value="Islamic Scholar">Islamic Scholar (Faizy/Baqavi/Hudawi)</option>
-                            <option value="Hafiz">Hafiz-ul-Quran</option>
-                            <option value="Other">Other</option>
+                            <option value="Basic">{isMl ? 'ഖുർആൻ പാരായണം' : 'Basic Quran Reading'}</option>
+                            <option value="Madrasa-10th">{isMl ? 'മദ്രസ 10-ാം തരം' : 'Madrasa 10th Standard'}</option>
+                            <option value="Madrasa-12th">{isMl ? 'മദ്രസ 12-ാം തരം' : 'Madrasa 12th Standard'}</option>
+                            <option value="Madrasa-7th">{isMl ? 'മദ്രസ 7-ാം തരം' : 'Madrasa 7th Standard'}</option>
+                            <option value="Madrasa-5th">{isMl ? 'മദ്രസ 5-ാം തരം' : 'Madrasa 5th Standard'}</option>
+                            <option value="Dars">{isMl ? 'ദർസ് വിദ്യാർത്ഥി' : 'Dars Student'}</option>
+                            <option value="Islamic Scholar">{isMl ? 'ഇസ്‌ലാമിക് പണ്ഡിതൻ (ഫൈസി/ബാഖവി/ഹുദവി)' : 'Islamic Scholar (Faizy/Baqavi/Hudawi)'}</option>
+                            <option value="Hafiz">{isMl ? 'ഹാഫിളുൽ ഖുർആൻ' : 'Hafiz-ul-Quran'}</option>
+                            <option value="Other">{isMl ? 'മറ്റുള്ളവ' : 'Other'}</option>
                           </select>
                         </div>
                       </div>
@@ -1006,21 +1022,21 @@ export default function OnboardingPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => handleMemberCountChange(memberCount + 1)}
-                  className="gap-2"
+                  className="gap-2 cursor-pointer"
                 >
                   <Plus className="h-4 w-4" />
-                  Add Another Family Member
+                  <span>{isMl ? '+ അടുത്ത കുടുംബാംഗത്തെ ചേർക്കുക' : 'Add Another Family Member'}</span>
                 </Button>
               </div>
 
               {/* Step 2 Actions */}
               <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
-                <Button type="button" variant="outline" onClick={handlePrevStep} className="gap-2">
+                <Button type="button" variant="outline" onClick={handlePrevStep} className="gap-2 cursor-pointer">
                   <ArrowLeft className="h-4 w-4" />
-                  Back
+                  <span>{isMl ? 'പിന്നോട്ട്' : 'Back'}</span>
                 </Button>
-                <Button type="button" onClick={handleNextStep} className="gap-2">
-                  Review & Finalize
+                <Button type="button" onClick={handleNextStep} className="gap-2 cursor-pointer">
+                  <span>{isMl ? 'വിവരങ്ങൾ പരിശോധിക്കുക' : 'Review & Finalize'}</span>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -1038,9 +1054,13 @@ export default function OnboardingPage() {
                     <CheckCircle2 className="h-5 w-5" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900">Step 3: Review Registration Summary</h2>
+                    <h2 className="text-lg font-bold text-slate-900">
+                      {isMl ? 'ഘട്ടം 3: വിവരങ്ങളുടെ പരിശോധന' : 'Step 3: Review Registration Summary'}
+                    </h2>
                     <p className="text-xs text-slate-500">
-                      Verify all household and census entries before transmitting to the Mahallu office.
+                      {isMl
+                        ? 'മഹല്ല് ഓഫീസിലേക്ക് അയക്കുന്നതിന് മുൻപ് നൽകിയ വിവരങ്ങൾ പരിശോധിക്കുക.'
+                        : 'Verify all household and census entries before transmitting to the Mahallu office.'}
                     </p>
                   </div>
                 </div>
@@ -1049,27 +1069,29 @@ export default function OnboardingPage() {
               {/* House Summary Card */}
               <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-3 text-sm">
                 <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500">
-                  Dwelling Overview
+                  {isMl ? 'വീട്ടു വിവരങ്ങൾ' : 'Dwelling Overview'}
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div>
-                    <span className="text-xs text-slate-400 block">House Name</span>
+                    <span className="text-xs text-slate-400 block">{isMl ? 'വീട്ടുപേര്' : 'House Name'}</span>
                     <span className="font-semibold text-slate-900">{watchedData.house.house_name}</span>
                   </div>
                   <div>
-                    <span className="text-xs text-slate-400 block">House / Ward No</span>
+                    <span className="text-xs text-slate-400 block">{isMl ? 'വാർഡ് വീട്ടു നമ്പർ' : 'House / Ward No'}</span>
                     <span className="font-semibold text-slate-900">{watchedData.house.house_number}</span>
                   </div>
                   <div>
-                    <span className="text-xs text-slate-400 block">Mahallu Reg No</span>
+                    <span className="text-xs text-slate-400 block">{isMl ? 'മഹല്ല് രജിസ്റ്റർ നമ്പർ' : 'Mahallu Reg No'}</span>
                     <span className="font-semibold text-emerald-800 font-mono">
                       {watchedData.house.mahallu_reg_no}
                     </span>
                   </div>
                   <div>
-                    <span className="text-xs text-slate-400 block">Division</span>
+                    <span className="text-xs text-slate-400 block">{isMl ? 'ഡിവിഷൻ' : 'Division'}</span>
                     <span className="font-semibold text-slate-900">
-                      {DIVISION_LABELS[watchedData.house.division as Division]}
+                      {isMl
+                        ? (DIVISION_LABELS_ML[watchedData.house.division as Division] || watchedData.house.division)
+                        : (DIVISION_LABELS[watchedData.house.division as Division] || watchedData.house.division)}
                     </span>
                   </div>
                 </div>
@@ -1078,19 +1100,21 @@ export default function OnboardingPage() {
               {/* Family Members Roster */}
               <div className="space-y-3">
                 <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500">
-                  Registered Members ({watchedData.members.length})
+                  {isMl
+                    ? `രജിസ്റ്റർ ചെയ്ത കുടുംബാംഗങ്ങൾ (${watchedData.members.length})`
+                    : `Registered Members (${watchedData.members.length})`}
                 </h3>
                 <div className="overflow-x-auto rounded-xl border border-slate-200">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                       <tr>
                         <th className="p-3">#</th>
-                        <th className="p-3">Name</th>
-                        <th className="p-3">Relation</th>
-                        <th className="p-3">Age</th>
-                        <th className="p-3">Occupation</th>
-                        <th className="p-3">Education</th>
-                        <th className="p-3">Religious Edu</th>
+                        <th className="p-3">{isMl ? 'പേര്' : 'Name'}</th>
+                        <th className="p-3">{isMl ? 'ബന്ധം' : 'Relation'}</th>
+                        <th className="p-3">{isMl ? 'വയസ്സ്' : 'Age'}</th>
+                        <th className="p-3">{isMl ? 'തൊഴിൽ' : 'Occupation'}</th>
+                        <th className="p-3">{isMl ? 'വിദ്യാഭ്യാസം' : 'Education'}</th>
+                        <th className="p-3">{isMl ? 'മതവിദ്യാഭ്യാസം' : 'Religious Edu'}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1101,7 +1125,7 @@ export default function OnboardingPage() {
                             {m.name || '—'}
                             {m.is_head_of_family && (
                               <span className="ml-2 text-[10px] text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded font-bold">
-                                Head
+                                {isMl ? 'കുടുംബനാഥൻ' : 'Head'}
                               </span>
                             )}
                           </td>
@@ -1121,19 +1145,21 @@ export default function OnboardingPage() {
               <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                 <p>
-                  By submitting this form, you confirm that all information provided is accurate. Once submitted, your profile will undergo administrative review by the Mahallu Committee before unlocking full portal access.
+                  {isMl
+                    ? 'ഈ ഫോമിൽ നൽകിയിരിക്കുന്ന എല്ലാ വിവരങ്ങളും കൃത്യവും സത്യസന്ധവുമാണെന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു. സമർപ്പിച്ച ശേഷം മഹല്ല് കമ്മിറ്റിയുടെ അംഗീകാരത്തിനായി അപേക്ഷ സമർപ്പിക്കുന്നതാണ്.'
+                    : 'By submitting this form, you confirm that all information provided is accurate. Once submitted, your profile will undergo administrative review by the Mahallu Committee before unlocking full portal access.'}
                 </p>
               </div>
 
               {/* Step 3 Actions */}
               <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
-                <Button type="button" variant="outline" onClick={handlePrevStep} className="gap-2">
+                <Button type="button" variant="outline" onClick={handlePrevStep} className="gap-2 cursor-pointer">
                   <ArrowLeft className="h-4 w-4" />
-                  Edit Information
+                  <span>{isMl ? 'വിവരങ്ങൾ തിരുത്തുക' : 'Edit Information'}</span>
                 </Button>
-                <Button type="submit" isLoading={isSubmitting} className="gap-2">
+                <Button type="submit" isLoading={isSubmitting} className="gap-2 cursor-pointer">
                   <CheckCircle2 className="h-4 w-4" />
-                  Submit Registration
+                  <span>{isMl ? 'രജിസ്ട്രേഷൻ സമർപ്പിക്കുക' : 'Submit Registration'}</span>
                 </Button>
               </div>
             </div>

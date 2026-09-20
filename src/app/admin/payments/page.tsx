@@ -6,6 +6,7 @@ import {
   PaymentDue,
   HouseWithDetails,
   DIVISION_LABELS,
+  DIVISION_LABELS_ML,
   Division,
   PaymentRequestItem,
   PaymentRequestContribution,
@@ -17,6 +18,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/lib/context/AuthContext';
+import { useLanguage } from '@/lib/context/LanguageContext';
 import {
   CreditCard,
   CheckCircle2,
@@ -49,8 +51,11 @@ import { DuesSettings } from '@/lib/data-service';
 import { UpiQrCode } from '@/components/shared/UpiQrCode';
 
 export default function PaymentVerificationHub() {
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
   const { toast } = useToast();
   const { user } = useAuth();
+  const getDivName = (div: string) => isMl ? (DIVISION_LABELS_ML[div as Division] || div) : (DIVISION_LABELS[div as Division] || div);
   const [reviewQueue, setReviewQueue] = useState<{ due: PaymentDue; house: HouseWithDetails }[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -475,14 +480,16 @@ export default function PaymentVerificationHub() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              Payment Verification Hub
+              {isMl ? 'പേയ്‌മെന്റ് വെരിഫിക്കേഷൻ ഹബ്ബ്' : 'Payment Verification Hub'}
             </h1>
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 text-xs font-bold">
-              {totalPendingReviews} Under Review
+              {totalPendingReviews} {isMl ? 'പരിശോധനയിൽ' : 'Under Review'}
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Real-time queue of monthly dues submissions &amp; special collection drives. Reconcile UPI / UTR transaction IDs against bank records.
+            {isMl
+              ? 'മാസവരി, പ്രത്യേക പിരിവുകൾ എന്നിവയുടെ റിയൽ-ടൈം പരിശോധന. യുപിഐ / യുടിആർ (UTR) വിവരങ്ങൾ ബാങ്ക് അക്കൗണ്ടുമായി ഒത്തുനോക്കുക.'
+              : 'Real-time queue of monthly dues submissions & special collection drives. Reconcile UPI / UTR transaction IDs against bank records.'}
           </p>
         </div>
 
@@ -495,7 +502,7 @@ export default function PaymentVerificationHub() {
             className="gap-2 text-xs border-slate-200 hover:bg-slate-50 text-slate-700 font-medium shadow-xs"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? 'animate-spin text-emerald-600' : 'text-slate-500'}`} />
-            {isRefreshing ? 'Syncing...' : 'Sync Queue'}
+            {isRefreshing ? (isMl ? 'സിങ്ക് ചെയ്യുന്നു...' : 'Syncing...') : (isMl ? 'ക്യൂ സിങ്ക് ചെയ്യുക' : 'Sync Queue')}
           </Button>
 
           <Button
@@ -508,10 +515,10 @@ export default function PaymentVerificationHub() {
             className="gap-2 text-xs bg-white hover:bg-emerald-50 border-emerald-300 text-emerald-900 font-semibold shadow-xs cursor-pointer"
           >
             <Coins className="h-3.5 w-3.5 text-emerald-700" />
-            <span>Monthly Fee: ₹{duesSchedule.currentAmount}/mo</span>
+            <span>{isMl ? `മാസവരി: ₹${duesSchedule.currentAmount}/മാസം` : `Monthly Fee: ₹${duesSchedule.currentAmount}/mo`}</span>
             {duesSchedule.isPendingChange && (
               <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-900 font-bold border border-amber-300">
-                ₹{duesSchedule.nextAmount} from {duesSchedule.nextMonth}
+                {isMl ? `${duesSchedule.nextMonth} മുതൽ ₹${duesSchedule.nextAmount}` : `₹${duesSchedule.nextAmount} from ${duesSchedule.nextMonth}`}
               </span>
             )}
           </Button>
@@ -523,7 +530,7 @@ export default function PaymentVerificationHub() {
             className="gap-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs cursor-pointer"
           >
             <HandCoins className="h-3.5 w-3.5" />
-            Request Amount from Users
+            {isMl ? 'പുതിയ പിരിവ് / ഫണ്ട് ആവശ്യപ്പെടുക' : 'Request Amount from Users'}
           </Button>
 
           <Button
@@ -540,7 +547,7 @@ export default function PaymentVerificationHub() {
             className="gap-2 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold shadow-xs cursor-pointer"
           >
             <QrCode className="h-3.5 w-3.5" />
-            Mahallu UPI Settings
+            {isMl ? 'മഹല്ല് യുപിഐ ക്രമീകരണങ്ങൾ' : 'Mahallu UPI Settings'}
           </Button>
         </div>
       </div>
@@ -559,10 +566,10 @@ export default function PaymentVerificationHub() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-emerald-200 uppercase tracking-wider">
-                  Official Mahallu Receiving Account
+                  {isMl ? 'ഔദ്യോഗിക മഹല്ല് സ്വീകരണ അക്കൗണ്ട്' : 'Official Mahallu Receiving Account'}
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/20">
-                  Active
+                  {isMl ? 'സജീവം' : 'Active'}
                 </span>
               </div>
               <div className="text-base sm:text-lg font-mono font-bold text-white mt-0.5 flex items-center gap-2">
@@ -571,7 +578,7 @@ export default function PaymentVerificationHub() {
                   type="button"
                   onClick={() => {
                     navigator.clipboard.writeText(upiSettings.upiId);
-                    toast(`Copied UPI ID: ${upiSettings.upiId}`, 'success');
+                    toast(isMl ? `യുപിഐ ഐഡി കോപ്പി ചെയ്തു: ${upiSettings.upiId}` : `Copied UPI ID: ${upiSettings.upiId}`, 'success');
                   }}
                   className="p-1 hover:bg-white/10 rounded transition-colors text-emerald-300 hover:text-white cursor-pointer"
                   title="Copy UPI ID"
@@ -580,7 +587,7 @@ export default function PaymentVerificationHub() {
                 </button>
               </div>
               <p className="text-[11px] text-emerald-100/70 mt-0.5">
-                Payee: <strong>{upiSettings.payeeName}</strong>
+                {isMl ? 'സ്വീകർത്താവ്:' : 'Payee:'} <strong>{upiSettings.payeeName}</strong>
                 {upiSettings.bankName && ` • ${upiSettings.bankName}`}
                 {upiSettings.accountNumber && ` (A/C: ${upiSettings.accountNumber})`}
               </p>
@@ -602,7 +609,7 @@ export default function PaymentVerificationHub() {
               className="w-full sm:w-auto text-xs bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5 cursor-pointer"
             >
               <Settings className="h-3.5 w-3.5" />
-              Configure UPI ID & QR
+              {isMl ? 'യുപിഐ ഐഡിയും ക്യുആറും ക്രമീകരിക്കുക' : 'Configure UPI ID & QR'}
             </Button>
           </div>
         </div>
@@ -613,27 +620,29 @@ export default function PaymentVerificationHub() {
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                 <Coins className="h-3.5 w-3.5 text-emerald-700" />
-                Monthly Due Rate
+                {isMl ? 'മാസവരി നിരക്ക്' : 'Monthly Due Rate'}
               </span>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                Active Tier
+                {isMl ? 'നിലവിലെ നിരക്ക്' : 'Active Tier'}
               </span>
             </div>
             <div className="flex items-baseline gap-2 pt-1">
               <span className="text-2xl font-black text-slate-900">
                 ₹{duesSchedule.currentAmount}
               </span>
-              <span className="text-xs text-slate-500 font-medium">/ house / month</span>
+              <span className="text-xs text-slate-500 font-medium">{isMl ? '/ വീട് / മാസം' : '/ house / month'}</span>
             </div>
             <div className="text-[11px] text-slate-500 pt-0.5">
               {duesSchedule.isPendingChange ? (
                 <span className="text-amber-800 font-semibold flex items-center gap-1">
                   <Clock className="h-3 w-3 text-amber-600 shrink-0" />
-                  Scheduled: ₹{duesSchedule.nextAmount} from {duesSchedule.nextMonth} onwards
+                  {isMl
+                    ? `നിശ്ചയിച്ചത്: ${duesSchedule.nextMonth} മുതൽ ₹${duesSchedule.nextAmount}`
+                    : `Scheduled: ₹${duesSchedule.nextAmount} from ${duesSchedule.nextMonth} onwards`}
                 </span>
               ) : (
                 <span className="text-slate-500">
-                  Updates submitted this month apply from next month onwards
+                  {isMl ? 'ഈ മാസം മാറ്റം വരുത്തുന്നത് അടുത്ത മാസം മുതൽ പ്രാബല്യത്തിൽ വരും' : 'Updates submitted this month apply from next month onwards'}
                 </span>
               )}
             </div>
@@ -649,7 +658,7 @@ export default function PaymentVerificationHub() {
             className="w-full text-xs font-semibold border-slate-300 text-slate-800 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-300 gap-1.5 cursor-pointer"
           >
             <Coins className="h-3.5 w-3.5 text-emerald-700" />
-            Update Monthly Fee
+            {isMl ? 'മാസവരി നിരക്ക് മാറ്റുക' : 'Update Monthly Fee'}
           </Button>
         </div>
       </div>
@@ -660,10 +669,10 @@ export default function PaymentVerificationHub() {
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <HandCoins className="h-5 w-5 text-emerald-600" />
-              Special Payment Requests &amp; Campaigns
+              {isMl ? 'പ്രത്യേക പിരിവുകളും ധനസമാഹരണങ്ങളും' : 'Special Payment Requests & Campaigns'}
             </h2>
             <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-              {paymentRequests.filter((r) => r.status === 'active').length} Active
+              {paymentRequests.filter((r) => r.status === 'active').length} {isMl ? 'സജീവം' : 'Active'}
             </span>
             {cancelledRequestsCount > 0 && (
               <button
@@ -671,7 +680,9 @@ export default function PaymentVerificationHub() {
                 onClick={() => setShowCancelledRequests(!showCancelledRequests)}
                 className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer ml-1"
               >
-                {showCancelledRequests ? 'Hide Deleted / Archived' : `Show Deleted / Archived (${cancelledRequestsCount})`}
+                {showCancelledRequests
+                  ? (isMl ? 'ഡിലീറ്റ് ചെയ്തവ മറയ്ക്കുക' : 'Hide Deleted / Archived')
+                  : (isMl ? `ഡിലീറ്റ് ചെയ്തവ കാണിക്കുക (${cancelledRequestsCount})` : `Show Deleted / Archived (${cancelledRequestsCount})`)}
               </button>
             )}
           </div>
@@ -682,7 +693,7 @@ export default function PaymentVerificationHub() {
             className="gap-1.5 text-xs text-emerald-800 border-emerald-300 hover:bg-emerald-50 font-semibold cursor-pointer"
           >
             <PlusCircle className="h-3.5 w-3.5 text-emerald-600" />
-            New Amount Request
+            {isMl ? 'പുതിയ പിരിവ് ആരംഭിക്കുക' : 'New Amount Request'}
           </Button>
         </div>
 
@@ -691,9 +702,13 @@ export default function PaymentVerificationHub() {
             <div className="h-10 w-10 mx-auto rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <HandCoins className="h-5 w-5" />
             </div>
-            <p className="text-sm font-semibold text-slate-800">No Payment Requests Created Yet</p>
+            <p className="text-sm font-semibold text-slate-800">
+              {isMl ? 'പ്രത്യേക പിരിവുകളൊന്നും ആരംഭിച്ചിട്ടില്ല' : 'No Payment Requests Created Yet'}
+            </p>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Broadcast collection requests to all registered households. Request fixed amounts (e.g. ₹500 for maintenance) or custom amounts (pay as you wish for charity/donations).
+              {isMl
+                ? 'എല്ലാ മഹല്ല് വീടുകളിലേക്കും പ്രത്യേക പിരിവുകൾ ആവശ്യപ്പെടാം. നിർദ്ദിഷ്ട തുകയോ (ഉദാ: ₹500) അല്ലെങ്കിൽ ഇഷ്ടമുള്ള തുകയോ സംഭാവനയായി സ്വീകരിക്കാം.'
+                : 'Broadcast collection requests to all registered households. Request fixed amounts (e.g. ₹500 for maintenance) or custom amounts (pay as you wish for charity/donations).'}
             </p>
             <Button
               variant="primary"
@@ -702,7 +717,7 @@ export default function PaymentVerificationHub() {
               className="mt-2 text-xs bg-emerald-700 hover:bg-emerald-800 gap-1.5 cursor-pointer"
             >
               <PlusCircle className="h-3.5 w-3.5" />
-              Create First Payment Request
+              {isMl ? 'ആദ്യത്തെ പിരിവ് ആരംഭിക്കുക' : 'Create First Payment Request'}
             </Button>
           </div>
         ) : (
@@ -735,11 +750,11 @@ export default function PaymentVerificationHub() {
                         </span>
                         {req.amount_type === 'fixed' ? (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                            Fixed: ₹{req.fixed_amount}
+                            {isMl ? `നിശ്ചിത തുക: ₹${req.fixed_amount}` : `Fixed: ₹${req.fixed_amount}`}
                           </span>
                         ) : (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
-                            Flexible (Pay as you wish)
+                            {isMl ? 'ഇഷ്ടമുള്ള തുക നൽകാം' : 'Flexible (Pay as you wish)'}
                           </span>
                         )}
                       </div>
@@ -753,7 +768,9 @@ export default function PaymentVerificationHub() {
                             : 'bg-slate-100 text-slate-700'
                         }`}
                       >
-                        {req.status}
+                        {isMl
+                          ? (req.status === 'active' ? 'സജീവം' : req.status === 'completed' ? 'പൂർത്തിയായി' : 'റദ്ദാക്കി')
+                          : req.status}
                       </span>
                     </div>
 
@@ -771,8 +788,8 @@ export default function PaymentVerificationHub() {
                     {pct !== null && (
                       <div className="space-y-1 pt-1">
                         <div className="flex justify-between text-[11px] font-semibold text-slate-600">
-                          <span>{pct}% Goal Reached</span>
-                          <span>Target: ₹{req.target_total?.toLocaleString('en-IN')}</span>
+                          <span>{pct}% {isMl ? 'ലക്ഷ്യം പൂർത്തിയായി' : 'Goal Reached'}</span>
+                          <span>{isMl ? 'ലക്ഷ്യം:' : 'Target:'} ₹{req.target_total?.toLocaleString('en-IN')}</span>
                         </div>
                         <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                           <div
@@ -787,7 +804,7 @@ export default function PaymentVerificationHub() {
                     <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
                       <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
                         <span className="text-[10px] text-slate-400 font-semibold uppercase block">
-                          Total Raised
+                          {isMl ? 'സമാഹരിച്ചത്' : 'Total Raised'}
                         </span>
                         <span className="font-extrabold text-emerald-700 text-sm">
                           ₹{totalRaised.toLocaleString('en-IN')}
@@ -795,22 +812,26 @@ export default function PaymentVerificationHub() {
                       </div>
                       <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
                         <span className="text-[10px] text-slate-400 font-semibold uppercase block">
-                          Contributors
+                          {isMl ? 'പങ്കാളികൾ' : 'Contributors'}
                         </span>
                         <span className="font-extrabold text-slate-800 text-sm">
-                          {verifiedContribs.length} houses
+                          {verifiedContribs.length} {isMl ? 'വീടുകൾ' : 'houses'}
                         </span>
                       </div>
                     </div>
 
                     {pendingReqContribs.length > 0 && (
                       <div className="px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-semibold flex items-center justify-between">
-                        <span>{pendingReqContribs.length} submission(s) pending review</span>
+                        <span>
+                          {isMl
+                            ? `${pendingReqContribs.length} പേയ്‌മെന്റുകൾ പരിശോധനയിലുണ്ട്`
+                            : `${pendingReqContribs.length} submission(s) pending review`}
+                        </span>
                         <button
                           onClick={() => setReviewTab('requests')}
                           className="text-amber-800 underline hover:text-amber-950 font-bold cursor-pointer"
                         >
-                          Review &rarr;
+                          {isMl ? 'പരിശോധിക്കുക →' : 'Review →'}
                         </button>
                       </div>
                     )}
@@ -825,7 +846,7 @@ export default function PaymentVerificationHub() {
                       className="text-xs h-7 gap-1 px-2.5 text-slate-700 cursor-pointer"
                     >
                       <Eye className="h-3 w-3" />
-                      Donors ({reqContribs.length})
+                      {isMl ? `ദാതാക്കൾ (${reqContribs.length})` : `Donors (${reqContribs.length})`}
                     </Button>
 
                     <div className="flex items-center gap-1">
@@ -834,14 +855,16 @@ export default function PaymentVerificationHub() {
                         size="sm"
                         onClick={() => handleToggleRequestStatus(req.id, req.status)}
                         className="text-[11px] h-7 px-2 text-slate-600 cursor-pointer"
-                        title={req.status === 'active' ? 'Mark as Completed' : 'Reactivate Request'}
+                        title={req.status === 'active' ? (isMl ? 'പൂർത്തിയായതായി അടയാളപ്പെടുത്തുക' : 'Mark as Completed') : (isMl ? 'വീണ്ടും സജീവമാക്കുക' : 'Reactivate Request')}
                       >
-                        {req.status === 'active' ? 'Complete' : 'Reopen'}
+                        {req.status === 'active'
+                          ? (isMl ? 'പൂർത്തിയാക്കുക' : 'Complete')
+                          : (isMl ? 'വീണ്ടും തുടങ്ങുക' : 'Reopen')}
                       </Button>
                       <button
                         onClick={() => handleDeleteRequest(req.id)}
                         className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                        title="Delete Request"
+                        title={isMl ? 'ഡിലീറ്റ് ചെയ്യുക' : 'Delete Request'}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -861,10 +884,12 @@ export default function PaymentVerificationHub() {
           <div>
             <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <CheckSquare className="h-4 w-4 text-emerald-600" />
-              Reconciliation &amp; Verification Queue
+              {isMl ? 'പേയ്‌മെന്റ് പരിശോധനാ പട്ടിക' : 'Reconciliation & Verification Queue'}
             </h2>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Review transaction references submitted by residents for monthly dues and special collection drives.
+              {isMl
+                ? 'താമസക്കാർ നൽകിയ മാസവരി, പ്രത്യേക പിരിവ് യുടിആർ (UTR) നമ്പറുകൾ പരിശോധിച്ച് അക്കൗണ്ടിലേക്ക് വരവ് ചേർക്കുക.'
+                : 'Review transaction references submitted by residents for monthly dues and special collection drives.'}
             </p>
           </div>
 
@@ -878,7 +903,7 @@ export default function PaymentVerificationHub() {
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              All Pending ({totalPendingReviews})
+              {isMl ? `എല്ലാം (${totalPendingReviews})` : `All Pending (${totalPendingReviews})`}
             </button>
             <button
               onClick={() => setReviewTab('monthly')}
@@ -888,7 +913,7 @@ export default function PaymentVerificationHub() {
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Monthly Dues ({reviewQueue.length})
+              {isMl ? `മാസവരി (${reviewQueue.length})` : `Monthly Dues (${reviewQueue.length})`}
             </button>
             <button
               onClick={() => setReviewTab('requests')}
@@ -898,7 +923,7 @@ export default function PaymentVerificationHub() {
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Special Requests ({pendingContributions.length})
+              {isMl ? `പ്രത്യേക പിരിവുകൾ (${pendingContributions.length})` : `Special Requests (${pendingContributions.length})`}
             </button>
           </div>
         </div>
@@ -908,12 +933,12 @@ export default function PaymentVerificationHub() {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
               <tr>
-                <th className="py-3.5 px-6">Household &amp; Division</th>
-                <th className="py-3.5 px-4">Payment Category / Purpose</th>
-                <th className="py-3.5 px-4">Amount</th>
-                <th className="py-3.5 px-4">Transaction UTR / Ref</th>
-                <th className="py-3.5 px-4">Submitted Time</th>
-                <th className="py-3.5 px-6 text-right">Verification Actions</th>
+                <th className="py-3.5 px-6">{isMl ? 'വീടും ഡിവിഷനും' : 'Household & Division'}</th>
+                <th className="py-3.5 px-4">{isMl ? 'ഇനം / ഉദ്ദേശ്യം' : 'Payment Category / Purpose'}</th>
+                <th className="py-3.5 px-4">{isMl ? 'തുക' : 'Amount'}</th>
+                <th className="py-3.5 px-4">{isMl ? 'യുടിആർ / റഫറൻസ്' : 'Transaction UTR / Ref'}</th>
+                <th className="py-3.5 px-4">{isMl ? 'സമർപ്പിച്ച സമയം' : 'Submitted Time'}</th>
+                <th className="py-3.5 px-6 text-right">{isMl ? 'നടപടികൾ' : 'Verification Actions'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -927,10 +952,12 @@ export default function PaymentVerificationHub() {
                         <CheckCircle2 className="h-6 w-6" />
                       </div>
                       <p className="text-sm font-semibold text-slate-900">
-                        Payment Queue Reconciled
+                        {isMl ? 'പരിശോധിക്കാൻ പേയ്‌മെന്റുകളൊന്നുമില്ല' : 'Payment Queue Reconciled'}
                       </p>
                       <p className="text-xs text-slate-400">
-                        All resident payment references have been processed and reconciled into the financial ledger.
+                        {isMl
+                          ? 'എല്ലാ റസിഡന്റ് പേയ്‌മെന്റുകളും പരിശോധിച്ച് വരവ് ചേർത്തു കഴിഞ്ഞു.'
+                          : 'All resident payment references have been processed and reconciled into the financial ledger.'}
                       </p>
                     </div>
                   </td>
@@ -947,12 +974,12 @@ export default function PaymentVerificationHub() {
                             <div className="font-bold text-slate-900">{house.house_name}</div>
                             <div className="text-xs font-semibold text-emerald-800 flex items-center gap-1 my-0.5">
                               <User className="h-3 w-3 text-emerald-600 shrink-0" />
-                              <span>Head: {getHouseHeadName(house)}</span>
+                              <span>{isMl ? `നാഥൻ: ${getHouseHeadName(house)}` : `Head: ${getHouseHeadName(house)}`}</span>
                             </div>
                             <div className="text-[11px] text-slate-500 flex items-center gap-1 font-mono">
                               <span className="text-emerald-800 font-semibold">{house.mahallu_reg_no}</span>
                               <span>•</span>
-                              <span>{DIVISION_LABELS[house.division as Division]}</span>
+                              <span>{getDivName(house.division)}</span>
                             </div>
                           </td>
 
@@ -960,7 +987,7 @@ export default function PaymentVerificationHub() {
                             <div className="space-y-0.5">
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 inline-flex items-center gap-1">
                                 <Coins className="h-3 w-3 text-slate-500" />
-                                Monthly Dues
+                                {isMl ? 'മാസവരി' : 'Monthly Dues'}
                               </span>
                               <div className="flex items-center gap-1.5 font-bold text-slate-800 text-xs">
                                 <Calendar className="h-3.5 w-3.5 text-slate-400" />
@@ -1007,7 +1034,7 @@ export default function PaymentVerificationHub() {
                                 className="gap-1.5 bg-emerald-700 hover:bg-emerald-800 cursor-pointer"
                               >
                                 <CheckCircle2 className="h-3.5 w-3.5" />
-                                Approve &amp; Post Credit
+                                {isMl ? 'അംഗീകരിച്ച് വരവ് ചേർക്കുക' : 'Approve & Post Credit'}
                               </Button>
 
                               <Button
@@ -1017,7 +1044,7 @@ export default function PaymentVerificationHub() {
                                 className="gap-1.5 cursor-pointer"
                               >
                                 <XCircle className="h-3.5 w-3.5" />
-                                Reject
+                                {isMl ? 'നിരസിക്കുക' : 'Reject'}
                               </Button>
                             </div>
                           </td>
@@ -1041,14 +1068,14 @@ export default function PaymentVerificationHub() {
                             {house && (
                               <div className="text-xs font-semibold text-emerald-800 flex items-center gap-1 my-0.5">
                                 <User className="h-3 w-3 text-emerald-600 shrink-0" />
-                                <span>Head: {getHouseHeadName(house)}</span>
+                                <span>{isMl ? `നാഥൻ: ${getHouseHeadName(house)}` : `Head: ${getHouseHeadName(house)}`}</span>
                               </div>
                             )}
                             {house && (
                               <div className="text-[11px] text-slate-500 flex items-center gap-1 font-mono">
                                 <span className="text-emerald-800 font-semibold">{house.mahallu_reg_no}</span>
                                 <span>•</span>
-                                <span>{DIVISION_LABELS[house.division as Division]}</span>
+                                <span>{getDivName(house.division)}</span>
                               </div>
                             )}
                           </td>
@@ -1103,7 +1130,7 @@ export default function PaymentVerificationHub() {
                                 className="gap-1.5 bg-emerald-700 hover:bg-emerald-800 cursor-pointer"
                               >
                                 <CheckCircle2 className="h-3.5 w-3.5" />
-                                Approve &amp; Post Credit
+                                {isMl ? 'അംഗീകരിച്ച് വരവ് ചേർക്കുക' : 'Approve & Post Credit'}
                               </Button>
 
                               <Button
@@ -1113,7 +1140,7 @@ export default function PaymentVerificationHub() {
                                 className="gap-1.5 cursor-pointer"
                               >
                                 <XCircle className="h-3.5 w-3.5" />
-                                Reject
+                                {isMl ? 'നിരസിക്കുക' : 'Reject'}
                               </Button>
                             </div>
                           </td>
@@ -1133,8 +1160,12 @@ export default function PaymentVerificationHub() {
             (reviewTab === 'all' && totalPendingReviews === 0)) ? (
             <div className="p-8 text-center text-slate-400 text-xs">
               <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
-              <p className="font-semibold text-slate-800">Queue Fully Reconciled</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">All submitted payments processed.</p>
+              <p className="font-semibold text-slate-800">
+                {isMl ? 'ക്യൂ പൂർണ്ണമായും പൂർത്തിയായി' : 'Queue Fully Reconciled'}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                {isMl ? 'എല്ലാ പേയ്‌മെന്റുകളും പരിശോധിച്ച് കഴിഞ്ഞു.' : 'All submitted payments processed.'}
+              </p>
             </div>
           ) : (
             <>
@@ -1149,10 +1180,10 @@ export default function PaymentVerificationHub() {
                           <h3 className="font-bold text-slate-900 text-sm">{house.house_name}</h3>
                           <div className="text-xs font-semibold text-emerald-800 flex items-center gap-1 mt-0.5">
                             <User className="h-3 w-3 text-emerald-600 shrink-0" />
-                            <span>Head: {getHouseHeadName(house)}</span>
+                            <span>{isMl ? `നാഥൻ: ${getHouseHeadName(house)}` : `Head: ${getHouseHeadName(house)}`}</span>
                           </div>
                           <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                            {house.mahallu_reg_no} • {DIVISION_LABELS[house.division as Division]}
+                            {house.mahallu_reg_no} • {getDivName(house.division)}
                           </p>
                         </div>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 shrink-0">
@@ -1163,11 +1194,15 @@ export default function PaymentVerificationHub() {
                       {/* Amount & UTR Box */}
                       <div className="bg-slate-50/90 p-3 rounded-xl border border-slate-100 flex items-center justify-between text-xs">
                         <div>
-                          <span className="text-[10px] text-slate-400 uppercase font-medium block">Monthly Due</span>
+                          <span className="text-[10px] text-slate-400 uppercase font-medium block">
+                            {isMl ? 'മാസവരി' : 'Monthly Due'}
+                          </span>
                           <span className="font-black text-base text-slate-900">{formatCurrency(due.amount)}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-[10px] text-slate-400 uppercase font-medium block">UTR / Ref</span>
+                          <span className="text-[10px] text-slate-400 uppercase font-medium block">
+                            {isMl ? 'യുടിആർ' : 'UTR / Ref'}
+                          </span>
                           <div className="flex items-center gap-1 font-mono font-bold text-slate-800">
                             <span>{due.transaction_ref || 'N/A'}</span>
                             {due.transaction_ref && (
@@ -1184,7 +1219,7 @@ export default function PaymentVerificationHub() {
                       </div>
 
                       <div className="text-[11px] text-slate-400">
-                        Submitted: {formatDateTime(due.submitted_at)}
+                        {isMl ? 'സമർപ്പിച്ചത്:' : 'Submitted:'} {formatDateTime(due.submitted_at)}
                       </div>
 
                       {/* Action Buttons: 2-column touch grid */}
@@ -1196,7 +1231,7 @@ export default function PaymentVerificationHub() {
                           className="w-full justify-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 min-h-[42px] font-semibold text-xs"
                         >
                           <CheckCircle2 className="h-4 w-4" />
-                          <span>Approve Credit</span>
+                          <span>{isMl ? 'അംഗീകരിക്കുക' : 'Approve Credit'}</span>
                         </Button>
 
                         <Button
@@ -1206,7 +1241,7 @@ export default function PaymentVerificationHub() {
                           className="w-full justify-center gap-1.5 min-h-[42px] font-semibold text-xs"
                         >
                           <XCircle className="h-4 w-4" />
-                          <span>Reject Ref</span>
+                          <span>{isMl ? 'നിരസിക്കുക' : 'Reject Ref'}</span>
                         </Button>
                       </div>
                     </div>
@@ -1230,32 +1265,36 @@ export default function PaymentVerificationHub() {
                           {house && (
                             <div className="text-xs font-semibold text-emerald-800 flex items-center gap-1 mt-0.5">
                               <User className="h-3 w-3 text-emerald-600 shrink-0" />
-                              <span>Head: {getHouseHeadName(house)}</span>
+                              <span>{isMl ? `നാഥൻ: ${getHouseHeadName(house)}` : `Head: ${getHouseHeadName(house)}`}</span>
                             </div>
                           )}
                           {house && (
                             <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                              {house.mahallu_reg_no} • {DIVISION_LABELS[house.division as Division]}
+                              {house.mahallu_reg_no} • {getDivName(house.division)}
                             </p>
                           )}
                         </div>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 shrink-0">
-                          {req?.category || 'Special'}
+                          {req?.category || (isMl ? 'പ്രത്യേകം' : 'Special')}
                         </span>
                       </div>
 
                       <p className="text-xs font-semibold text-slate-800">
-                        {req?.title || 'Special Collection'}
+                        {req?.title || (isMl ? 'പ്രത്യേക പിരിവ്' : 'Special Collection')}
                       </p>
 
                       {/* Amount & UTR Box */}
                       <div className="bg-emerald-50/60 p-3 rounded-xl border border-emerald-100 flex items-center justify-between text-xs">
                         <div>
-                          <span className="text-[10px] text-slate-400 uppercase font-medium block">Contribution</span>
+                          <span className="text-[10px] text-slate-400 uppercase font-medium block">
+                            {isMl ? 'സംഭാവന' : 'Contribution'}
+                          </span>
                           <span className="font-black text-base text-emerald-800">{formatCurrency(contrib.amount)}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-[10px] text-slate-400 uppercase font-medium block">UTR / Ref</span>
+                          <span className="text-[10px] text-slate-400 uppercase font-medium block">
+                            {isMl ? 'യുടിആർ' : 'UTR / Ref'}
+                          </span>
                           <div className="flex items-center gap-1 font-mono font-bold text-slate-800">
                             <span>{contrib.transaction_ref || 'N/A'}</span>
                             {contrib.transaction_ref && (
@@ -1272,7 +1311,7 @@ export default function PaymentVerificationHub() {
                       </div>
 
                       <div className="text-[11px] text-slate-400">
-                        Submitted: {formatDateTime(contrib.submitted_at)}
+                        {isMl ? 'സമർപ്പിച്ചത്:' : 'Submitted:'} {formatDateTime(contrib.submitted_at)}
                       </div>
 
                       {/* Action Buttons: 2-column touch grid */}
@@ -1284,7 +1323,7 @@ export default function PaymentVerificationHub() {
                           className="w-full justify-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 min-h-[42px] font-semibold text-xs"
                         >
                           <CheckCircle2 className="h-4 w-4" />
-                          <span>Approve Credit</span>
+                          <span>{isMl ? 'അംഗീകരിക്കുക' : 'Approve Credit'}</span>
                         </Button>
 
                         <Button
@@ -1294,7 +1333,7 @@ export default function PaymentVerificationHub() {
                           className="w-full justify-center gap-1.5 min-h-[42px] font-semibold text-xs"
                         >
                           <XCircle className="h-4 w-4" />
-                          <span>Reject Ref</span>
+                          <span>{isMl ? 'നിരസിക്കുക' : 'Reject Ref'}</span>
                         </Button>
                       </div>
                     </div>
@@ -1309,19 +1348,27 @@ export default function PaymentVerificationHub() {
       <Modal
         isOpen={rejectModalOpen}
         onClose={() => setRejectModalOpen(false)}
-        title="Mark Payment as Failed / Rejected"
-        description="Explain why this transaction could not be reconciled (e.g., UTR not found in bank statement, duplicate submission, incorrect amount)."
+        title={isMl ? 'പേയ്‌മെന്റ് നിരസിക്കുക' : 'Mark Payment as Failed / Rejected'}
+        description={
+          isMl
+            ? 'എന്തുകൊണ്ടാണ് ഈ പേയ്‌മെന്റ് നിരസിക്കുന്നത് എന്ന് രേഖപ്പെടുത്തുക (ഉദാ: ബാങ്ക് അക്കൗണ്ടിൽ പണം എത്തിയിട്ടില്ല, തെറ്റായ യുടിആർ നമ്പർ, തുകയിലെ വ്യത്യാസം).'
+            : 'Explain why this transaction could not be reconciled (e.g., UTR not found in bank statement, duplicate submission, incorrect amount).'
+        }
       >
         <form onSubmit={handleConfirmReject} className="space-y-4 text-xs">
           <div>
             <label className="block font-semibold text-slate-700 mb-1.5">
-              Rejection Explanation *
+              {isMl ? 'കാരണം *' : 'Rejection Explanation *'}
             </label>
             <textarea
               rows={4}
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="e.g., Transaction reference not credited to Mahallu bank account, invalid UTR number format, or payment disputed."
+              placeholder={
+                isMl
+                  ? 'ഉദാ: മഹല്ല് ബാങ്ക് അക്കൗണ്ടിൽ പണം ക്രെഡിറ്റ് ആയിട്ടില്ല, യുടിആർ നമ്പർ തെറ്റാണ്...'
+                  : 'e.g., Transaction reference not credited to Mahallu bank account, invalid UTR number format, or payment disputed.'
+              }
               className="w-full p-3 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none"
               required
             />
@@ -1336,14 +1383,16 @@ export default function PaymentVerificationHub() {
               }}
               disabled={isRejecting}
             >
-              Cancel
+              {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
             </Button>
             <Button
               type="submit"
               variant="destructive"
               disabled={isRejecting || !rejectionReason.trim()}
             >
-              {isRejecting ? 'Rejecting...' : 'Confirm Rejection'}
+              {isRejecting
+                ? (isMl ? 'നിരസിക്കുന്നു...' : 'Rejecting...')
+                : (isMl ? 'നിരസിക്കുക' : 'Confirm Rejection')}
             </Button>
           </div>
         </form>
@@ -1353,8 +1402,12 @@ export default function PaymentVerificationHub() {
       <Modal
         isOpen={upiModalOpen}
         onClose={() => setUpiModalOpen(false)}
-        title="Configure Mahallu UPI & Receiving Account"
-        description="Update the official UPI ID and bank details used for resident dues collection and QR codes"
+        title={isMl ? 'മഹല്ല് യുപിഐ & ബാങ്ക് അക്കൗണ്ട് ക്രമീകരണങ്ങൾ' : 'Configure Mahallu UPI & Receiving Account'}
+        description={
+          isMl
+            ? 'താമസക്കാരിൽ നിന്ന് മാസവരിയും സംഭാവനകളും സ്വീകരിക്കുന്നതിനുള്ള ഔദ്യോഗിക യുപിഐ ഐഡിയും ബാങ്ക് വിവരങ്ങളും നൽകുക'
+            : 'Update the official UPI ID and bank details used for resident dues collection and QR codes'
+        }
         maxWidth="2xl"
       >
         <form onSubmit={handleSaveUpi} className="space-y-4 text-xs">
@@ -1363,7 +1416,7 @@ export default function PaymentVerificationHub() {
             <div className="space-y-3">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
-                  Mahallu UPI ID (VPA) *
+                  {isMl ? 'മഹല്ല് യുപിഐ ഐഡി (VPA) *' : 'Mahallu UPI ID (VPA) *'}
                 </label>
                 <input
                   type="text"
@@ -1374,13 +1427,13 @@ export default function PaymentVerificationHub() {
                   required
                 />
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  Must include &apos;@&apos; (Google Pay, PhonePe, Paytm, BHIM VPA).
+                  {isMl ? "'@' അടങ്ങിയിരിക്കണം (Google Pay, PhonePe, Paytm, BHIM മുതലായവ)." : "Must include '@' (Google Pay, PhonePe, Paytm, BHIM VPA)."}
                 </p>
               </div>
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
-                  Payee Organization Name *
+                  {isMl ? 'അക്കൗണ്ട് ഉടമയുടെ പേര് *' : 'Payee Organization Name *'}
                 </label>
                 <input
                   type="text"
@@ -1394,7 +1447,7 @@ export default function PaymentVerificationHub() {
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
-                  Bank Name (Optional)
+                  {isMl ? 'ബാങ്കിന്റെ പേര് (നിർബന്ധമില്ല)' : 'Bank Name (Optional)'}
                 </label>
                 <input
                   type="text"
@@ -1408,7 +1461,7 @@ export default function PaymentVerificationHub() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    Account No. (Optional)
+                    {isMl ? 'അക്കൗണ്ട് നമ്പർ (നിർബന്ധമില്ല)' : 'Account No. (Optional)'}
                   </label>
                   <input
                     type="text"
@@ -1420,7 +1473,7 @@ export default function PaymentVerificationHub() {
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    IFSC Code (Optional)
+                    {isMl ? 'ഐഎഫ്എസ്‌സി (IFSC) കോഡ് (നിർബന്ധമില്ല)' : 'IFSC Code (Optional)'}
                   </label>
                   <input
                     type="text"
@@ -1436,10 +1489,12 @@ export default function PaymentVerificationHub() {
             {/* Right Column: Real-time Live QR Code Preview */}
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col items-center text-center space-y-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Live QR Code Preview
+                {isMl ? 'തത്സമയ ക്യുആർ പ്രിവ്യൂ' : 'Live QR Code Preview'}
               </span>
               <p className="text-[11px] text-slate-400">
-                This exact QR code will be generated for residents paying ₹100 dues.
+                {isMl
+                  ? 'റസിഡന്റുകൾക്ക് പേയ്‌മെന്റിനായി നൽകുന്ന ഔദ്യോഗിക ക്യുആർ കോഡ് ഇതാണ്.'
+                  : 'This exact QR code will be generated for residents paying ₹100 dues.'}
               </p>
 
               <div className="py-2">
@@ -1467,7 +1522,7 @@ export default function PaymentVerificationHub() {
               onClick={() => setUpiModalOpen(false)}
               disabled={isSavingUpi}
             >
-              Cancel
+              {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
             </Button>
             <Button
               type="submit"
@@ -1475,7 +1530,7 @@ export default function PaymentVerificationHub() {
               isLoading={isSavingUpi}
               className="bg-emerald-700 hover:bg-emerald-800"
             >
-              Save UPI Settings
+              {isMl ? 'യുപിഐ വിവരങ്ങൾ സേവ് ചെയ്യുക' : 'Save UPI Settings'}
             </Button>
           </div>
         </form>
@@ -1485,7 +1540,7 @@ export default function PaymentVerificationHub() {
       <Modal
         isOpen={duesModalOpen}
         onClose={() => setDuesModalOpen(false)}
-        title="Configure Monthly Household Due"
+        title={isMl ? 'മാസവരി നിരക്ക് നിശ്ചയിക്കുക' : 'Configure Monthly Household Due'}
         maxWidth="md"
       >
         <form onSubmit={handleSaveMonthlyDue} className="space-y-4 text-xs">
@@ -1493,11 +1548,18 @@ export default function PaymentVerificationHub() {
           <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-900 space-y-1.5">
             <div className="flex items-center gap-1.5 font-bold text-xs text-amber-950">
               <AlertCircle className="h-4 w-4 text-amber-700 shrink-0" />
-              <span>Next-Month Collection Policy</span>
+              <span>{isMl ? 'അടുത്ത മാസം മുതൽ പ്രാബല്യത്തിൽ വരുന്ന നയം' : 'Next-Month Collection Policy'}</span>
             </div>
             <p className="text-[11px] leading-relaxed text-amber-900">
-              Fee updates submitted during this month (<strong>{duesSchedule.currentMonth}</strong>) will be collected starting from <strong>{duesSchedule.nextMonth} onwards</strong>.
-              Dues for current and past months remain locked at their original rate.
+              {isMl ? (
+                <>
+                  ഈ മാസം (<strong>{duesSchedule.currentMonth}</strong>) വരുത്തുന്ന മാറ്റങ്ങൾ <strong>{duesSchedule.nextMonth} മുതൽ മാത്രമേ</strong> പിരിവിൽ ഉൾപ്പെടുകയുള്ളൂ. കഴിഞ്ഞ മാസങ്ങളിലെ കുടിശ്ശിക പഴയ നിരക്കിൽ തന്നെ നിലനിൽക്കും.
+                </>
+              ) : (
+                <>
+                  Fee updates submitted during this month (<strong>{duesSchedule.currentMonth}</strong>) will be collected starting from <strong>{duesSchedule.nextMonth} onwards</strong>. Dues for current and past months remain locked at their original rate.
+                </>
+              )}
             </p>
           </div>
 
@@ -1505,28 +1567,28 @@ export default function PaymentVerificationHub() {
           <div className="grid grid-cols-2 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
             <div className="p-2.5 rounded-lg bg-white border border-slate-200/60 text-center">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                Current Month ({duesSchedule.currentMonth})
+                {isMl ? `ഈ മാസം (${duesSchedule.currentMonth})` : `Current Month (${duesSchedule.currentMonth})`}
               </span>
               <span className="text-lg font-black text-slate-800 block mt-0.5">
                 ₹{duesSchedule.currentAmount}
               </span>
-              <span className="text-[10px] text-slate-400">Locked rate</span>
+              <span className="text-[10px] text-slate-400">{isMl ? 'നിലവിലെ നിരക്ക്' : 'Locked rate'}</span>
             </div>
             <div className="p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200 text-center">
               <span className="text-[10px] uppercase font-bold text-emerald-700 block">
-                Next Month ({duesSchedule.nextMonth})
+                {isMl ? `അടുത്ത മാസം (${duesSchedule.nextMonth})` : `Next Month (${duesSchedule.nextMonth})`}
               </span>
               <span className="text-lg font-black text-emerald-800 block mt-0.5">
                 ₹{Number(newDueAmount) > 0 ? newDueAmount : duesSchedule.currentAmount}
               </span>
-              <span className="text-[10px] text-emerald-600 font-semibold">Effective rate</span>
+              <span className="text-[10px] text-emerald-600 font-semibold">{isMl ? 'പ്രാബല്യത്തിൽ വരുന്നത്' : 'Effective rate'}</span>
             </div>
           </div>
 
           {/* Amount input */}
           <div>
             <label className="block font-bold text-slate-800 mb-1">
-              New Monthly Amount (₹) *
+              {isMl ? 'പുതിയ മാസവരി തുക (₹) *' : 'New Monthly Amount (₹) *'}
             </label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">
@@ -1545,7 +1607,7 @@ export default function PaymentVerificationHub() {
             </div>
             {/* Quick preset amounts */}
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
-              <span className="text-[11px] text-slate-500 font-medium mr-1">Quick select:</span>
+              <span className="text-[11px] text-slate-500 font-medium mr-1">{isMl ? 'എളുപ്പത്തിൽ തിരഞ്ഞെടുക്കുക:' : 'Quick select:'}</span>
               {[50, 100, 150, 200, 250, 500].map((amt) => (
                 <button
                   key={amt}
@@ -1562,7 +1624,9 @@ export default function PaymentVerificationHub() {
               ))}
             </div>
             <p className="text-[11px] text-slate-500 mt-1.5">
-              Standard recurring membership due assessed to every approved household.
+              {isMl
+                ? 'അംഗീകൃതമായ എല്ലാ മഹല്ല് വീടുകൾക്കുമുള്ള നിർബന്ധിത പ്രതിമാസ വരിസംഖ്യ.'
+                : 'Standard recurring membership due assessed to every approved household.'}
             </p>
           </div>
 
@@ -1571,13 +1635,13 @@ export default function PaymentVerificationHub() {
             <div className="pt-2 border-t border-slate-100">
               <p className="font-bold text-[11px] text-slate-700 mb-1.5 flex items-center gap-1">
                 <History className="h-3 w-3 text-slate-400" />
-                Adjustment History
+                {isMl ? 'മുൻകാല നിരക്കുകൾ' : 'Adjustment History'}
               </p>
               <div className="max-h-28 overflow-y-auto space-y-1 text-[11px] text-slate-600 pr-1">
                 {duesSettings.history.map((h, idx) => (
                   <div key={idx} className="flex items-center justify-between p-1.5 rounded bg-slate-50 border border-slate-100">
-                    <span>Effective: <strong>{h.effectiveFromMonth}</strong></span>
-                    <span className="font-bold text-slate-900">₹{h.amount} / mo</span>
+                    <span>{isMl ? 'പ്രാബല്യത്തിൽ:' : 'Effective:'} <strong>{h.effectiveFromMonth}</strong></span>
+                    <span className="font-bold text-slate-900">₹{h.amount} / {isMl ? 'മാസം' : 'mo'}</span>
                   </div>
                 ))}
               </div>
@@ -1591,7 +1655,7 @@ export default function PaymentVerificationHub() {
               size="sm"
               onClick={() => setDuesModalOpen(false)}
             >
-              Cancel
+              {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
             </Button>
             <Button
               type="submit"
@@ -1600,7 +1664,7 @@ export default function PaymentVerificationHub() {
               isLoading={isSavingDues}
               className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer"
             >
-              Confirm &amp; Schedule
+              {isMl ? 'സ്ഥിരീകരിക്കുക' : 'Confirm & Schedule'}
             </Button>
           </div>
         </form>
@@ -1610,8 +1674,12 @@ export default function PaymentVerificationHub() {
       <Modal
         isOpen={createRequestModalOpen}
         onClose={() => setCreateRequestModalOpen(false)}
-        title="Broadcast Payment / Amount Request"
-        description="Request a fixed amount from each household or invite flexible contributions where users pay as they wish."
+        title={isMl ? 'പുതിയ പിരിവ് / ധനസമാഹരണം ആരംഭിക്കുക' : 'Broadcast Payment / Amount Request'}
+        description={
+          isMl
+            ? 'എല്ലാ വീടുകളിൽ നിന്നും ഒരു നിശ്ചിത തുകയോ, അല്ലെങ്കിൽ ഓരോരുത്തർക്കും ഇഷ്ടമുള്ള തുക സംഭാവനയായോ ആവശ്യപ്പെടാം.'
+            : 'Request a fixed amount from each household or invite flexible contributions where users pay as they wish.'
+        }
         maxWidth="2xl"
       >
         <form onSubmit={handleCreateAmountRequest} className="space-y-4 text-xs">
@@ -1619,32 +1687,32 @@ export default function PaymentVerificationHub() {
             {/* Category */}
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                Fund / Collection Category *
+                {isMl ? 'ശേഖരണ വിഭാഗം *' : 'Fund / Collection Category *'}
               </label>
               <select
                 value={reqCategory}
                 onChange={(e) => setReqCategory(e.target.value)}
                 className="w-full p-2.5 rounded-xl border border-slate-300 text-xs font-medium bg-white text-slate-900 focus:ring-2 focus:ring-emerald-600 focus:outline-none"
               >
-                <option value="Donation">Donation (General)</option>
-                <option value="Mosque Renovation">Mosque Renovation</option>
-                <option value="Building Fund">Building Fund</option>
-                <option value="Relief Fund">Relief Fund</option>
-                <option value="Maintenance">Maintenance &amp; Repairs</option>
-                <option value="Education Aid">Education Aid &amp; Madrasa</option>
-                <option value="Festival / Eid">Festival / Eid Collection</option>
-                <option value="Other">Other (Custom Category)</option>
+                <option value="Donation">{isMl ? 'പൊതു സംഭാവന' : 'Donation (General)'}</option>
+                <option value="Mosque Renovation">{isMl ? 'പള്ളി നവീകരണം' : 'Mosque Renovation'}</option>
+                <option value="Building Fund">{isMl ? 'കെട്ടിട നിർമ്മാണ ഫണ്ട്' : 'Building Fund'}</option>
+                <option value="Relief Fund">{isMl ? 'ദുരിതാശ്വാസ ഫണ്ട്' : 'Relief Fund'}</option>
+                <option value="Maintenance">{isMl ? 'അറ്റകുറ്റപ്പണി' : 'Maintenance & Repairs'}</option>
+                <option value="Education Aid">{isMl ? 'വിദ്യാഭ്യാസ സഹായം & മദ്രസ' : 'Education Aid & Madrasa'}</option>
+                <option value="Festival / Eid">{isMl ? 'പെരുന്നാൾ / ഈദ് പിരിവ്' : 'Festival / Eid Collection'}</option>
+                <option value="Other">{isMl ? 'മറ്റുള്ളവ (പ്രത്യേകം നൽകുക)' : 'Other (Custom Category)'}</option>
               </select>
             </div>
 
             {/* Title */}
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                Campaign / Request Title *
+                {isMl ? 'പിരിവിന്റെ തലക്കെട്ട് *' : 'Campaign / Request Title *'}
               </label>
               <input
                 type="text"
-                placeholder="e.g. Mosque AC Installation Fund"
+                placeholder={isMl ? 'ഉദാ: പള്ളി എസി നിർമ്മാണ ഫണ്ട്' : 'e.g. Mosque AC Installation Fund'}
                 value={reqTitle}
                 onChange={(e) => setReqTitle(e.target.value)}
                 className="w-full p-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none"
@@ -1657,11 +1725,11 @@ export default function PaymentVerificationHub() {
           {reqCategory === 'Other' && (
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
               <label className="block font-bold text-amber-950 mb-1">
-                Specify Custom Category Name *
+                {isMl ? 'ഇനം വ്യക്തമാക്കുക *' : 'Specify Custom Category Name *'}
               </label>
               <input
                 type="text"
-                placeholder="e.g. Solar Power Installation, Ramadan Iftar Fund"
+                placeholder={isMl ? 'ഉദാ: സോളാർ പവർ, ഇഫ്താർ ഫണ്ട്' : 'e.g. Solar Power Installation, Ramadan Iftar Fund'}
                 value={reqCustomCategory}
                 onChange={(e) => setReqCustomCategory(e.target.value)}
                 className="w-full p-2.5 rounded-xl border border-amber-300 bg-white text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none font-medium"
@@ -1673,7 +1741,7 @@ export default function PaymentVerificationHub() {
           {/* Amount Mode Selector: Fixed vs Custom (Pay as they wish) */}
           <div className="space-y-2">
             <label className="block font-bold text-slate-800">
-              Contribution Mode *
+              {isMl ? 'പിരിവ് രീതി *' : 'Contribution Mode *'}
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Fixed Amount Option */}
@@ -1689,7 +1757,7 @@ export default function PaymentVerificationHub() {
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                     <Coins className="h-4 w-4 text-emerald-600" />
-                    Fixed Amount per House
+                    {isMl ? 'ഓരോ വീടിനും നിശ്ചിത തുക' : 'Fixed Amount per House'}
                   </span>
                   <span
                     className={`w-4 h-4 rounded-full border flex items-center justify-center ${
@@ -1702,7 +1770,9 @@ export default function PaymentVerificationHub() {
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-                  Every household is requested to pay an exact specified amount.
+                  {isMl
+                    ? 'എല്ലാ വീടുകളും കൃത്യമായി നിർദ്ദിഷ്ട തുക അടയ്ക്കണം.'
+                    : 'Every household is requested to pay an exact specified amount.'}
                 </p>
               </button>
 
@@ -1719,7 +1789,7 @@ export default function PaymentVerificationHub() {
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                     <HandCoins className="h-4 w-4 text-emerald-600" />
-                    Custom Amount (&quot;Pay as they wish&quot;)
+                    {isMl ? 'ഇഷ്ടമുള്ള തുക നൽകാം (സംഭാവന)' : 'Custom Amount ("Pay as they wish")'}
                   </span>
                   <span
                     className={`w-4 h-4 rounded-full border flex items-center justify-center ${
@@ -1732,7 +1802,9 @@ export default function PaymentVerificationHub() {
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-                  Residents choose any amount they wish to give with optional suggested amounts.
+                  {isMl
+                    ? 'താമസക്കാർക്ക് അവർക്ക് സാധ്യമായ തുക നൽകാം.'
+                    : 'Residents choose any amount they wish to give with optional suggested amounts.'}
                 </p>
               </button>
             </div>
@@ -1742,7 +1814,7 @@ export default function PaymentVerificationHub() {
           {reqAmountType === 'fixed' ? (
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
               <label className="block font-bold text-slate-800">
-                Fixed Amount (₹) *
+                {isMl ? 'നിശ്ചിത തുക (₹) *' : 'Fixed Amount (₹) *'}
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">
@@ -1760,7 +1832,7 @@ export default function PaymentVerificationHub() {
                 />
               </div>
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[11px] text-slate-400 font-semibold mr-1">Presets:</span>
+                <span className="text-[11px] text-slate-400 font-semibold mr-1">{isMl ? 'തുകകൾ:' : 'Presets:'}</span>
                 {[200, 500, 1000, 2000, 5000].map((amt) => (
                   <button
                     key={amt}
@@ -1782,7 +1854,7 @@ export default function PaymentVerificationHub() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    Suggested Amount (Optional)
+                    {isMl ? 'നിർദ്ദേശിക്കുന്ന തുക (നിർബന്ധമില്ല)' : 'Suggested Amount (Optional)'}
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
@@ -1801,7 +1873,7 @@ export default function PaymentVerificationHub() {
 
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    Minimum Contribution (Optional)
+                    {isMl ? 'കുറഞ്ഞ സംഭാവന തുക (നിർബന്ധമില്ല)' : 'Minimum Contribution (Optional)'}
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
@@ -1819,7 +1891,9 @@ export default function PaymentVerificationHub() {
                 </div>
               </div>
               <p className="text-[11px] text-slate-500">
-                Residents will be able to enter any custom amount or pick quick chips (₹200, ₹500, ₹1,000, ₹2,500, ₹5,000).
+                {isMl
+                  ? 'താമസക്കാർക്ക് അവർക്കിഷ്ടമുള്ള ഏത് തുകയും നൽകാം അല്ലെങ്കിൽ തുകകൾ തിരഞ്ഞെടുക്കാം (₹200, ₹500, ₹1,000, ₹2,500, ₹5,000).'
+                  : 'Residents will be able to enter any custom amount or pick quick chips (₹200, ₹500, ₹1,000, ₹2,500, ₹5,000).'}
               </p>
             </div>
           )}
@@ -1828,7 +1902,7 @@ export default function PaymentVerificationHub() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
-                Target Fundraising Goal (Optional)
+                {isMl ? 'ലക്ഷ്യമിടുന്ന ആകെ തുക (നിർബന്ധമില്ല)' : 'Target Fundraising Goal (Optional)'}
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
@@ -1847,7 +1921,7 @@ export default function PaymentVerificationHub() {
 
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
-                Target End / Due Date (Optional)
+                {isMl ? 'അവസാന തീയതി (നിർബന്ധമില്ല)' : 'Target End / Due Date (Optional)'}
               </label>
               <input
                 type="date"
@@ -1861,13 +1935,17 @@ export default function PaymentVerificationHub() {
           {/* Detailed Description */}
           <div>
             <label className="block font-semibold text-slate-700 mb-1">
-              Description &amp; Message to Residents *
+              {isMl ? 'വിവരണവും സന്ദേശവും *' : 'Description & Message to Residents *'}
             </label>
             <textarea
               rows={3}
               value={reqDescription}
               onChange={(e) => setReqDescription(e.target.value)}
-              placeholder="Explain the purpose of this collection, project details, and why residents should contribute..."
+              placeholder={
+                isMl
+                  ? 'ഈ പിരിവിന്റെ ഉദ്ദേശ്യവും ആവശ്യകതയും താമസക്കാർക്കായി വ്യക്തമാക്കുക...'
+                  : 'Explain the purpose of this collection, project details, and why residents should contribute...'
+              }
               className="w-full p-2.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none leading-relaxed"
               required
             />
@@ -1880,7 +1958,7 @@ export default function PaymentVerificationHub() {
               onClick={() => setCreateRequestModalOpen(false)}
               disabled={isCreatingRequest}
             >
-              Cancel
+              {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
             </Button>
             <Button
               type="submit"
@@ -1888,7 +1966,7 @@ export default function PaymentVerificationHub() {
               isLoading={isCreatingRequest}
               className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold cursor-pointer"
             >
-              Publish &amp; Notify Residents
+              {isMl ? 'പ്രസിദ്ധീകരിച്ച് അറിയിപ്പ് നൽകുക' : 'Publish & Notify Residents'}
             </Button>
           </div>
         </form>
@@ -1898,8 +1976,12 @@ export default function PaymentVerificationHub() {
       <Modal
         isOpen={viewContributorsReq !== null}
         onClose={() => setViewContributorsReq(null)}
-        title={viewContributorsReq ? `${viewContributorsReq.title} - Contributors` : 'Contributors'}
-        description="Complete list of household contributions submitted for this collection drive."
+        title={viewContributorsReq ? `${viewContributorsReq.title} - ${isMl ? 'ദാതാക്കളുടെ പട്ടിക' : 'Contributors'}` : (isMl ? 'ദാതാക്കൾ' : 'Contributors')}
+        description={
+          isMl
+            ? 'ഈ ശേഖരണത്തിലേക്ക് വീടുകൾ നൽകിയ സംഭാവനകളുടെ പൂർണ്ണ വിവരങ്ങൾ.'
+            : 'Complete list of household contributions submitted for this collection drive.'
+        }
         maxWidth="4xl"
       >
         {viewContributorsReq && (() => {
@@ -1916,17 +1998,17 @@ export default function PaymentVerificationHub() {
               <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <div>
                   <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                    Mode
+                    {isMl ? 'രീതി' : 'Mode'}
                   </span>
                   <span className="font-bold text-slate-800 capitalize">
                     {viewContributorsReq.amount_type === 'fixed'
-                      ? `Fixed: ₹${viewContributorsReq.fixed_amount}`
-                      : 'Flexible'}
+                      ? (isMl ? `നിശ്ചിതം: ₹${viewContributorsReq.fixed_amount}` : `Fixed: ₹${viewContributorsReq.fixed_amount}`)
+                      : (isMl ? 'ഇഷ്ടമുള്ള തുക' : 'Flexible')}
                   </span>
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                    Total Verified Raised
+                    {isMl ? 'സ്ഥിരീകരിച്ച ആകെ തുക' : 'Total Verified Raised'}
                   </span>
                   <span className="font-black text-emerald-700 text-sm">
                     ₹{totalRaised.toLocaleString('en-IN')}
@@ -1934,10 +2016,10 @@ export default function PaymentVerificationHub() {
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-400 uppercase font-bold block">
-                    Total Submissions
+                    {isMl ? 'ആകെ സമർപ്പണങ്ങൾ' : 'Total Submissions'}
                   </span>
                   <span className="font-bold text-slate-800">
-                    {reqContribs.length} households
+                    {reqContribs.length} {isMl ? 'വീടുകൾ' : 'households'}
                   </span>
                 </div>
               </div>
@@ -1947,18 +2029,18 @@ export default function PaymentVerificationHub() {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
                     <tr>
-                      <th className="py-2.5 px-4">Household</th>
-                      <th className="py-2.5 px-3">Amount</th>
-                      <th className="py-2.5 px-3">UTR / Ref</th>
-                      <th className="py-2.5 px-3">Date</th>
-                      <th className="py-2.5 px-4 text-right">Status</th>
+                      <th className="py-2.5 px-4">{isMl ? 'വീട്' : 'Household'}</th>
+                      <th className="py-2.5 px-3">{isMl ? 'തുക' : 'Amount'}</th>
+                      <th className="py-2.5 px-3">{isMl ? 'യുടിആർ' : 'UTR / Ref'}</th>
+                      <th className="py-2.5 px-3">{isMl ? 'തീയതി' : 'Date'}</th>
+                      <th className="py-2.5 px-4 text-right">{isMl ? 'നില' : 'Status'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {reqContribs.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="py-8 text-center text-slate-400">
-                          No contributions recorded yet for this request.
+                          {isMl ? 'ഇതുവരെ സംഭാവനകളൊന്നും രേഖപ്പെടുത്തിയിട്ടില്ല.' : 'No contributions recorded yet for this request.'}
                         </td>
                       </tr>
                     ) : (
@@ -1995,7 +2077,7 @@ export default function PaymentVerificationHub() {
                                     : 'bg-rose-100 text-rose-800'
                                 }`}
                               >
-                                {c.status === 'under_review' ? 'Review' : c.status}
+                                {c.status === 'under_review' ? (isMl ? 'പരിശോധന' : 'Review') : (c.status === 'verified' ? (isMl ? 'അംഗീകരിച്ചു' : 'verified') : (isMl ? 'നിരസിച്ചു' : c.status))}
                               </span>
                             </td>
                           </tr>
@@ -2013,7 +2095,7 @@ export default function PaymentVerificationHub() {
                   size="sm"
                   onClick={() => setViewContributorsReq(null)}
                 >
-                  Close
+                  {isMl ? 'അടയ്ക്കുക' : 'Close'}
                 </Button>
               </div>
             </div>

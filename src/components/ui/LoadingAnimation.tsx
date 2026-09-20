@@ -11,8 +11,8 @@ interface LoadingScreenProps {
 }
 
 export function LoadingScreen({
-  title = "Mahallu Jama'ath",
-  message = 'Loading records & synchronizing portal...',
+  title = "മഹല്ല് ജമാഅത്ത്",
+  message = 'വിവരങ്ങൾ ലഭ്യമാക്കുന്നു...',
   fullPage = false,
   minHeight = 'min-h-[60vh]',
 }: LoadingScreenProps) {
@@ -87,7 +87,7 @@ export function LoadingScreen({
       </div>
 
       <span className="mt-3 text-[10px] font-mono tracking-widest uppercase text-emerald-800/60 font-semibold">
-        Secure Portal
+        സുരക്ഷിത പോർട്ടൽ
       </span>
     </div>
   );

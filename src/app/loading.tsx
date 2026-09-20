@@ -4,8 +4,8 @@ import { LoadingScreen } from '@/components/ui/LoadingAnimation';
 export default function Loading() {
   return (
     <LoadingScreen
-      title="Mahallu Jama'ath"
-      message="Loading village management portal..."
+      title="മഹല്ല് ജമാഅത്ത്"
+      message="പോർട്ടൽ ലോഡ് ചെയ്യുന്നു..."
       minHeight="min-h-[75vh]"
     />
   );
