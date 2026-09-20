@@ -202,31 +202,31 @@ export default function LandingPage() {
             {/* Heading */}
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15]">
               <span className="text-white">Unified Mahallu</span>{' '}
-              <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+              <span className="text-emerald-400 block sm:inline font-black drop-shadow-sm">
                 Administration
               </span>
             </h1>
 
             {/* Subheading */}
-            <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base sm:text-lg text-slate-200 max-w-2xl mx-auto leading-relaxed">
               A comprehensive portal for household registration, membership dues tracking,
               UPI payment reconciliation, and double-entry financial management — built
               for modern village governance.
             </p>
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
               <Link href={primaryHref}>
-                <button className="group relative inline-flex items-center gap-2.5 px-8 py-4 rounded-xl bg-emerald-500 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
-                  {primaryLabel}
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                <button className="group relative inline-flex items-center justify-center gap-3 px-9 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white font-black text-base shadow-[0_0_30px_rgba(16,185,129,0.55)] ring-4 ring-emerald-400/50 border border-emerald-300/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(16,185,129,0.75)] active:scale-95 cursor-pointer">
+                  <span className="tracking-wide">{primaryLabel}</span>
+                  <ArrowRight className="h-5 w-5 text-white transition-transform group-hover:translate-x-1.5" />
                 </button>
               </Link>
 
               {!user && (
                 <Link href="/onboarding">
-                  <button className="inline-flex items-center gap-2.5 px-8 py-4 rounded-xl bg-white/5 border border-white/10 text-white font-semibold text-sm hover:bg-white/10 backdrop-blur-sm transition-all duration-300 cursor-pointer">
-                    <Users className="h-4 w-4 text-emerald-400" />
+                  <button className="inline-flex items-center gap-2.5 px-8 py-4 rounded-2xl bg-white/10 hover:bg-white/20 border-2 border-white/30 text-white font-bold text-base backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 active:scale-95 cursor-pointer shadow-lg shadow-black/20">
+                    <Users className="h-5 w-5 text-emerald-300" />
                     Register Household
                   </button>
                 </Link>
