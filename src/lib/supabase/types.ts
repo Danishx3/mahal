@@ -486,6 +486,79 @@ export interface Database {
           reviewed_by?: string | null;
         };
       };
+      push_subscriptions: {
+        Row: {
+          id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          role: 'resident' | 'admin';
+          user_id: string | null;
+          house_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          role?: 'resident' | 'admin';
+          user_id?: string | null;
+          house_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          endpoint?: string;
+          p256dh?: string;
+          auth?: string;
+          role?: 'resident' | 'admin';
+          user_id?: string | null;
+          house_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      notifications: {
+        Row: {
+          id: string;
+          title: string;
+          body: string;
+          url: string | null;
+          event_type: string;
+          recipient_role: 'resident' | 'admin' | 'all';
+          user_id: string | null;
+          house_id: string | null;
+          is_read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          body: string;
+          url?: string | null;
+          event_type: string;
+          recipient_role?: 'resident' | 'admin' | 'all';
+          user_id?: string | null;
+          house_id?: string | null;
+          is_read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          body?: string;
+          url?: string | null;
+          event_type?: string;
+          recipient_role?: 'resident' | 'admin' | 'all';
+          user_id?: string | null;
+          house_id?: string | null;
+          is_read?: boolean;
+          created_at?: string;
+        };
+      };
     };
   };
 }
@@ -570,4 +643,6 @@ export type ProfileUpdateRow = Database['public']['Tables']['profile_updates']['
 export type UpiSettingsRow = Database['public']['Tables']['upi_settings']['Row'];
 export type DuesSettingsRow = Database['public']['Tables']['dues_settings']['Row'];
 export type MarriageCertificateRow = Database['public']['Tables']['marriage_certificates']['Row'];
+export type PushSubscriptionRow = Database['public']['Tables']['push_subscriptions']['Row'];
+export type NotificationRow = Database['public']['Tables']['notifications']['Row'];
 
