@@ -203,8 +203,8 @@ export function Navbar() {
               type="button"
               onClick={toggleLanguage}
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150 border cursor-pointer shrink-0 ${solid
-                  ? 'border-emerald-200/80 bg-emerald-50/60 text-emerald-800 hover:bg-emerald-100/70 hover:border-emerald-300'
-                  : 'border-white/20 bg-white/10 text-white hover:bg-white/20'
+                ? 'border-emerald-200/80 bg-emerald-50/60 text-emerald-800 hover:bg-emerald-100/70 hover:border-emerald-300'
+                : 'border-white/20 bg-white/10 text-white hover:bg-white/20'
                 }`}
               title="Switch Language / ഭാഷ മാറ്റുക"
             >
@@ -367,8 +367,8 @@ export function Navbar() {
       {mobileMenuOpen && (
         <div
           className={`xl:hidden border-t px-4 pt-3 pb-5 space-y-1.5 transition-colors ${solid
-              ? 'bg-white border-slate-200 text-slate-900 shadow-xl'
-              : 'bg-[#0a1628] border-white/10 text-white'
+            ? 'bg-white border-slate-200 text-slate-900 shadow-xl'
+            : 'bg-[#0a1628] border-white/10 text-white'
             }`}
         >
           {navItems.map((item) => {
@@ -380,22 +380,22 @@ export function Navbar() {
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${solid
-                    ? active
-                      ? 'bg-emerald-50 text-emerald-800 font-bold'
-                      : 'text-slate-700 hover:bg-slate-100'
-                    : active
-                      ? 'bg-white/15 text-white font-bold'
-                      : 'text-slate-300 hover:bg-white/10'
+                  ? active
+                    ? 'bg-emerald-50 text-emerald-800 font-bold'
+                    : 'text-slate-700 hover:bg-slate-100'
+                  : active
+                    ? 'bg-white/15 text-white font-bold'
+                    : 'text-slate-300 hover:bg-white/10'
                   }`}
               >
                 <Icon
                   className={`h-4.5 w-4.5 ${solid
-                      ? active
-                        ? 'text-emerald-700'
-                        : 'text-slate-400'
-                      : active
-                        ? 'text-emerald-300'
-                        : 'text-slate-400'
+                    ? active
+                      ? 'text-emerald-700'
+                      : 'text-slate-400'
+                    : active
+                      ? 'text-emerald-300'
+                      : 'text-slate-400'
                     }`}
                 />
                 <span>{item.label}</span>
