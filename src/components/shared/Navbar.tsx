@@ -104,10 +104,10 @@ export function Navbar() {
   const residentNavItems =
     effectiveIsApproved || (effectiveHouse && effectiveStatus !== 'pending_verification')
       ? [
-          { label: isMl ? 'കുടുംബം' : 'Household', href: '/dashboard', icon: Home },
-          { label: isMl ? 'മാസവരി & രസീതുകൾ' : 'Pay Dues & Receipts', href: '/dashboard/payments', icon: CreditCard },
-          { label: isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ്' : 'Marriage Certificate', href: '/dashboard/marriage-certificate', icon: FileCheck },
-        ]
+        { label: isMl ? 'കുടുംബം' : 'Household', href: '/dashboard', icon: Home },
+        { label: isMl ? 'മാസവരി & രസീതുകൾ' : 'Pay Dues & Receipts', href: '/dashboard/payments', icon: CreditCard },
+        { label: isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ്' : 'Marriage Certificate', href: '/dashboard/marriage-certificate', icon: FileCheck },
+      ]
       : effectiveIsPending && effectiveHouse
         ? [{ label: isMl ? 'സ്റ്റാറ്റസ്' : 'Status', href: '/onboarding/pending', icon: Clock }]
         : [{ label: isMl ? 'രജിസ്ട്രേഷൻ' : 'Register', href: '/onboarding', icon: UserPlus }];
@@ -170,9 +170,6 @@ export function Navbar() {
               />
             </div>
             <div className="leading-tight">
-              <span className={`text-base font-bold ${isMl ? 'tracking-normal' : 'tracking-tight'} block transition-colors duration-200 ${theme.brandTitle}`}>
-                {isMl ? 'മഹല്ല് ജമാഅത്ത്' : "Mahallu Jama'ath"}
-              </span>
               <span className={`${isMl ? 'text-[11px] font-medium tracking-normal' : 'text-[10px] font-semibold uppercase tracking-widest'} block transition-colors duration-200 ${theme.brandSubtitle}`}>
                 {isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്' : 'Kunjikkulam Juma Masjid'}
               </span>
@@ -189,9 +186,8 @@ export function Navbar() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
-                      active ? theme.activeLink : theme.link
-                    }`}
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs transition-all duration-150 cursor-pointer ${active ? theme.activeLink : theme.link
+                      }`}
                   >
                     <Icon className={`h-4 w-4 ${active ? theme.activeIcon : theme.inactiveIcon}`} />
                     <span>{item.label}</span>
@@ -206,11 +202,10 @@ export function Navbar() {
             <button
               type="button"
               onClick={toggleLanguage}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150 border cursor-pointer ${
-                solid
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150 border cursor-pointer ${solid
                   ? 'border-emerald-200/80 bg-emerald-50/60 text-emerald-800 hover:bg-emerald-100/70 hover:border-emerald-300'
                   : 'border-white/20 bg-white/10 text-white hover:bg-white/20'
-              }`}
+                }`}
               title="Switch Language / ഭാഷ മാറ്റുക"
             >
               <span className={language === 'ml' ? 'font-black text-emerald-600' : 'opacity-60'}>
@@ -250,9 +245,8 @@ export function Navbar() {
                   )}
 
                   <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${
-                      userDropdownOpen ? 'rotate-180' : ''
-                    } ${solid ? 'text-slate-400' : 'text-slate-300'}`}
+                    className={`h-4 w-4 transition-transform duration-200 ${userDropdownOpen ? 'rotate-180' : ''
+                      } ${solid ? 'text-slate-400' : 'text-slate-300'}`}
                   />
                 </button>
 
@@ -351,9 +345,8 @@ export function Navbar() {
             <button
               type="button"
               onClick={toggleLanguage}
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border transition-colors ${
-                solid ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-white/20 bg-white/10 text-white'
-              }`}
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border transition-colors ${solid ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-white/20 bg-white/10 text-white'
+                }`}
             >
               <span>{language === 'ml' ? 'മലയാളം' : 'EN'}</span>
             </button>
@@ -373,11 +366,10 @@ export function Navbar() {
       {/* Mobile Drawer Dropdown */}
       {mobileMenuOpen && (
         <div
-          className={`md:hidden border-t px-4 pt-3 pb-5 space-y-1.5 transition-colors ${
-            solid
+          className={`md:hidden border-t px-4 pt-3 pb-5 space-y-1.5 transition-colors ${solid
               ? 'bg-white border-slate-200 text-slate-900 shadow-xl'
               : 'bg-[#0a1628] border-white/10 text-white'
-          }`}
+            }`}
         >
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -387,26 +379,24 @@ export function Navbar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  solid
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${solid
                     ? active
                       ? 'bg-emerald-50 text-emerald-800 font-bold'
                       : 'text-slate-700 hover:bg-slate-100'
                     : active
                       ? 'bg-white/15 text-white font-bold'
                       : 'text-slate-300 hover:bg-white/10'
-                }`}
+                  }`}
               >
                 <Icon
-                  className={`h-4.5 w-4.5 ${
-                    solid
+                  className={`h-4.5 w-4.5 ${solid
                       ? active
                         ? 'text-emerald-700'
                         : 'text-slate-400'
                       : active
                         ? 'text-emerald-300'
                         : 'text-slate-400'
-                  }`}
+                    }`}
                 />
                 <span>{item.label}</span>
               </Link>
@@ -414,9 +404,8 @@ export function Navbar() {
           })}
 
           <div
-            className={`pt-3 mt-2 border-t ${
-              solid ? 'border-slate-100' : 'border-white/10'
-            }`}
+            className={`pt-3 mt-2 border-t ${solid ? 'border-slate-100' : 'border-white/10'
+              }`}
           >
             {user ? (
               <div className="space-y-3 px-2">

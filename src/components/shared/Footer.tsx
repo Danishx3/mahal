@@ -74,9 +74,6 @@ export function Footer() {
                 <p className={`font-bold text-white text-base ${isMl ? 'tracking-normal' : 'tracking-tight'} group-hover:text-emerald-300 transition-colors`}>
                   {isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്' : 'Kunjikkulam Juma Masjid'}
                 </p>
-                <p className={`${isMl ? 'text-[11px] font-medium tracking-normal' : 'text-[10px] uppercase tracking-widest'} text-emerald-400 font-semibold`}>
-                  {isMl ? 'മഹല്ല് ജമാഅത്ത്' : "Mahallu Jama'ath"}
-                </p>
               </div>
             </Link>
 
@@ -122,19 +119,19 @@ export function Footer() {
             <ul className="space-y-2.5 text-xs text-slate-400">
               {(isMl
                 ? [
-                    'കുടുംബ സെൻസസ് രജിസ്ട്രി',
-                    'പ്രതിമാസ വരിസംഖ്യ ട്രാക്കിംഗ്',
-                    'UPI QR പേയ്‌മെന്റ് & ഡിജിറ്റൽ രസീതുകൾ',
-                    'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷകൾ',
-                    'വരവ്-ചിലവ് ഫിനാൻഷ്യൽ ലെഡ്ജർ',
-                  ]
+                  'കുടുംബ സെൻസസ് രജിസ്ട്രി',
+                  'പ്രതിമാസ വരിസംഖ്യ ട്രാക്കിംഗ്',
+                  'UPI QR പേയ്‌മെന്റ് & ഡിജിറ്റൽ രസീതുകൾ',
+                  'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷകൾ',
+                  'വരവ്-ചിലവ് ഫിനാൻഷ്യൽ ലെഡ്ജർ',
+                ]
                 : [
-                    'Household Census Registry',
-                    'Monthly ₹100 Dues Tracking',
-                    'UPI QR Generation & Verification',
-                    'Double-Entry Financial Ledger',
-                    'Automated Defaulter Alerts',
-                  ]
+                  'Household Census Registry',
+                  'Monthly ₹100 Dues Tracking',
+                  'UPI QR Generation & Verification',
+                  'Double-Entry Financial Ledger',
+                  'Automated Defaulter Alerts',
+                ]
               ).map((feature) => (
                 <li key={feature} className="flex items-center gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/80 flex-shrink-0" />
