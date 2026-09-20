@@ -196,49 +196,48 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content with Mobile Bottom Padding to clear bottom navigation dock */}
       <div className="flex-1 pb-24 sm:pb-8">{children}</div>
 
-      {/* Mobile Sticky Bottom Navigation Dock */}
+      {/* Mobile Sticky Floating Round Bottom Navigation Dock */}
       {(effectiveIsApproved || isAdmin) && (
-        <nav
-          aria-label="Mobile Resident Navigation"
-          className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_24px_rgba(0,0,0,0.07)] px-3 py-1.5 flex items-center justify-around no-print"
-        >
-          {residentNav.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`relative flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all min-h-[48px] ${
-                  isActive
-                    ? 'text-emerald-700 font-bold'
-                    : 'text-slate-500 hover:text-slate-800 font-medium'
-                }`}
-              >
-                <div className="relative">
-                  <div
-                    className={`p-1.5 rounded-xl transition-all ${
-                      isActive ? 'bg-emerald-50 text-emerald-700 scale-105' : 'text-slate-400'
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
+        <div className="sm:hidden fixed bottom-3 inset-x-3 z-40 pointer-events-none no-print">
+          <nav
+            aria-label="Mobile Resident Navigation"
+            className="pointer-events-auto max-w-md mx-auto bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-[0_12px_36px_rgba(0,0,0,0.14)] rounded-full px-3 py-1.5 flex items-center justify-around"
+          >
+            {residentNav.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`relative flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-full transition-all min-h-[46px] ${
+                    isActive
+                      ? 'text-emerald-800 font-bold'
+                      : 'text-slate-500 hover:text-slate-800 font-medium'
+                  }`}
+                >
+                  <div className="relative">
+                    <div
+                      className={`p-1.5 rounded-full transition-all ${
+                        isActive ? 'bg-emerald-700 text-white shadow-xs shadow-emerald-700/30 scale-105' : 'text-slate-500 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Icon className="h-4.5 w-4.5" />
+                    </div>
+                    {item.badge !== undefined && (
+                      <span className="absolute -top-1 -right-1.5 min-w-[18px] h-[18px] px-1 bg-amber-500 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
+                        {item.badge}
+                      </span>
+                    )}
                   </div>
-                  {item.badge !== undefined && (
-                    <span className="absolute -top-1 -right-1.5 min-w-[18px] h-[18px] px-1 bg-amber-500 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs">
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[10px] mt-0.5 tracking-tight leading-none">
-                  {item.shortLabel}
-                </span>
-                {isActive && (
-                  <span className="absolute bottom-0.5 w-4 h-0.5 rounded-full bg-emerald-600" />
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+                  <span className="text-[10px] mt-0.5 font-medium tracking-tight leading-none truncate max-w-[70px]">
+                    {item.shortLabel}
+                  </span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
       )}
     </div>
   );

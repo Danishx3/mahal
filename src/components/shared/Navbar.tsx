@@ -23,6 +23,9 @@ import {
   ArrowRight,
   FileCheck,
   LayoutGrid,
+  Globe,
+  LogIn,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useLanguage } from '@/lib/context/LanguageContext';
@@ -220,8 +223,35 @@ export function Navbar() {
   const displayName = house?.house_name || user?.email?.split('@')[0] || (isMl ? 'എന്റെ കുടുംബം' : 'My Household');
   const avatarLetter = (displayName[0] || 'M').toUpperCase();
 
+  // Floating Round Bottom Navigation for mobile visitors on public / landing pages
+  const showGlobalRoundBottomNav = !pathname.startsWith('/admin') && !pathname.startsWith('/dashboard');
+
+  const globalMobileNav = !user
+    ? [
+        { label: isMl ? 'ഹോം' : 'Home', href: '/', icon: Home },
+        { label: isMl ? 'രജിസ്ട്രേഷൻ' : 'Register', href: '/onboarding', icon: UserPlus },
+        { label: language === 'ml' ? 'English' : 'മലയാളം', icon: Globe, isAction: true, onClick: toggleLanguage },
+        { label: isMl ? 'ലോഗിൻ' : 'Sign In', href: '/auth/login', icon: LogIn },
+      ]
+    : isAdmin
+    ? [
+        { label: isMl ? 'ഹോം' : 'Home', href: '/', icon: Home },
+        { label: isMl ? 'അഡ്മിൻ' : 'Admin', href: '/admin', icon: Landmark },
+        { label: isMl ? 'കുടുംബങ്ങൾ' : 'Houses', href: '/admin/houses', icon: Users },
+        { label: isMl ? 'പേയ്‌മെന്റ്' : 'Payments', href: '/admin/payments', icon: CreditCard },
+        { label: language === 'ml' ? 'English' : 'മലയാളം', icon: Globe, isAction: true, onClick: toggleLanguage },
+      ]
+    : [
+        { label: isMl ? 'ഹോം' : 'Home', href: '/', icon: Home },
+        { label: isMl ? 'ഡാഷ്‌ബോർഡ്' : 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+        { label: isMl ? 'മാസവരി' : 'Pay Dues', href: '/dashboard/payments', icon: CreditCard },
+        { label: isMl ? 'സർട്ടിഫിക്കറ്റ്' : 'Certs', href: '/dashboard/marriage-certificate', icon: FileCheck },
+        { label: language === 'ml' ? 'English' : 'മലയാളം', icon: Globe, isAction: true, onClick: toggleLanguage },
+      ];
+
   return (
-    <nav className={`sticky top-0 z-50 no-print transition-colors duration-200 ${theme.nav}`}>
+    <>
+      <nav className={`sticky top-0 z-50 no-print transition-colors duration-200 ${theme.nav}`}>
       <div className="w-full max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-2">
           {/* Brand Logo */}
@@ -613,5 +643,67 @@ export function Navbar() {
         </div>
       )}
     </nav>
+
+    {/* Mobile Sticky Floating Round Bottom Navigation Dock (Public Pages) */}
+    {showGlobalRoundBottomNav && (
+      <div className="sm:hidden fixed bottom-3 inset-x-3 z-40 pointer-events-none no-print">
+        <nav
+          aria-label="Mobile Bottom Navigation Dock"
+          className="pointer-events-auto max-w-md mx-auto bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-[0_12px_36px_rgba(0,0,0,0.14)] rounded-full px-2 py-1.5 flex items-center justify-around"
+        >
+          {globalMobileNav.map((item, idx) => {
+            const Icon = item.icon;
+            if ((item as any).isAction) {
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={(item as any).onClick}
+                  className="relative flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-full transition-all min-h-[46px] cursor-pointer text-slate-500 hover:text-slate-800 font-medium"
+                >
+                  <div className="p-1.5 rounded-full text-slate-500 hover:bg-slate-100 transition-all">
+                    <Icon className="h-4.5 w-4.5" />
+                  </div>
+                  <span className="text-[9.5px] mt-0.5 font-medium tracking-tight leading-none truncate max-w-[64px]">
+                    {item.label}
+                  </span>
+                </button>
+              );
+            }
+
+            const href = (item as any).href as string;
+            const isActive = href === '/' ? pathname === '/' : pathname.startsWith(href);
+
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`relative flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-full transition-all min-h-[46px] ${
+                  isActive
+                    ? 'text-emerald-800 font-bold'
+                    : 'text-slate-500 hover:text-slate-800 font-medium'
+                }`}
+              >
+                <div className="relative">
+                  <div
+                    className={`p-1.5 rounded-full transition-all ${
+                      isActive
+                        ? 'bg-emerald-700 text-white shadow-xs shadow-emerald-700/30 scale-105'
+                        : 'text-slate-500 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Icon className="h-4.5 w-4.5" />
+                  </div>
+                </div>
+                <span className="text-[9.5px] mt-0.5 font-medium tracking-tight leading-none truncate max-w-[64px]">
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+    )}
+  </>
   );
 }

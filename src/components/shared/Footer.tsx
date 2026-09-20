@@ -155,8 +155,8 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom copyright line */}
-        <div className="py-6 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        {/* Bottom copyright line with mobile bottom safe padding */}
+        <div className="pt-6 pb-24 sm:pb-6 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
           <p>© {currentYear} കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് മഹല്ല് കമ്മിറ്റി. {isMl ? 'എല്ലാ അവകാശങ്ങളും നിക്ഷിപ്തം.' : 'All rights reserved.'}</p>
           <div className="flex items-center gap-1.5 text-slate-400">
             <span>Made for Mahallu Community</span>
