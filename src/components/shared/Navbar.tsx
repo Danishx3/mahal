@@ -297,8 +297,8 @@ export function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Navigation: Dropdown Window & Quick Dashboard Link */}
-          <div className="hidden md:flex items-center gap-2.5" ref={menuDropdownRef}>
+          {/* Desktop Navigation: Dropdown Window & Quick Dashboard Link (hidden when mobile/tablet hamburger dropdown is active) */}
+          <div className="hidden xl:flex items-center gap-2.5">
             {/* Quick Home / Dashboard Shortcut */}
             <Link
               href={getHomeRedirect()}
