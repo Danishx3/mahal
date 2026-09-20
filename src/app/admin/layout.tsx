@@ -31,6 +31,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [paymentsReviewCount, setPaymentsReviewCount] = useState(0);
   const [pendingCertificatesCount, setPendingCertificatesCount] = useState(0);
 
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+
+  // Close more menu on navigation
+  useEffect(() => {
+    setMoreMenuOpen(false);
+  }, [pathname]);
+
   const loadCounts = async () => {
     try {
       const [pendingProfiles, pendingPayments, pendingUpdates, pendingCerts] = await Promise.all([
@@ -105,13 +112,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
     );
   }
-
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-
-  // Close more menu on navigation
-  useEffect(() => {
-    setMoreMenuOpen(false);
-  }, [pathname]);
 
   const adminNav = [
     { label: 'Executive Overview', shortLabel: 'Overview', href: '/admin', icon: LayoutDashboard },
