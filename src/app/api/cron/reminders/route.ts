@@ -29,11 +29,12 @@ async function handleCron(request: Request) {
 
   try {
     const supabaseUrl =
-      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://rjkxblgxhfbcdjflyshk.supabase.co';
+      process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || 'https://rjkxblgxhfbcdjflyshk.supabase.co';
+    const rawAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
     const supabaseKey =
       process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY !== 'your-service-role-key'
-        ? process.env.SUPABASE_SERVICE_ROLE_KEY
-        : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_Og-EJvJYUvz4U6DDOxejNw_1c3RaRCR';
+        ? process.env.SUPABASE_SERVICE_ROLE_KEY.trim()
+        : rawAnonKey?.trim() || 'sb_publishable_Og-EJvJYUvz4U6DDOxejNw_1c3RaRCR';
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 

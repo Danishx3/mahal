@@ -3,9 +3,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from './types';
 
 export function hasSupabaseConfig(): boolean {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey =
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const rawKey =
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const supabaseAnonKey = rawKey?.trim();
   return Boolean(
     supabaseUrl &&
       supabaseAnonKey &&
@@ -20,9 +21,10 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey =
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const rawKey =
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const supabaseAnonKey = rawKey?.trim();
 
   // If Supabase environment variables are missing, strictly guard protected routes
   if (!hasSupabaseConfig() || !supabaseUrl || !supabaseAnonKey) {
