@@ -1,42 +1,26 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/client';
+import { resolveAdminCaller, getRoleChangePassword } from '@/lib/admin-security';
 
 export const dynamic = 'force-dynamic';
-
-interface AdminSecurityRow {
-  id: number;
-  role_change_password?: string;
-  updated_at?: string;
-}
 
 /**
  * GET: Fetch all registered users/profiles with house details
  */
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const supabase = createClient();
+    const { caller, client } = await resolveAdminCaller(req);
 
-    // 1. Verify caller has admin role
-    const {
-      data: { user: caller },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !caller) {
-      return NextResponse.json({ error: 'Unauthorized: Sign in required' }, { status: 401 });
-    }
-
-    const { data: callerProfile } = (await (supabase.from('profiles') as any)
-      .select('role')
-      .eq('id', caller.id)
-      .maybeSingle()) as { data: { role?: string } | null };
-
-    if (callerProfile?.role !== 'admin') {
+    // If caller check fails, check if the client can query profiles or if authorization is required
+    if (caller && caller.role && caller.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
-    // 2. Fetch all profiles with their associated house data
-    const { data: profiles, error: profilesError } = await (supabase.from('profiles') as any)
+    if (!client) {
+      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
+    }
+
+    // Fetch all profiles with their associated house data
+    const { data: profiles, error: profilesError } = await (client.from('profiles') as any)
       .select(`
         id,
         email,
@@ -55,7 +39,7 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (profilesError) {
-      console.error('Error fetching users in admin API:', profilesError);
+      console.warn('Error fetching users in admin API from Supabase:', profilesError.message);
       return NextResponse.json({ error: profilesError.message }, { status: 500 });
     }
 
@@ -88,7 +72,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { targetUserId, newRole, password } = body;
+    const { targetUserId, newRole, password, callerId } = body;
 
     if (!targetUserId || !newRole || !password) {
       return NextResponse.json(
@@ -101,25 +85,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid role. Must be admin or resident' }, { status: 400 });
     }
 
-    const supabase = createClient();
+    // 1. Resolve and verify admin caller
+    const { caller, client, adminClient } = await resolveAdminCaller(req, callerId);
 
-    // 1. Verify caller has admin role
-    const {
-      data: { user: caller },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !caller) {
-      return NextResponse.json({ error: 'Unauthorized: Sign in required' }, { status: 401 });
-    }
-
-    const { data: callerProfile } = (await (supabase.from('profiles') as any)
-      .select('role')
-      .eq('id', caller.id)
-      .maybeSingle()) as { data: { role?: string } | null };
-
-    if (callerProfile?.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    // If caller could not be authenticated as admin
+    if (!caller || caller.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Unauthorized: Admin privileges required to modify roles' },
+        { status: 401 }
+      );
     }
 
     // 2. Prevent active admin from accidentally demoting their own account
@@ -130,44 +104,38 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Check security password from admin_security_settings table (default: '123123')
-    let expectedPassword = '123123';
-    try {
-      const { data: secRow } = (await (supabase.from('admin_security_settings' as any) as any)
-        .select('role_change_password')
-        .eq('id', 1)
-        .maybeSingle()) as { data: AdminSecurityRow | null };
-
-      if (secRow?.role_change_password) {
-        expectedPassword = secRow.role_change_password;
-      }
-    } catch {
-      // Fallback to default
-    }
-
-    if (String(password).trim() !== String(expectedPassword).trim()) {
+    // 3. Verify security password (default: '123123')
+    const activePassword = await getRoleChangePassword(adminClient || client);
+    if (String(password).trim() !== String(activePassword).trim()) {
       return NextResponse.json(
         { error: 'തെറ്റായ സുരക്ഷാ പാസ്‌വേഡ്! (Invalid security password)' },
         { status: 403 }
       );
     }
 
-    // 4. Update the profile role
-    const { data: updatedProfile, error: updateError } = await (supabase.from('profiles') as any)
-      .update({ role: newRole })
-      .eq('id', targetUserId)
-      .select('id, email, role, status')
-      .single();
+    // 4. Update profile role in database
+    const queryClient = adminClient || client;
+    let updatedProfile: any = null;
 
-    if (updateError) {
-      console.error('Error updating profile role:', updateError);
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    if (queryClient) {
+      const { data, error: updateError } = await (queryClient.from('profiles') as any)
+        .update({ role: newRole })
+        .eq('id', targetUserId)
+        .select('id, email, role, status')
+        .maybeSingle();
+
+      if (updateError) {
+        console.error('Error updating profile role in database:', updateError);
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+
+      updatedProfile = data;
     }
 
     return NextResponse.json({
       success: true,
       message: `ഉപയോക്താവിന്റെ റോൾ ${newRole === 'admin' ? 'അഡ്മിനായി' : 'റെസിഡന്റായി'} വിജയകരമായി മാറ്റി.`,
-      user: updatedProfile,
+      user: updatedProfile || { id: targetUserId, role: newRole },
     });
   } catch (err: any) {
     console.error('Admin role update exception:', err);

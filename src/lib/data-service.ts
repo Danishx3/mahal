@@ -3410,11 +3410,35 @@ export const DataService = {
   },
 
   // ─── USER & ROLE MANAGEMENT ──────────────────────────────────────────
+  async getAdminAuthHeaders(): Promise<Record<string, string>> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    try {
+      if (hasSupabaseConfig()) {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getSession();
+        const session = data?.session;
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`;
+        }
+        if (session?.user?.id) {
+          headers['x-caller-id'] = session.user.id;
+        }
+        if (session?.user?.email) {
+          headers['x-caller-email'] = session.user.email;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to retrieve Supabase session for admin auth headers:', e);
+    }
+    return headers;
+  },
+
   async getAllUsersAsync(): Promise<any[]> {
     try {
+      const headers = await this.getAdminAuthHeaders();
       const res = await fetch('/api/admin/users', {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
       });
       if (!res.ok) {
         throw new Error('Failed to fetch users directory');
@@ -3445,17 +3469,38 @@ export const DataService = {
   async updateUserRoleAsync(
     targetUserId: string,
     newRole: 'admin' | 'resident',
-    password: string
+    password: string,
+    callerId?: string
   ): Promise<{ success: boolean; message: string; user?: any }> {
+    const headers = await this.getAdminAuthHeaders();
+    const effectiveCallerId = callerId || headers['x-caller-id'];
+
     const res = await fetch('/api/admin/users', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ targetUserId, newRole, password }),
+      headers,
+      body: JSON.stringify({
+        targetUserId,
+        newRole,
+        password,
+        callerId: effectiveCallerId,
+      }),
     });
 
     const data = await res.json();
     if (!res.ok) {
       throw new Error(data.error || 'Failed to update user role');
+    }
+
+    // Direct client-side update with current admin credentials to ensure immediate cache sync
+    try {
+      if (hasSupabaseConfig()) {
+        const supabase = createClient();
+        await (supabase.from('profiles') as any)
+          .update({ role: newRole })
+          .eq('id', targetUserId);
+      }
+    } catch (e) {
+      console.warn('Client-side profile role update warning:', e);
     }
 
     // Update in-memory houses if present
@@ -3472,11 +3517,16 @@ export const DataService = {
     return data;
   },
 
-  async requestSecurityPasswordResetAsync(): Promise<{ success: boolean; message: string; sentTo?: string }> {
+  async requestSecurityPasswordResetAsync(
+    callerId?: string
+  ): Promise<{ success: boolean; message: string; sentTo?: string }> {
+    const headers = await this.getAdminAuthHeaders();
+    const effectiveCallerId = callerId || headers['x-caller-id'];
+
     const res = await fetch('/api/admin/security', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'request-reset' }),
+      headers,
+      body: JSON.stringify({ action: 'request-reset', callerId: effectiveCallerId }),
     });
 
     const data = await res.json();
@@ -3488,12 +3538,21 @@ export const DataService = {
 
   async verifySecurityPasswordResetAsync(
     otp: string,
-    newPassword: string
+    newPassword: string,
+    callerId?: string
   ): Promise<{ success: boolean; message: string }> {
+    const headers = await this.getAdminAuthHeaders();
+    const effectiveCallerId = callerId || headers['x-caller-id'];
+
     const res = await fetch('/api/admin/security', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'verify-reset', otp, newPassword }),
+      headers,
+      body: JSON.stringify({
+        action: 'verify-reset',
+        otp,
+        newPassword,
+        callerId: effectiveCallerId,
+      }),
     });
 
     const data = await res.json();

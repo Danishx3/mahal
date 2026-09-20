@@ -142,7 +142,12 @@ export default function AdminUsersManagementPage() {
     setRoleError(null);
 
     try {
-      const result = await DataService.updateUserRoleAsync(targetUser.id, targetRole, rolePassword.trim());
+      const result = await DataService.updateUserRoleAsync(
+        targetUser.id,
+        targetRole,
+        rolePassword.trim(),
+        currentUser?.id
+      );
 
       toast(result.message || (isMl ? 'റോൾ വിജയകരമായി മാറ്റി!' : 'Role Updated Successfully'), 'success');
 
@@ -172,7 +177,7 @@ export default function AdminUsersManagementPage() {
     setResetError(null);
 
     try {
-      const res = await DataService.requestSecurityPasswordResetAsync();
+      const res = await DataService.requestSecurityPasswordResetAsync(currentUser?.id);
       toast(res.message || (isMl ? 'റീസെറ്റ് കോഡ് അയച്ചു!' : 'Reset Code Sent!'), 'success');
       setResetStep('verify');
     } catch (err: any) {
@@ -205,7 +210,11 @@ export default function AdminUsersManagementPage() {
     setResetError(null);
 
     try {
-      const res = await DataService.verifySecurityPasswordResetAsync(resetOtp.trim(), newSecPassword.trim());
+      const res = await DataService.verifySecurityPasswordResetAsync(
+        resetOtp.trim(),
+        newSecPassword.trim(),
+        currentUser?.id
+      );
       toast(res.message || (isMl ? 'പാസ്‌വേഡ് വിജയകരമായി മാറ്റി!' : 'Password Changed Successfully'), 'success');
       setResetModalOpen(false);
     } catch (err: any) {
