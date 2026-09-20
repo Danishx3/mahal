@@ -1598,12 +1598,71 @@ export const DataService = {
       }
     }
 
-    if (!targetDue || !targetHouse) {
-      console.warn('submitPayment: could not locate due', { dueId, houseId, billingMonth });
+    // Direct Supabase lookup fallback if targetHouse not found in local memory
+    if ((!targetHouse || !targetDue) && houseId && hasSupabaseConfig()) {
+      try {
+        const supabase = createClient();
+        const { data: hData } = await (supabase.from('houses') as any)
+          .select('*, payment_dues(*)')
+          .or(`id.eq.${houseId},user_id.eq.${houseId}`)
+          .maybeSingle();
+
+        if (hData) {
+          if (!targetHouse) {
+            targetHouse = {
+              id: hData.id,
+              user_id: hData.user_id,
+              house_name: hData.house_name,
+              house_number: hData.house_number,
+              mahallu_reg_no: hData.mahallu_reg_no,
+              division: hData.division,
+              phone: hData.phone,
+              created_at: hData.created_at,
+              profile: undefined,
+              family_members: [],
+              payment_dues: hData.payment_dues || [],
+            };
+          }
+          if (!targetDue && Array.isArray(hData.payment_dues)) {
+            targetDue = hData.payment_dues.find(
+              (d: any) => d.id === dueId || (billingMonth && d.billing_month === billingMonth) || d.billing_month === dueId
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('[submitPayment] Supabase house fetch exception:', err);
+      }
+    }
+
+    if (!targetHouse) {
+      console.warn('submitPayment: could not locate house', { dueId, houseId, billingMonth });
       return false;
     }
 
     const submittedAt = new Date().toISOString();
+
+    if (!targetDue && billingMonth) {
+      const createdDue: PaymentDue = {
+        id: dueId || `due-${Date.now()}`,
+        house_id: targetHouse.id,
+        billing_month: billingMonth,
+        amount: this.getMonthlyDueAmount(billingMonth),
+        transaction_ref: cleanRef,
+        status: 'under_review',
+        submitted_at: submittedAt,
+        verified_at: null,
+        verified_by: null,
+        rejection_reason: null,
+      };
+      targetHouse.payment_dues.push(createdDue);
+      targetDue = createdDue;
+    }
+
+    if (!targetDue) {
+      console.warn('submitPayment: could not locate due', { dueId, houseId, billingMonth });
+      return false;
+    }
+
     targetDue.transaction_ref = cleanRef;
     targetDue.status = 'under_review';
     targetDue.submitted_at = submittedAt;
@@ -1866,8 +1925,24 @@ export const DataService = {
         }
 
         const { data, error } = await updateQuery.select('*, house:houses(*, family_members(*))');
+        let targetHouseName = '';
+        let targetRegNo = '';
+        let targetAmount = 100;
+        let targetTitle = 'Monthly Dues';
+        let targetHouseId: string | undefined;
+        let targetUserId: string | undefined;
+
         if (!error && data && data.length > 0) {
           const row = data[0];
+          if (row.house) {
+            targetHouseName = row.house.house_name || '';
+            targetRegNo = row.house.mahallu_reg_no || '';
+            targetHouseId = row.house.id || row.house_id;
+            targetUserId = row.house.user_id;
+          }
+          if (row.amount) targetAmount = Number(row.amount);
+          if (row.billing_month) targetTitle = `Monthly Dues (${row.billing_month})`;
+
           const head = row.house?.family_members?.find((m: any) => m.is_head_of_family) || row.house?.family_members?.[0];
           const headName = head?.name || '';
           // Check if database trigger on_payment_verified already posted the credit
@@ -1889,36 +1964,65 @@ export const DataService = {
             }
           }
         }
+
+        // Update in-memory state if available
+        for (const h of memoryHouses) {
+          const due = h.payment_dues.find((d) => d.id === dueId || d.billing_month === dueId);
+          if (due) {
+            due.status = 'verified';
+            due.verified_at = new Date().toISOString();
+            due.verified_by = adminId;
+            due.rejection_reason = null;
+            if (!targetHouseName) targetHouseName = h.house_name;
+            if (!targetRegNo) targetRegNo = h.mahallu_reg_no;
+            if (!targetHouseId) targetHouseId = h.id;
+            if (!targetUserId) targetUserId = h.user_id;
+            if (due.amount) targetAmount = due.amount;
+            if (due.billing_month) targetTitle = `Monthly Dues (${due.billing_month})`;
+            break;
+          }
+        }
+
+        if (targetHouseId || targetUserId) {
+          dispatchPush('payment_verified', {
+            houseName: targetHouseName || 'Household',
+            regNo: targetRegNo || '',
+            amount: targetAmount,
+            title: targetTitle,
+            houseId: targetHouseId,
+            userId: targetUserId,
+          });
+        }
       } catch (err) {
         console.warn('Supabase verifyPayment sync error:', err);
       }
-    }
-
-    // Update in-memory state
-    let verifiedHouse: HouseWithDetails | undefined;
-    let verifiedDue: PaymentDue | undefined;
-    for (const h of memoryHouses) {
-      const due = h.payment_dues.find((d) => d.id === dueId || d.billing_month === dueId);
-      if (due) {
-        due.status = 'verified';
-        due.verified_at = new Date().toISOString();
-        due.verified_by = adminId;
-        due.rejection_reason = null;
-        verifiedHouse = h;
-        verifiedDue = due;
-        break;
+    } else {
+      // In-memory runtime fallback
+      let verifiedHouse: HouseWithDetails | undefined;
+      let verifiedDue: PaymentDue | undefined;
+      for (const h of memoryHouses) {
+        const due = h.payment_dues.find((d) => d.id === dueId || d.billing_month === dueId);
+        if (due) {
+          due.status = 'verified';
+          due.verified_at = new Date().toISOString();
+          due.verified_by = adminId;
+          due.rejection_reason = null;
+          verifiedHouse = h;
+          verifiedDue = due;
+          break;
+        }
       }
-    }
 
-    if (verifiedHouse && verifiedDue) {
-      dispatchPush('payment_verified', {
-        houseName: verifiedHouse.house_name,
-        regNo: verifiedHouse.mahallu_reg_no,
-        amount: verifiedDue.amount,
-        title: `Monthly Dues (${verifiedDue.billing_month})`,
-        houseId: verifiedHouse.id,
-        userId: verifiedHouse.user_id,
-      });
+      if (verifiedHouse && verifiedDue) {
+        dispatchPush('payment_verified', {
+          houseName: verifiedHouse.house_name,
+          regNo: verifiedHouse.mahallu_reg_no,
+          amount: verifiedDue.amount,
+          title: `Monthly Dues (${verifiedDue.billing_month})`,
+          houseId: verifiedHouse.id,
+          userId: verifiedHouse.user_id,
+        });
+      }
     }
 
     if (typeof window !== 'undefined') {
@@ -1970,38 +2074,84 @@ export const DataService = {
           }
         }
 
-        const { data, error } = await updateQuery.select();
-        if (error) {
+        const { data, error } = await updateQuery.select('*, house:houses(*)');
+        let targetHouseName = '';
+        let targetRegNo = '';
+        let targetAmount = 100;
+        let targetTitle = 'Monthly Dues';
+        let targetHouseId: string | undefined;
+        let targetUserId: string | undefined;
+
+        if (!error && data && data.length > 0) {
+          const row = data[0];
+          if (row.house) {
+            targetHouseName = row.house.house_name || '';
+            targetRegNo = row.house.mahallu_reg_no || '';
+            targetHouseId = row.house.id || row.house_id;
+            targetUserId = row.house.user_id;
+          }
+          if (row.amount) targetAmount = Number(row.amount);
+          if (row.billing_month) targetTitle = `Monthly Dues (${row.billing_month})`;
+        } else if (error) {
           console.warn('[rejectPayment] Supabase update warning:', error.message);
+        }
+
+        // Update in-memory runtime cache
+        for (const h of memoryHouses) {
+          const due = h.payment_dues.find((d) => d.id === dueId || d.billing_month === dueId);
+          if (due) {
+            due.status = 'failed';
+            due.rejection_reason = reason;
+            if (!targetHouseName) targetHouseName = h.house_name;
+            if (!targetRegNo) targetRegNo = h.mahallu_reg_no;
+            if (!targetHouseId) targetHouseId = h.id;
+            if (!targetUserId) targetUserId = h.user_id;
+            if (due.amount) targetAmount = due.amount;
+            if (due.billing_month) targetTitle = `Monthly Dues (${due.billing_month})`;
+            break;
+          }
+        }
+
+        if (targetHouseId || targetUserId) {
+          dispatchPush('payment_rejected', {
+            houseName: targetHouseName || 'Household',
+            regNo: targetRegNo || '',
+            amount: targetAmount,
+            title: targetTitle,
+            reason,
+            houseId: targetHouseId,
+            userId: targetUserId,
+          });
         }
       } catch (err) {
         console.warn('Supabase rejectPayment sync exception:', err);
       }
-    }
-
-    // Update in-memory runtime cache
-    let rejectedHouse: HouseWithDetails | undefined;
-    let rejectedDue: PaymentDue | undefined;
-    for (const h of memoryHouses) {
-      const due = h.payment_dues.find((d) => d.id === dueId || d.billing_month === dueId);
-      if (due) {
-        due.status = 'failed';
-        due.rejection_reason = reason;
-        rejectedHouse = h;
-        rejectedDue = due;
+    } else {
+      // In-memory runtime fallback
+      let rejectedHouse: HouseWithDetails | undefined;
+      let rejectedDue: PaymentDue | undefined;
+      for (const h of memoryHouses) {
+        const due = h.payment_dues.find((d) => d.id === dueId || d.billing_month === dueId);
+        if (due) {
+          due.status = 'failed';
+          due.rejection_reason = reason;
+          rejectedHouse = h;
+          rejectedDue = due;
+          break;
+        }
       }
-    }
 
-    if (rejectedHouse && rejectedDue) {
-      dispatchPush('payment_rejected', {
-        houseName: rejectedHouse.house_name,
-        regNo: rejectedHouse.mahallu_reg_no,
-        amount: rejectedDue.amount,
-        title: `Monthly Dues (${rejectedDue.billing_month})`,
-        reason,
-        houseId: rejectedHouse.id,
-        userId: rejectedHouse.user_id,
-      });
+      if (rejectedHouse && rejectedDue) {
+        dispatchPush('payment_rejected', {
+          houseName: rejectedHouse.house_name,
+          regNo: rejectedHouse.mahallu_reg_no,
+          amount: rejectedDue.amount,
+          title: `Monthly Dues (${rejectedDue.billing_month})`,
+          reason,
+          houseId: rejectedHouse.id,
+          userId: rejectedHouse.user_id,
+        });
+      }
     }
 
     if (typeof window !== 'undefined') {
@@ -2299,6 +2449,15 @@ export const DataService = {
       saveStoredLedger(ledger);
       memoryLedger = ledger;
     }
+
+    // Dispatch Web Push Notification to Resident
+    dispatchPush('payment_verified', {
+      houseName: houseName || 'Household',
+      regNo: houseRegNo || '',
+      amount: this.getMonthlyDueAmount(month),
+      title: `Monthly Dues (${month})`,
+      houseId,
+    });
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new Event('mahallu_data_updated'));

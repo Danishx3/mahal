@@ -89,6 +89,74 @@ export function getAllSubscriptions(): StoredPushSubscription[] {
   return inMemorySubs;
 }
 
+/**
+ * Async subscription fetcher that queries Supabase push_subscriptions table
+ * and joins with houses table to resolve any missing house_id / user_id links.
+ */
+export async function getAllSubscriptionsAsync(): Promise<StoredPushSubscription[]> {
+  const map = new Map<string, StoredPushSubscription>();
+
+  // 1. Fetch persistent subscriptions from Supabase push_subscriptions table
+  try {
+    const supabase = createClient();
+    const { data: dbRows, error } = await (supabase.from('push_subscriptions') as any).select('*');
+    if (!error && Array.isArray(dbRows)) {
+      // Find user_ids that have no house_id yet to enrich them
+      const needHouseLookupUserIds = dbRows
+        .filter((r) => r.user_id && !r.house_id)
+        .map((r) => r.user_id);
+
+      const userToHouseMap = new Map<string, string>();
+      if (needHouseLookupUserIds.length > 0) {
+        try {
+          const { data: houseRows } = await (supabase.from('houses') as any)
+            .select('id, user_id')
+            .in('user_id', needHouseLookupUserIds);
+          if (houseRows) {
+            for (const h of houseRows) {
+              if (h.user_id && h.id) userToHouseMap.set(h.user_id, h.id);
+            }
+          }
+        } catch {}
+      }
+
+      for (const row of dbRows) {
+        if (row.endpoint && row.p256dh && row.auth) {
+          const resolvedHouseId = row.house_id || userToHouseMap.get(row.user_id) || undefined;
+          map.set(row.endpoint, {
+            id: row.id,
+            endpoint: row.endpoint,
+            keys: {
+              p256dh: row.p256dh,
+              auth: row.auth,
+            },
+            role: row.role === 'admin' ? 'admin' : 'resident',
+            userId: row.user_id || undefined,
+            houseId: resolvedHouseId,
+            createdAt: row.created_at || new Date().toISOString(),
+          });
+        }
+      }
+    } else if (error) {
+      console.warn('[PushService] Supabase read error:', error.message);
+    }
+  } catch (err: any) {
+    console.warn('[PushService] Supabase read exception:', err?.message);
+  }
+
+  // 2. Merge with local/in-memory fallback
+  const local = getAllSubscriptions();
+  for (const s of local) {
+    if (!map.has(s.endpoint)) {
+      map.set(s.endpoint, s);
+    }
+  }
+
+  const result = Array.from(map.values());
+  inMemorySubs = result;
+  return result;
+}
+
 export async function saveSubscription(
   sub: Omit<StoredPushSubscription, 'id' | 'createdAt'>
 ): Promise<StoredPushSubscription> {
@@ -122,18 +190,46 @@ export async function saveSubscription(
   // 2. Async sync with Supabase push_subscriptions table
   try {
     const supabase = createClient();
-    const validUserId = isUuid(resolvedSub.userId) ? resolvedSub.userId : null;
-    const validHouseId = isUuid(resolvedSub.houseId) ? resolvedSub.houseId : null;
+    let validUserId = isUuid(resolvedSub.userId) ? resolvedSub.userId : null;
+    let validHouseId = isUuid(resolvedSub.houseId) ? resolvedSub.houseId : null;
 
-    const { error } = await (supabase.from('push_subscriptions') as any).upsert({
-      endpoint: resolvedSub.endpoint,
-      p256dh: resolvedSub.keys.p256dh,
-      auth: resolvedSub.keys.auth,
-      role: resolvedSub.role,
-      user_id: validUserId,
-      house_id: validHouseId,
-      updated_at: now,
-    });
+    // Automatically resolve missing house_id from user_id if house exists
+    if (!validHouseId && validUserId) {
+      try {
+        const { data: h } = await (supabase.from('houses') as any)
+          .select('id')
+          .eq('user_id', validUserId)
+          .maybeSingle();
+        if (h?.id && isUuid(h.id)) {
+          validHouseId = h.id;
+          resolvedSub.houseId = h.id;
+        }
+      } catch {}
+    } else if (!validUserId && validHouseId) {
+      try {
+        const { data: h } = await (supabase.from('houses') as any)
+          .select('user_id')
+          .eq('id', validHouseId)
+          .maybeSingle();
+        if (h?.user_id && isUuid(h.user_id)) {
+          validUserId = h.user_id;
+          resolvedSub.userId = h.user_id;
+        }
+      } catch {}
+    }
+
+    const { error } = await (supabase.from('push_subscriptions') as any).upsert(
+      {
+        endpoint: resolvedSub.endpoint,
+        p256dh: resolvedSub.keys.p256dh,
+        auth: resolvedSub.keys.auth,
+        role: resolvedSub.role,
+        user_id: validUserId,
+        house_id: validHouseId,
+        updated_at: now,
+      },
+      { onConflict: 'endpoint' }
+    );
 
     if (error && !error.message.includes('relation') && !error.message.includes('does not exist')) {
       console.warn('[PushService] Supabase sync note:', error.message);
@@ -159,7 +255,6 @@ export async function removeSubscription(endpoint: string) {
     await (supabase.from('push_subscriptions') as any).delete().eq('endpoint', endpoint);
   } catch {}
 }
-
 
 /**
  * Send a web push notification to a single subscription.
@@ -197,14 +292,33 @@ export async function sendWebPushToSubscription(
 }
 
 /**
+ * Helper to match a resident's subscription using userId or houseId
+ */
+export function isResidentMatch(
+  sub: StoredPushSubscription,
+  userId?: string,
+  houseId?: string
+): boolean {
+  if (sub.role !== 'resident') return false;
+  if (userId && sub.userId && sub.userId === userId) return true;
+  if (houseId && sub.houseId && sub.houseId === houseId) return true;
+  return false;
+}
+
+/**
  * Broadcast a notification to a group of target subscriptions.
  */
 export async function broadcastPushNotification(
   filter: (sub: StoredPushSubscription) => boolean,
   payload: PushNotificationPayload
 ): Promise<{ total: number; sent: number }> {
-  const subs = getAllSubscriptions().filter(filter);
+  const allSubs = await getAllSubscriptionsAsync();
+  const subs = allSubs.filter(filter);
   let sent = 0;
+
+  console.log(
+    `[PushService] Dispatching "${payload.title}" to ${subs.length} matching subscribers (${allSubs.length} total registered)`
+  );
 
   await Promise.all(
     subs.map(async (sub) => {
@@ -248,7 +362,7 @@ export async function notifyPaymentSubmitted(params: {
   // B. Notify Submitting Resident
   if (houseId || userId) {
     await broadcastPushNotification(
-      (s) => (Boolean(userId && s.userId === userId) || Boolean(houseId && s.houseId === houseId)),
+      (s) => isResidentMatch(s, userId, houseId),
       {
         title: '⏳ Payment Reference Received',
         body: `Your payment of ₹${amount} for ${title} has been submitted for administrative verification.`,
@@ -273,7 +387,7 @@ export async function notifyPaymentVerified(params: {
   const { houseName, amount, title, houseId, userId } = params;
 
   await broadcastPushNotification(
-    (s) => (Boolean(userId && s.userId === userId) || Boolean(houseId && s.houseId === houseId)),
+    (s) => isResidentMatch(s, userId, houseId),
     {
       title: '✅ Payment Verified & Credited!',
       body: `Alhamdulillah! Your payment of ₹${amount} for ${title} has been verified and your digital receipt is ready.`,
@@ -298,7 +412,7 @@ export async function notifyPaymentRejected(params: {
   const { title, reason, houseId, userId } = params;
 
   await broadcastPushNotification(
-    (s) => (Boolean(userId && s.userId === userId) || Boolean(houseId && s.houseId === houseId)),
+    (s) => isResidentMatch(s, userId, houseId),
     {
       title: '❌ Payment Reference Not Approved',
       body: `Your payment reference for ${title} could not be verified: ${reason}. Tap to resubmit.`,
@@ -359,7 +473,7 @@ export async function notifyMarriageAppSubmitted(params: {
   // B. Notify Resident
   if (houseId || userId) {
     await broadcastPushNotification(
-      (s) => (Boolean(userId && s.userId === userId) || Boolean(houseId && s.houseId === houseId)),
+      (s) => isResidentMatch(s, userId, houseId),
       {
         title: '📜 Marriage Application Submitted',
         body: `Your marriage certificate application for ${groom} & ${bride} has been submitted for committee review.`,
@@ -384,7 +498,7 @@ export async function notifyMarriageAppApproved(params: {
   const { groom, bride, certNo, houseId, userId } = params;
 
   await broadcastPushNotification(
-    (s) => (Boolean(userId && s.userId === userId) || Boolean(houseId && s.houseId === houseId)),
+    (s) => isResidentMatch(s, userId, houseId),
     {
       title: '🎉 Marriage Certificate Approved!',
       body: `Application for ${groom} & ${bride} has been approved. Certificate Ref: ${certNo}. Tap to view details.`,
@@ -407,7 +521,7 @@ export async function notifyMarriageAppRejected(params: {
   const { groom, bride, reason, houseId, userId } = params;
 
   await broadcastPushNotification(
-    (s) => (Boolean(userId && s.userId === userId) || Boolean(houseId && s.houseId === houseId)),
+    (s) => isResidentMatch(s, userId, houseId),
     {
       title: '⚠️ Marriage Application Needs Revision',
       body: `Application for ${groom} & ${bride} requires correction: ${reason}. Tap to view details.`,
@@ -442,7 +556,7 @@ export async function notifyRegistrationSubmitted(params: {
   // B. Notify Resident
   if (userId) {
     await broadcastPushNotification(
-      (s) => Boolean(s.userId === userId),
+      (s) => isResidentMatch(s, userId),
       {
         title: '🏠 Registration Under Review',
         body: `Your household registration for ${houseName} has been received. You will be notified once verified by the committee.`,
@@ -465,7 +579,7 @@ export async function notifyRegistrationApproved(params: {
   const { houseName, regNo, userId, houseId } = params;
 
   await broadcastPushNotification(
-    (s) => (Boolean(userId && s.userId === userId) || Boolean(houseId && s.houseId === houseId)),
+    (s) => isResidentMatch(s, userId, houseId),
     {
       title: '🎉 Household Profile Approved!',
       body: `Welcome to Kunjikkulam Juma Masjid! Your household profile (${houseName} - ${regNo}) is now verified.`,
@@ -482,20 +596,19 @@ export async function notifyRegistrationRejected(params: {
   houseName: string;
   reason: string;
   userId?: string;
+  houseId?: string;
 }) {
-  const { houseName, reason, userId } = params;
+  const { houseName, reason, userId, houseId } = params;
 
-  if (userId) {
-    await broadcastPushNotification(
-      (s) => Boolean(s.userId === userId),
-      {
-        title: '❌ Household Registration Update',
-        body: `Registration for ${houseName} could not be approved: ${reason}. Please contact the Mahallu office.`,
-        url: '/onboarding',
-        tag: 'reg-rejected',
-      }
-    );
-  }
+  await broadcastPushNotification(
+    (s) => isResidentMatch(s, userId, houseId),
+    {
+      title: '❌ Household Registration Update',
+      body: `Registration for ${houseName} could not be approved: ${reason}. Please contact the Mahallu office.`,
+      url: '/onboarding',
+      tag: 'reg-rejected',
+    }
+  );
 }
 
 /**
@@ -523,7 +636,7 @@ export async function notifyProfileUpdateSubmitted(params: {
   // B. Notify Resident
   if (houseId || userId) {
     await broadcastPushNotification(
-      (s) => (Boolean(userId && s.userId === userId) || Boolean(houseId && s.houseId === houseId)),
+      (s) => isResidentMatch(s, userId, houseId),
       {
         title: '🔄 Change Request Submitted',
         body: `Your profile update for ${houseName} has been submitted to the Mahallu committee.`,
@@ -549,7 +662,7 @@ export async function notifyProfileUpdateReviewed(params: {
 
   const isApproved = status === 'approved';
   await broadcastPushNotification(
-    (s) => (Boolean(userId && s.userId === userId) || Boolean(houseId && s.houseId === houseId)),
+    (s) => isResidentMatch(s, userId, houseId),
     {
       title: isApproved ? '✅ Profile Changes Approved!' : '❌ Profile Changes Rejected',
       body: isApproved

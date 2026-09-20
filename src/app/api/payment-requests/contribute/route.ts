@@ -172,21 +172,21 @@ export async function POST(request: Request) {
       created_at: inserted.created_at,
     };
 
-    // Dispatch Web Push Notifications if submitted by resident for review
-    if (!isVerified) {
-      let houseName = 'Household';
-      let mahalluRegNo = '';
-      try {
-        const { data: h } = await (supabase.from('houses') as any)
-          .select('house_name, mahallu_reg_no')
-          .eq('id', houseId)
-          .maybeSingle();
-        if (h) {
-          houseName = h.house_name;
-          mahalluRegNo = h.mahallu_reg_no;
-        }
-      } catch {}
+    // Dispatch Web Push Notifications
+    let houseName = 'Household';
+    let mahalluRegNo = '';
+    try {
+      const { data: h } = await (supabase.from('houses') as any)
+        .select('house_name, mahallu_reg_no')
+        .eq('id', houseId)
+        .maybeSingle();
+      if (h) {
+        houseName = h.house_name;
+        mahalluRegNo = h.mahallu_reg_no;
+      }
+    } catch {}
 
+    if (!isVerified) {
       notifyPaymentSubmitted({
         houseName,
         regNo: mahalluRegNo,
@@ -196,6 +196,15 @@ export async function POST(request: Request) {
         houseId,
         userId: userId || undefined,
       }).catch((e) => console.warn('[Push] Error in contribute submit:', e));
+    } else {
+      notifyPaymentVerified({
+        houseName,
+        regNo: mahalluRegNo,
+        amount: numAmount,
+        title: reqRow.title || 'Special Collection',
+        houseId,
+        userId: userId || undefined,
+      }).catch((e) => console.warn('[Push] Error in contribute mark-paid:', e));
     }
 
     return NextResponse.json({

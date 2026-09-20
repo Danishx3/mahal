@@ -56,7 +56,23 @@ export function PushNotificationPrompt() {
     try {
       if (!('serviceWorker' in navigator)) return;
       const registration = await navigator.serviceWorker.ready;
-      const existingSub = await registration.pushManager.getSubscription();
+      let existingSub = await registration.pushManager.getSubscription();
+
+      if (!existingSub && Notification.permission === 'granted') {
+        const vapidKey =
+          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+          'BKGn6-SUJfj7OLkaeMvUM0gis1q65xtbhrmtMIQKgIVVggMAMOBr4ouguEMFyq-hQ9v1b9L_ttt57ZoeAKJYaCI';
+        const convertedVapidKey = urlBase64ToUint8Array(vapidKey);
+        try {
+          existingSub = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedVapidKey,
+          });
+        } catch (subErr) {
+          console.warn('[PushNotificationPrompt] Silent subscribe error:', subErr);
+        }
+      }
+
       if (existingSub) {
         await fetch('/api/push/subscribe', {
           method: 'POST',

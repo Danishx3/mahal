@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PaymentRequestItem, PaymentRequestContribution } from '@/lib/supabase/types';
 import { createClient } from '@/lib/supabase/client';
+import { notifySpecialRequestCreated } from '@/lib/push-service';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -151,6 +152,14 @@ export async function POST(request: Request) {
       created_by: data.created_by || undefined,
       due_date: data.due_date || null,
     };
+
+    // Dispatch Web Push Notification to all residents
+    notifySpecialRequestCreated({
+      title: createdItem.title,
+      category: createdItem.category,
+      amountType: createdItem.amount_type,
+      fixedAmount: createdItem.fixed_amount,
+    }).catch((e) => console.warn('[Push] Error dispatching special request push:', e));
 
     return NextResponse.json({
       success: true,
