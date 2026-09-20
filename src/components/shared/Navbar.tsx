@@ -175,6 +175,13 @@ export function Navbar() {
       icon: FileSpreadsheet,
       color: 'bg-rose-50 text-rose-700 border-rose-200',
     },
+    {
+      label: isMl ? 'ഉപയോക്താക്കൾ' : 'Users & Access',
+      sub: isMl ? 'അംഗങ്ങളുടെ ലിസ്റ്റും റോൾ മാറ്റവും' : 'User Accounts & Admin Roles',
+      href: '/admin/users',
+      icon: ShieldCheck,
+      color: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+    },
   ];
 
   const residentNavItems =

@@ -714,3 +714,101 @@ export async function sendMarriageApplicationApprovedUserEmail(
   }
 }
 
+/**
+ * Send Security Password Reset OTP email to logged-in administrator
+ */
+export async function sendSecurityPasswordResetEmail(params: {
+  to: string;
+  otp: string;
+  adminName?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { to, otp, adminName } = params;
+  const from = getSmtpFrom();
+  const subject = `🔐 സുരക്ഷാ പാസ്‌വേഡ് റീസെറ്റ് കോഡ് (OTP: ${otp}) - കുഞ്ഞിക്കുളം മഹല്ല്`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+  <meta charset="utf-8">
+  <title>${subject}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px; color: #1e293b; }
+    .card { max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 18px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px rgba(0,0,0,0.06); }
+    .header { background: linear-gradient(135deg, #065f46 0%, #047857 100%); color: #ffffff; padding: 28px 24px; text-align: center; }
+    .header h2 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: 0.5px; }
+    .header p { margin: 6px 0 0; font-size: 13px; opacity: 0.9; }
+    .body { padding: 30px 26px; }
+    .otp-box { text-align: center; margin: 24px 0; padding: 20px; background: #ecfdf5; border: 2px dashed #059669; border-radius: 14px; }
+    .otp-code { font-size: 34px; font-weight: 900; letter-spacing: 8px; color: #047857; font-family: monospace; }
+    .notice { font-size: 12px; color: #64748b; text-align: center; margin-top: 8px; }
+    .info-list { margin: 20px 0; background: #f8fafc; border-radius: 12px; padding: 16px; font-size: 13px; line-height: 1.6; border: 1px solid #e2e8f0; }
+    .warning { margin-top: 20px; padding: 12px 16px; background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 8px; font-size: 12px; color: #92400e; line-height: 1.5; }
+    .footer { text-align: center; padding: 20px; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h2>🛡️ കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് മഹല്ല്</h2>
+      <p>അഡ്മിൻ സുരക്ഷാ കൺസോൾ</p>
+    </div>
+    <div class="body">
+      <p style="font-size: 15px; font-weight: 600; color: #0f172a; margin-top: 0;">
+        അസ്സലാമു അലൈക്കും ${adminName ? adminName + ',' : ''}
+      </p>
+      <p style="font-size: 13.5px; line-height: 1.6; color: #334155;">
+        മഹല്ല് പോർട്ടലിൽ യൂസർ റോൾ മാറ്റുന്നതിനുള്ള സുരക്ഷാ പാസ്‌വേഡ് റീസെറ്റ് ചെയ്യാനുള്ള അഭ്യർത്ഥന ലഭിച്ചിട്ടുണ്ട്. താഴെ പറയുന്ന വെരിഫിക്കേഷൻ ഒ.ടി.പി ഉപയോഗിച്ച് പുതിയ പാസ്‌വേഡ് സജ്ജമാക്കുക:
+      </p>
+      
+      <div class="otp-box">
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #065f46; letter-spacing: 1px; margin-bottom: 6px;">
+          വെരിഫിക്കേഷൻ ഒ.ടി.പി കോഡ്
+        </div>
+        <div class="otp-code">${otp}</div>
+        <div class="notice">ഈ കോഡ് 15 മിനിറ്റ് മാത്രമേ സാധുതയുള്ളൂ.</div>
+      </div>
+
+      <div class="info-list">
+        <div><strong>അഭ്യർത്ഥിച്ച ഇമെയിൽ:</strong> ${to}</div>
+        <div><strong>ആവശ്യം:</strong> റോൾ മാറ്റ സുരക്ഷാ പാസ്‌വേഡ് മാറ്റൽ</div>
+        <div><strong>സ്ഥിതി:</strong> കാത്തിരിക്കുന്നു (Pending Verification)</div>
+      </div>
+
+      <div class="warning">
+        ⚠️ <strong>സുരക്ഷാ അറിയിപ്പ്:</strong> നിങ്ങളല്ല ഈ പാസ്‌വേഡ് മാറ്റം ആവശ്യപ്പെട്ടതെങ്കിൽ, നിങ്ങളുടെ അക്കൗണ്ട് സുരക്ഷിതമായി സൂക്ഷിക്കുകയും മറ്റ് അഡ്മിൻമാരെ ഉടൻ അറിയിക്കുകയും ചെയ്യുക.
+      </div>
+    </div>
+    <div class="footer">
+      <div><strong>കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് മഹല്ല് കമ്മിറ്റി</strong></div>
+      <div style="margin-top: 4px;">ഡിജിറ്റൽ അഡ്മിനിസ്ട്രേഷൻ സിസ്റ്റം • ഓട്ടോമേറ്റഡ് സുരക്ഷാ സന്ദേശം</div>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const transporter = getMailTransporter();
+
+  if (!transporter) {
+    console.log(`[EMAIL SIMULATED - SECURITY RESET OTP] To: ${to} | OTP: ${otp}`);
+    return { success: true };
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from,
+      to,
+      subject,
+      html,
+      text: `കുഞ്ഞിക്കുളം മഹല്ല് അഡ്മിൻ സുരക്ഷാ പാസ്‌വേഡ് റീസെറ്റ് ഒ.ടി.പി കോഡ്: ${otp}. ഈ കോഡ് 15 മിനിറ്റ് മാത്രമേ സാധുതയുള്ളൂ.`,
+    });
+    console.log(`[EMAIL SENT - SECURITY RESET OTP] MessageId: ${info.messageId} | To: ${to}`);
+    return { success: true };
+  } catch (err: any) {
+    console.error(`[EMAIL ERROR] Failed to send security reset OTP to ${to}:`, err);
+    return { success: false, error: err?.message || 'SMTP delivery failure' };
+  }
+}
+
+

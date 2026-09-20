@@ -587,8 +587,27 @@ CREATE INDEX IF NOT EXISTS idx_notifications_recipient_role ON public.notificati
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(created_at DESC);
 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow read notifications" ON public.notifications FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Allow insert notifications" ON public.notifications FOR INSERT TO anon, authenticated WITH CHECK (true);
-CREATE POLICY "Allow update notifications" ON public.notifications FOR UPDATE TO authenticated USING (true);
+-- ==========================================
+-- 10. Admin Security Settings (Role Change Authorization)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.admin_security_settings (
+    id INT PRIMARY KEY DEFAULT 1,
+    role_change_password TEXT NOT NULL DEFAULT '123123',
+    reset_otp TEXT,
+    reset_otp_expires_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO public.admin_security_settings (id, role_change_password, updated_at)
+VALUES (1, '123123', NOW())
+ON CONFLICT (id) DO NOTHING;
+
+ALTER TABLE public.admin_security_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admins have full access to admin security settings" ON public.admin_security_settings;
+CREATE POLICY "Admins have full access to admin security settings"
+    ON public.admin_security_settings FOR ALL
+    USING (public.is_admin());
+
 
 

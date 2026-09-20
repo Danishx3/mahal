@@ -3408,6 +3408,101 @@ export const DataService = {
     };
     return this.saveMarriageCertificateLocal(updated);
   },
+
+  // ─── USER & ROLE MANAGEMENT ──────────────────────────────────────────
+  async getAllUsersAsync(): Promise<any[]> {
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) {
+        throw new Error('Failed to fetch users directory');
+      }
+      const data = await res.json();
+      return data.users || [];
+    } catch (err: any) {
+      console.warn('getAllUsersAsync error, fallback to local houses:', err?.message);
+      // Fallback: derive from memory houses
+      return memoryHouses.map((h) => ({
+        id: h.user_id,
+        email: h.profile?.email || `${h.house_name.toLowerCase().replace(/\s+/g, '')}@mahallu.local`,
+        role: h.profile?.role || 'resident',
+        status: h.profile?.status || 'approved',
+        created_at: h.created_at,
+        house: {
+          id: h.id,
+          house_name: h.house_name,
+          house_number: h.house_number,
+          mahallu_reg_no: h.mahallu_reg_no,
+          division: h.division,
+          phone: h.phone,
+        },
+      }));
+    }
+  },
+
+  async updateUserRoleAsync(
+    targetUserId: string,
+    newRole: 'admin' | 'resident',
+    password: string
+  ): Promise<{ success: boolean; message: string; user?: any }> {
+    const res = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetUserId, newRole, password }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to update user role');
+    }
+
+    // Update in-memory houses if present
+    const h = memoryHouses.find((item) => item.user_id === targetUserId);
+    if (h && h.profile) {
+      h.profile.role = newRole;
+      this.saveHouseToStorage(h);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mahallu_data_updated'));
+    }
+
+    return data;
+  },
+
+  async requestSecurityPasswordResetAsync(): Promise<{ success: boolean; message: string; sentTo?: string }> {
+    const res = await fetch('/api/admin/security', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'request-reset' }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to request password reset OTP');
+    }
+    return data;
+  },
+
+  async verifySecurityPasswordResetAsync(
+    otp: string,
+    newPassword: string
+  ): Promise<{ success: boolean; message: string }> {
+    const res = await fetch('/api/admin/security', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'verify-reset', otp, newPassword }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to verify and reset security password');
+    }
+    return data;
+  },
 };
+
 
 

@@ -173,9 +173,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       href: '/admin/ledger',
       icon: FileSpreadsheet,
     },
+    {
+      label: isMl ? 'ഉപയോക്താക്കളും റോൾ മാനേജ്‌മെന്റും' : 'Users & Role Management',
+      description: isMl ? 'അംഗങ്ങളുടെ ലിസ്റ്റ്, റോൾ മാറ്റം, സുരക്ഷാ ക്രമീകരണങ്ങൾ' : 'User directory, admin promotion & security controls',
+      href: '/admin/users',
+      icon: ShieldCheck,
+    },
   ];
 
-  const isMoreActive = ['/admin/houses', '/admin/defaulters', '/admin/ledger'].includes(pathname);
+  const isMoreActive = ['/admin/houses', '/admin/defaulters', '/admin/ledger', '/admin/users'].includes(pathname);
 
   return (
     <div className="flex-1 flex flex-col bg-slate-100/70 min-h-screen">
