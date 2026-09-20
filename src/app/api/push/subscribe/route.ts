@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const saved = saveSubscription({
+    const saved = await saveSubscription({
       endpoint: subscription.endpoint,
       keys: {
         p256dh: subscription.keys.p256dh,
@@ -49,7 +49,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Endpoint is required.' }, { status: 400 });
     }
 
-    removeSubscription(endpoint);
+    await removeSubscription(endpoint);
     return NextResponse.json({ success: true, message: 'Push subscription removed.' });
   } catch (err: any) {
     console.error('[API] /api/push/subscribe DELETE error:', err);

@@ -41,37 +41,63 @@ try {
   console.warn('[PushService] VAPID initialization warning:', err);
 }
 
-// Local storage path for push subscriptions persistence
-const SUBS_DIR = path.join(process.cwd(), 'scratch');
-const SUBS_FILE = path.join(SUBS_DIR, 'push-subscriptions.json');
+import os from 'os';
 
-function ensureSubsFile() {
-  if (!fs.existsSync(SUBS_DIR)) {
-    fs.mkdirSync(SUBS_DIR, { recursive: true });
+function isUuid(id: string | null | undefined): boolean {
+  if (!id) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+// Local storage path for push subscriptions persistence
+function getSubsFilePath(): string {
+  try {
+    // In serverless environments like Vercel, use /tmp (os.tmpdir()) which is writable
+    const tmp = os.tmpdir();
+    return path.join(tmp, 'mahallu-push-subscriptions.json');
+  } catch {
+    return 'push-subscriptions.json';
   }
-  if (!fs.existsSync(SUBS_FILE)) {
-    fs.writeFileSync(SUBS_FILE, JSON.stringify([], null, 2), 'utf8');
+}
+
+let inMemorySubs: StoredPushSubscription[] = [];
+
+function writeSubsFile(subs: StoredPushSubscription[]) {
+  inMemorySubs = subs;
+  try {
+    const file = getSubsFilePath();
+    fs.writeFileSync(file, JSON.stringify(subs, null, 2), 'utf8');
+  } catch (err) {
+    console.warn('[PushService] Safe disk write fallback (using in-memory):', err);
   }
 }
 
 export function getAllSubscriptions(): StoredPushSubscription[] {
   try {
-    ensureSubsFile();
-    const data = fs.readFileSync(SUBS_FILE, 'utf8');
-    return JSON.parse(data) || [];
+    if (inMemorySubs.length > 0) return inMemorySubs;
+    const file = getSubsFilePath();
+    if (fs.existsSync(file)) {
+      const data = fs.readFileSync(file, 'utf8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        inMemorySubs = parsed;
+        return parsed;
+      }
+    }
   } catch (err) {
     console.warn('[PushService] Failed to read subscriptions:', err);
-    return [];
   }
+  return inMemorySubs;
 }
 
-export function saveSubscription(sub: Omit<StoredPushSubscription, 'id' | 'createdAt'>): StoredPushSubscription {
-  ensureSubsFile();
-  const subs = getAllSubscriptions();
-
-  // Deduplicate by endpoint
-  const existingIndex = subs.findIndex((s) => s.endpoint === sub.endpoint);
+export async function saveSubscription(
+  sub: Omit<StoredPushSubscription, 'id' | 'createdAt'>
+): Promise<StoredPushSubscription> {
   const now = new Date().toISOString();
+
+  // 1. In-memory & safe temp file update
+  const subs = getAllSubscriptions();
+  const existingIndex = subs.findIndex((s) => s.endpoint === sub.endpoint);
+  let resolvedSub: StoredPushSubscription;
 
   if (existingIndex >= 0) {
     subs[existingIndex] = {
@@ -81,51 +107,59 @@ export function saveSubscription(sub: Omit<StoredPushSubscription, 'id' | 'creat
       userId: sub.userId || subs[existingIndex].userId,
       houseId: sub.houseId || subs[existingIndex].houseId,
     };
-    fs.writeFileSync(SUBS_FILE, JSON.stringify(subs, null, 2), 'utf8');
-    return subs[existingIndex];
+    resolvedSub = subs[existingIndex];
+  } else {
+    resolvedSub = {
+      ...sub,
+      id: `sub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      createdAt: now,
+    };
+    subs.push(resolvedSub);
   }
 
-  const newSub: StoredPushSubscription = {
-    ...sub,
-    id: `sub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-    createdAt: now,
-  };
+  writeSubsFile(subs);
 
-  subs.push(newSub);
-  fs.writeFileSync(SUBS_FILE, JSON.stringify(subs, null, 2), 'utf8');
-
-  // Async sync with Supabase push_subscriptions table if exists
+  // 2. Async sync with Supabase push_subscriptions table
   try {
     const supabase = createClient();
-    (supabase.from('push_subscriptions') as any)
-      .upsert({
-        endpoint: newSub.endpoint,
-        p256dh: newSub.keys.p256dh,
-        auth: newSub.keys.auth,
-        role: newSub.role,
-        user_id: newSub.userId || null,
-        house_id: newSub.houseId || null,
-      })
-      .then(({ error }: any) => {
-        if (error && !error.message.includes('relation') && !error.message.includes('does not exist')) {
-          console.warn('[PushService] Supabase sync note:', error.message);
-        }
-      });
-  } catch {}
+    const validUserId = isUuid(resolvedSub.userId) ? resolvedSub.userId : null;
+    const validHouseId = isUuid(resolvedSub.houseId) ? resolvedSub.houseId : null;
 
-  return newSub;
+    const { error } = await (supabase.from('push_subscriptions') as any).upsert({
+      endpoint: resolvedSub.endpoint,
+      p256dh: resolvedSub.keys.p256dh,
+      auth: resolvedSub.keys.auth,
+      role: resolvedSub.role,
+      user_id: validUserId,
+      house_id: validHouseId,
+      updated_at: now,
+    });
+
+    if (error && !error.message.includes('relation') && !error.message.includes('does not exist')) {
+      console.warn('[PushService] Supabase sync note:', error.message);
+    }
+  } catch (err: any) {
+    console.warn('[PushService] Supabase sync note:', err?.message);
+  }
+
+  return resolvedSub;
 }
 
-export function removeSubscription(endpoint: string) {
+export async function removeSubscription(endpoint: string) {
   try {
-    ensureSubsFile();
     const subs = getAllSubscriptions();
     const filtered = subs.filter((s) => s.endpoint !== endpoint);
-    fs.writeFileSync(SUBS_FILE, JSON.stringify(filtered, null, 2), 'utf8');
+    writeSubsFile(filtered);
   } catch (err) {
-    console.warn('[PushService] Failed to delete subscription:', err);
+    console.warn('[PushService] Failed to delete local subscription:', err);
   }
+
+  try {
+    const supabase = createClient();
+    await (supabase.from('push_subscriptions') as any).delete().eq('endpoint', endpoint);
+  } catch {}
 }
+
 
 /**
  * Send a web push notification to a single subscription.
