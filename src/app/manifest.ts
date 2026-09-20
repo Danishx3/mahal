@@ -1,0 +1,76 @@
+import type { MetadataRoute } from 'next';
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: 'Kunjikkulam Juma Masjid | Mahallu Portal',
+    short_name: 'Mahallu Portal',
+    description:
+      'Comprehensive digital governance, household registry, monthly dues tracking, and marriage certificates for Mahallu Jamaath.',
+    start_url: '/',
+    id: '/',
+    display: 'standalone',
+    background_color: '#064e3b',
+    theme_color: '#064e3b',
+    orientation: 'portrait-primary',
+    scope: '/',
+    lang: 'en',
+    dir: 'ltr',
+    categories: ['government', 'finance', 'utilities', 'productivity'],
+    icons: [
+      {
+        src: '/icon-192x192.png',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/icon-512x512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/icon-maskable-192x192.png',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'maskable',
+      },
+      {
+        src: '/icon-maskable-512x512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable',
+      },
+    ],
+    shortcuts: [
+      {
+        name: 'Resident Dashboard',
+        short_name: 'Dashboard',
+        description: 'View household status, members, and payment history',
+        url: '/dashboard',
+        icons: [{ src: '/icon-192x192.png', sizes: '192x192' }],
+      },
+      {
+        name: 'Pay Monthly Dues',
+        short_name: 'Pay Dues',
+        description: 'Submit UPI dues and download receipts',
+        url: '/dashboard/payments',
+        icons: [{ src: '/icon-192x192.png', sizes: '192x192' }],
+      },
+      {
+        name: 'Marriage Certificate',
+        short_name: 'Nikah Cert',
+        description: 'Apply or download verified marriage certificate',
+        url: '/dashboard/marriage-certificate',
+        icons: [{ src: '/icon-192x192.png', sizes: '192x192' }],
+      },
+      {
+        name: 'Administration Panel',
+        short_name: 'Admin',
+        description: 'Mahallu committee management and approvals',
+        url: '/admin',
+        icons: [{ src: '/icon-192x192.png', sizes: '192x192' }],
+      },
+    ],
+  };
+}
