@@ -22,6 +22,7 @@ import {
   Sparkles,
   ArrowRight,
   FileCheck,
+  LayoutGrid,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useLanguage } from '@/lib/context/LanguageContext';
@@ -44,8 +45,10 @@ export function Navbar() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [menuDropdownOpen, setMenuDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const menuDropdownRef = useRef<HTMLDivElement>(null);
 
   const isLandingPage = pathname === '/';
   const solid = scrolled || !isLandingPage;
@@ -64,22 +67,26 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isLandingPage]);
 
-  // Click outside to close user dropdown
+  // Click outside to close user dropdown & menu dropdown
   useEffect(() => {
-    if (!userDropdownOpen) return;
+    if (!userDropdownOpen && !menuDropdownOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setUserDropdownOpen(false);
       }
+      if (menuDropdownRef.current && !menuDropdownRef.current.contains(e.target as Node)) {
+        setMenuDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [userDropdownOpen]);
+  }, [userDropdownOpen, menuDropdownOpen]);
 
-  // Close mobile menu on route change
+  // Close mobile & dropdown menus on route change
   useEffect(() => {
     setMobileMenuOpen(false);
     setUserDropdownOpen(false);
+    setMenuDropdownOpen(false);
   }, [pathname]);
 
   // Effective house & approval state
@@ -92,27 +99,87 @@ export function Navbar() {
   const isMl = language === 'ml';
 
   const adminNavItems = [
-    { label: isMl ? 'ഡാഷ്‌ബോർഡ്' : 'Dashboard', href: '/admin', icon: Landmark },
-    { label: isMl ? 'വെരിഫിക്കേഷൻ' : 'Verification', href: '/admin/verification', icon: UserCheck },
-    { label: isMl ? 'കുടുംബങ്ങൾ' : 'Houses', href: '/admin/houses', icon: Users },
-    { label: isMl ? 'പേയ്‌മെന്റുകൾ' : 'Payments', href: '/admin/payments', icon: CreditCard },
-    { label: isMl ? 'കുടിശ്ശികക്കാർ' : 'Defaulters', href: '/admin/defaulters', icon: AlertTriangle },
-    { label: isMl ? 'സർട്ടിഫിക്കറ്റുകൾ' : 'Certificates', href: '/admin/marriage-certificates', icon: FileCheck },
-    { label: isMl ? 'ലെഡ്ജർ' : 'Ledger', href: '/admin/ledger', icon: FileSpreadsheet },
+    {
+      label: isMl ? 'ഡാഷ്‌ബോർഡ്' : 'Dashboard',
+      sub: isMl ? 'അവലോകനം & സ്ഥിതിവിവരങ്ങൾ' : 'Overview & Statistics',
+      href: '/admin',
+      icon: Landmark,
+      color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    },
+    {
+      label: isMl ? 'വെരിഫിക്കേഷൻ' : 'Verification',
+      sub: isMl ? 'കുടുംബ രജിസ്ട്രേഷൻ & പ്രൊഫൈൽ' : 'Registrations & Profile Approvals',
+      href: '/admin/verification',
+      icon: UserCheck,
+      color: 'bg-blue-50 text-blue-700 border-blue-200',
+    },
+    {
+      label: isMl ? 'കുടുംബങ്ങൾ' : 'Houses & Census',
+      sub: isMl ? 'സെൻസസ് & അംഗങ്ങളുടെ പട്ടിക' : 'Census Directory & Members',
+      href: '/admin/houses',
+      icon: Users,
+      color: 'bg-teal-50 text-teal-700 border-teal-200',
+    },
+    {
+      label: isMl ? 'പേയ്‌മെന്റുകൾ' : 'Payments',
+      sub: isMl ? 'വരിസംഖ്യ & സ്പെഷ്യൽ ഫണ്ടുകൾ' : 'Dues Verification & Campaigns',
+      href: '/admin/payments',
+      icon: CreditCard,
+      color: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    },
+    {
+      label: isMl ? 'കുടിശ്ശികക്കാർ' : 'Defaulters',
+      sub: isMl ? 'കുടിശ്ശിക ട്രാക്കിംഗ് & വാട്സാപ്പ്' : 'Overdue Tracking & Reminders',
+      href: '/admin/defaulters',
+      icon: AlertTriangle,
+      color: 'bg-amber-50 text-amber-800 border-amber-200',
+    },
+    {
+      label: isMl ? 'സർട്ടിഫിക്കറ്റുകൾ' : 'Certificates',
+      sub: isMl ? 'നികാഹ് രജിസ്ട്രിയും അനുമതിയും' : 'Nikah Registry & Approvals',
+      href: '/admin/marriage-certificates',
+      icon: FileCheck,
+      color: 'bg-purple-50 text-purple-700 border-purple-200',
+    },
+    {
+      label: isMl ? 'ലെഡ്ജർ' : 'Financial Ledger',
+      sub: isMl ? 'വരവ്-ചിലവ് കണക്കുകൾ & ഓഡിറ്റ്' : 'Inflow/Outflow & Cash Ledger',
+      href: '/admin/ledger',
+      icon: FileSpreadsheet,
+      color: 'bg-rose-50 text-rose-700 border-rose-200',
+    },
   ];
 
   const residentNavItems =
     effectiveIsApproved || (effectiveHouse && effectiveStatus !== 'pending_verification')
       ? [
-        { label: isMl ? 'കുടുംബം' : 'Household', href: '/dashboard', icon: Home },
-        { label: isMl ? 'മാസവരി & രസീതുകൾ' : 'Pay Dues & Receipts', href: '/dashboard/payments', icon: CreditCard },
-        { label: isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ്' : 'Marriage Certificate', href: '/dashboard/marriage-certificate', icon: FileCheck },
+        {
+          label: isMl ? 'കുടുംബം' : 'Household',
+          sub: isMl ? 'കുടുംബ വിവരങ്ങളും സെൻസസും' : 'Family Details & Members',
+          href: '/dashboard',
+          icon: Home,
+          color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        },
+        {
+          label: isMl ? 'മാസവരി & രസീതുകൾ' : 'Pay Dues & Receipts',
+          sub: isMl ? 'വരിസംഖ്യ അടയ്ക്കലും രസീതുകളും' : 'Pay Monthly Dues & Receipts',
+          href: '/dashboard/payments',
+          icon: CreditCard,
+          color: 'bg-blue-50 text-blue-700 border-blue-200',
+        },
+        {
+          label: isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ്' : 'Marriage Certificate',
+          sub: isMl ? 'നികാഹ് സർട്ടിഫിക്കറ്റ് അപേക്ഷ' : 'Nikah Certificate Application',
+          href: '/dashboard/marriage-certificate',
+          icon: FileCheck,
+          color: 'bg-purple-50 text-purple-700 border-purple-200',
+        },
       ]
       : effectiveIsPending && effectiveHouse
-        ? [{ label: isMl ? 'സ്റ്റാറ്റസ്' : 'Status', href: '/onboarding/pending', icon: Clock }]
-        : [{ label: isMl ? 'രജിസ്ട്രേഷൻ' : 'Register', href: '/onboarding', icon: UserPlus }];
+        ? [{ label: isMl ? 'സ്റ്റാറ്റസ്' : 'Status', sub: isMl ? 'പരിശോധന പുരോഗതി' : 'Verification Status', href: '/onboarding/pending', icon: Clock, color: 'bg-amber-50 text-amber-700 border-amber-200' }]
+        : [{ label: isMl ? 'രജിസ്ട്രേഷൻ' : 'Register', sub: isMl ? 'കുടുംബ രജിസ്ട്രേഷൻ' : 'Household Registration', href: '/onboarding', icon: UserPlus, color: 'bg-emerald-50 text-emerald-700 border-emerald-200' }];
 
-  const publicNavItems = [{ label: isMl ? 'ഹോം' : 'Home', href: '/', icon: Landmark }];
+  const publicNavItems = [{ label: isMl ? 'ഹോം' : 'Home', sub: isMl ? 'പ്രധാന പേജ്' : 'Main Page', href: '/', icon: Landmark, color: 'bg-emerald-50 text-emerald-700 border-emerald-200' }];
 
   const navItems = !user ? publicNavItems : isAdmin ? adminNavItems : residentNavItems;
 
@@ -176,24 +243,122 @@ export function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <div className="hidden xl:flex items-center gap-1 2xl:gap-1.5 shrink min-w-0">
-            {!isLoading &&
-              navItems.map((item) => {
-                const Icon = item.icon;
-                const active = isItemActive(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-1.5 px-2.5 2xl:px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all duration-150 cursor-pointer ${active ? theme.activeLink : theme.link
-                      }`}
-                  >
-                    <Icon className={`h-4 w-4 shrink-0 ${active ? theme.activeIcon : theme.inactiveIcon}`} />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
+          {/* Desktop Navigation: Dropdown Window & Quick Dashboard Link */}
+          <div className="hidden md:flex items-center gap-2.5" ref={menuDropdownRef}>
+            {/* Quick Home / Dashboard Shortcut */}
+            <Link
+              href={getHomeRedirect()}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer ${
+                pathname === '/admin' || pathname === '/dashboard' || pathname === '/'
+                  ? theme.activeLink
+                  : theme.link
+              }`}
+            >
+              <Landmark className="h-4 w-4" />
+              <span>{isMl ? 'ഡാഷ്‌ബോർഡ്' : 'Dashboard'}</span>
+            </Link>
+
+            {/* Dropdown Window Popover Trigger */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuDropdownOpen((v) => !v)}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all duration-150 cursor-pointer shadow-xs ${
+                  menuDropdownOpen
+                    ? (solid
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-900 ring-2 ring-emerald-100'
+                        : 'bg-white/20 border-white text-white ring-2 ring-white/20')
+                    : (solid
+                        ? 'border-slate-200 hover:border-slate-300 bg-slate-50/80 hover:bg-slate-100 text-slate-800'
+                        : 'border-white/15 hover:border-white/30 bg-white/10 hover:bg-white/20 text-white')
+                }`}
+                aria-expanded={menuDropdownOpen}
+                aria-label="Navigation menu dropdown"
+              >
+                <LayoutGrid className={`h-4 w-4 ${solid ? 'text-emerald-700' : 'text-emerald-300'}`} />
+                <span>
+                  {isAdmin
+                    ? (isMl ? 'അഡ്മിൻ സേവനങ്ങൾ' : 'Admin Services')
+                    : (isMl ? 'സേവനങ്ങൾ' : 'Services')}
+                </span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                    menuDropdownOpen ? 'rotate-180' : ''
+                  } ${solid ? 'text-slate-400' : 'text-slate-300'}`}
+                />
+              </button>
+
+              {/* Floating Dropdown Window */}
+              {menuDropdownOpen && (
+                <div className="absolute left-0 mt-2.5 w-[330px] sm:w-[540px] rounded-2xl bg-white shadow-2xl shadow-slate-950/20 border border-slate-200/90 py-2 z-50 animate-in fade-in-50 zoom-in-95 text-slate-900 overflow-hidden">
+                  {/* Dropdown Window Header */}
+                  <div className="px-4 py-2.5 bg-gradient-to-r from-emerald-50/90 via-slate-50 to-teal-50/90 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-lg bg-emerald-700 text-white flex items-center justify-center">
+                        <LayoutGrid className="h-3.5 w-3.5" />
+                      </div>
+                      <span className="text-xs font-extrabold text-slate-800">
+                        {isAdmin
+                          ? (isMl ? 'മഹല്ല് അഡ്മിനിസ്ട്രേഷൻ മോഡ്യൂളുകൾ' : 'Administration Modules')
+                          : (isMl ? 'മഹല്ല് പോർട്ടൽ സേവനങ്ങൾ' : 'Mahallu Portal Services')}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100/70 px-2 py-0.5 rounded-full border border-emerald-200">
+                      {navItems.length} {isMl ? 'സേവനങ്ങൾ' : 'Modules'}
+                    </span>
+                  </div>
+
+                  {/* 2-Column Grid of Modules */}
+                  <div className="p-2.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[70vh] overflow-y-auto">
+                    {navItems.map((item) => {
+                      const Icon = item.icon;
+                      const active = isItemActive(item.href);
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setMenuDropdownOpen(false)}
+                          className={`group flex items-start gap-3 p-2.5 rounded-xl border transition-all duration-150 cursor-pointer ${
+                            active
+                              ? 'bg-emerald-50/90 border-emerald-300 shadow-xs ring-1 ring-emerald-400/40'
+                              : 'bg-white border-slate-100 hover:border-slate-200 hover:bg-slate-50/80 hover:shadow-xs'
+                          }`}
+                        >
+                          <div
+                            className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border transition-transform group-hover:scale-105 ${
+                              active
+                                ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                                : `${(item as any).color || 'bg-slate-100 text-slate-600 border-slate-200'}`
+                            }`}
+                          >
+                            <Icon className="h-4.5 w-4.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span
+                                className={`text-xs font-bold truncate block ${
+                                  active ? 'text-emerald-900' : 'text-slate-900 group-hover:text-emerald-800'
+                                }`}
+                              >
+                                {item.label}
+                              </span>
+                              {active && (
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 shrink-0" />
+                              )}
+                            </div>
+                            {(item as any).sub && (
+                              <p className="text-[10px] text-slate-500 leading-snug line-clamp-1 mt-0.5">
+                                {(item as any).sub}
+                              </p>
+                            )}
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right Section: Language Switcher + User Dropdown / Sign In */}
