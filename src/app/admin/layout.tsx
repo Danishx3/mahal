@@ -35,9 +35,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
 
-  // Close more menu on navigation
+  // Close more menu and auto scroll up on navigation
   useEffect(() => {
     setMoreMenuOpen(false);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    const rafId = requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
+    return () => cancelAnimationFrame(rafId);
   }, [pathname]);
 
   const loadCounts = async () => {
@@ -186,6 +195,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => {
+                  window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+                }}
                 className={`relative flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-full transition-all min-h-[46px] ${
                   isActive
                     ? 'text-emerald-800 font-bold'
@@ -278,7 +290,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <Link
                     key={mod.href}
                     href={mod.href}
-                    onClick={() => setMoreMenuOpen(false)}
+                    onClick={() => {
+                      setMoreMenuOpen(false);
+                      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                    }}
                     className={`flex items-start gap-3 p-3 rounded-2xl border transition-all ${
                       isActive
                         ? 'border-emerald-300 bg-emerald-50/50 shadow-2xs'

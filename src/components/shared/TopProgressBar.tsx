@@ -8,13 +8,35 @@ export function TopProgressBar() {
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
+    // Auto scroll to top when navigating to any page / dashboard
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+
+    // Secondary pass with requestAnimationFrame & timeout to override Next.js layout scroll preservation
+    const rafId = requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
+
+    const scrollTimer = setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }, 40);
+
     // Trigger progress bar briefly when pathname changes
     setIsAnimating(true);
     const timer = setTimeout(() => {
       setIsAnimating(false);
     }, 450);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(scrollTimer);
+      clearTimeout(timer);
+    };
   }, [pathname]);
 
   if (!isAnimating) return null;

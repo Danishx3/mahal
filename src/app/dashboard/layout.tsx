@@ -38,6 +38,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => window.removeEventListener('mahallu_data_updated', checkPendingDues);
   }, [effectiveHouse]);
 
+  // Auto scroll up on route change
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    const rafId = requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [pathname]);
+
   // Auth & Onboarding guard: do NOT include pathname so tab switching between /dashboard and /dashboard/payments is completely seamless
   useEffect(() => {
     if (!isLoading) {
@@ -210,6 +223,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => {
+                    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+                  }}
                   className={`relative flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-full transition-all min-h-[46px] ${
                     isActive
                       ? 'text-emerald-800 font-bold'

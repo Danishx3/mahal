@@ -47,8 +47,23 @@ export function Navbar() {
   const { language, toggleLanguage, t } = useLanguage();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [menuDropdownOpen, setMenuDropdownOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<'menu' | 'user' | null>(null);
+
+  const menuDropdownOpen = activeDropdown === 'menu';
+  const userDropdownOpen = activeDropdown === 'user';
+
+  const toggleMenuDropdown = () => {
+    setActiveDropdown((curr) => (curr === 'menu' ? null : 'menu'));
+  };
+
+  const toggleUserDropdown = () => {
+    setActiveDropdown((curr) => (curr === 'user' ? null : 'user'));
+  };
+
+  const closeDropdowns = () => {
+    setActiveDropdown(null);
+  };
+
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuDropdownRef = useRef<HTMLDivElement>(null);
@@ -70,26 +85,35 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isLandingPage]);
 
-  // Click outside to close user dropdown & menu dropdown
+  // Click outside or press Esc to close active dropdown
   useEffect(() => {
-    if (!userDropdownOpen && !menuDropdownOpen) return;
+    if (!activeDropdown) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setUserDropdownOpen(false);
+      const target = e.target as Node;
+      if (activeDropdown === 'menu' && menuDropdownRef.current && !menuDropdownRef.current.contains(target)) {
+        setActiveDropdown(null);
       }
-      if (menuDropdownRef.current && !menuDropdownRef.current.contains(e.target as Node)) {
-        setMenuDropdownOpen(false);
+      if (activeDropdown === 'user' && dropdownRef.current && !dropdownRef.current.contains(target)) {
+        setActiveDropdown(null);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveDropdown(null);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [userDropdownOpen, menuDropdownOpen]);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeDropdown]);
 
   // Close mobile & dropdown menus on route change
   useEffect(() => {
     setMobileMenuOpen(false);
-    setUserDropdownOpen(false);
-    setMenuDropdownOpen(false);
+    setActiveDropdown(null);
   }, [pathname]);
 
   // Effective house & approval state
@@ -289,10 +313,10 @@ export function Navbar() {
             </Link>
 
             {/* Dropdown Window Popover Trigger */}
-            <div className="relative">
+            <div className="relative" ref={menuDropdownRef}>
               <button
                 type="button"
-                onClick={() => setMenuDropdownOpen((v) => !v)}
+                onClick={toggleMenuDropdown}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all duration-150 cursor-pointer shadow-xs ${
                   menuDropdownOpen
                     ? (solid
@@ -347,7 +371,10 @@ export function Navbar() {
                         <Link
                           key={item.href}
                           href={item.href}
-                          onClick={() => setMenuDropdownOpen(false)}
+                          onClick={() => {
+                            closeDropdowns();
+                            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                          }}
                           className={`group flex items-start gap-3 p-2.5 rounded-xl border transition-all duration-150 cursor-pointer ${
                             active
                               ? 'bg-emerald-50/90 border-emerald-300 shadow-xs ring-1 ring-emerald-400/40'
@@ -418,7 +445,7 @@ export function Navbar() {
               <div className="relative shrink-0" ref={dropdownRef}>
                 <button
                   type="button"
-                  onClick={() => setUserDropdownOpen((v) => !v)}
+                  onClick={toggleUserDropdown}
                   className={`flex items-center gap-2 p-1.5 pl-2.5 rounded-xl border transition-all duration-150 cursor-pointer shrink-0 ${theme.userBtn}`}
                   aria-expanded={userDropdownOpen}
                   aria-label="User menu"
@@ -477,7 +504,10 @@ export function Navbar() {
                       {isAdmin ? (
                         <Link
                           href="/admin"
-                          onClick={() => setUserDropdownOpen(false)}
+                          onClick={() => {
+                            closeDropdowns();
+                            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                          }}
                           className="flex items-center gap-3 px-4 py-2.5 text-xs text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-medium transition-colors rounded-lg mx-1"
                         >
                           <ShieldCheck className="h-4 w-4 text-emerald-600" />
@@ -487,7 +517,10 @@ export function Navbar() {
                         <>
                           <Link
                             href="/dashboard"
-                            onClick={() => setUserDropdownOpen(false)}
+                            onClick={() => {
+                              closeDropdowns();
+                              window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                            }}
                             className="flex items-center gap-3 px-4 py-2.5 text-xs text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-medium transition-colors rounded-lg mx-1"
                           >
                             <Home className="h-4 w-4 text-emerald-600" />
@@ -495,7 +528,10 @@ export function Navbar() {
                           </Link>
                           <Link
                             href="/dashboard/payments"
-                            onClick={() => setUserDropdownOpen(false)}
+                            onClick={() => {
+                              closeDropdowns();
+                              window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                            }}
                             className="flex items-center gap-3 px-4 py-2.5 text-xs text-slate-700 hover:text-slate-900 hover:bg-slate-50 font-medium transition-colors rounded-lg mx-1"
                           >
                             <CreditCard className="h-4 w-4 text-emerald-600" />
@@ -510,7 +546,7 @@ export function Navbar() {
                       <button
                         type="button"
                         onClick={() => {
-                          setUserDropdownOpen(false);
+                          closeDropdowns();
                           signOut();
                         }}
                         className="w-[calc(100%-8px)] flex items-center gap-3 mx-1 px-4 py-2.5 text-xs text-rose-600 hover:bg-rose-50 font-semibold rounded-lg transition-colors cursor-pointer"
@@ -548,7 +584,10 @@ export function Navbar() {
 
             <button
               type="button"
-              onClick={() => setMobileMenuOpen((v) => !v)}
+              onClick={() => {
+                closeDropdowns();
+                setMobileMenuOpen((v) => !v);
+              }}
               className={`p-2 rounded-xl transition-colors cursor-pointer ${theme.mobileTrigger}`}
               aria-label="Toggle navigation menu"
             >
@@ -573,7 +612,10 @@ export function Navbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                }}
                 className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${solid
                   ? active
                     ? 'bg-emerald-50 text-emerald-800 font-bold'
@@ -678,6 +720,9 @@ export function Navbar() {
               <Link
                 key={href}
                 href={href}
+                onClick={() => {
+                  window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+                }}
                 className={`relative flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-full transition-all min-h-[46px] ${
                   isActive
                     ? 'text-emerald-800 font-bold'
