@@ -155,11 +155,11 @@ export function Navbar() {
 
   return (
     <nav className={`sticky top-0 z-50 no-print transition-colors duration-200 ${theme.nav}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div className="w-full max-w-[1536px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 gap-2">
           {/* Brand Logo */}
-          <Link href={getHomeRedirect()} className="flex items-center gap-3 group cursor-pointer">
-            <div className="h-10 w-10 rounded-xl overflow-hidden shadow-md shadow-emerald-700/20 group-hover:scale-105 group-hover:shadow-emerald-600/30 transition-all duration-200 ring-1 ring-emerald-600/30 bg-white flex items-center justify-center p-0.5">
+          <Link href={getHomeRedirect()} className="flex items-center gap-2.5 sm:gap-3 group cursor-pointer shrink-0">
+            <div className="h-10 w-10 rounded-xl overflow-hidden shadow-md shadow-emerald-700/20 group-hover:scale-105 group-hover:shadow-emerald-600/30 transition-all duration-200 ring-1 ring-emerald-600/30 bg-white flex items-center justify-center p-0.5 shrink-0">
               <Image
                 src="/logo.jpg"
                 alt="Kunjikkulam Juma Masjid Logo"
@@ -177,7 +177,7 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <div className="hidden md:flex items-center gap-1.5">
+          <div className="hidden xl:flex items-center gap-1 2xl:gap-1.5 shrink min-w-0">
             {!isLoading &&
               navItems.map((item) => {
                 const Icon = item.icon;
@@ -186,10 +186,10 @@ export function Navbar() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs transition-all duration-150 cursor-pointer ${active ? theme.activeLink : theme.link
+                    className={`flex items-center gap-1.5 px-2.5 2xl:px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all duration-150 cursor-pointer ${active ? theme.activeLink : theme.link
                       }`}
                   >
-                    <Icon className={`h-4 w-4 ${active ? theme.activeIcon : theme.inactiveIcon}`} />
+                    <Icon className={`h-4 w-4 shrink-0 ${active ? theme.activeIcon : theme.inactiveIcon}`} />
                     <span>{item.label}</span>
                   </Link>
                 );
@@ -197,12 +197,12 @@ export function Navbar() {
           </div>
 
           {/* Right Section: Language Switcher + User Dropdown / Sign In */}
-          <div className="hidden sm:flex items-center gap-2.5">
+          <div className="hidden sm:flex items-center gap-2 lg:gap-2.5 shrink-0">
             {/* Language Switcher Pill */}
             <button
               type="button"
               onClick={toggleLanguage}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150 border cursor-pointer ${solid
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all duration-150 border cursor-pointer shrink-0 ${solid
                   ? 'border-emerald-200/80 bg-emerald-50/60 text-emerald-800 hover:bg-emerald-100/70 hover:border-emerald-300'
                   : 'border-white/20 bg-white/10 text-white hover:bg-white/20'
                 }`}
@@ -218,18 +218,18 @@ export function Navbar() {
             </button>
 
             {isLoading ? (
-              <div className="h-9 w-28 rounded-xl bg-slate-200/50 animate-pulse" />
+              <div className="h-9 w-28 rounded-xl bg-slate-200/50 animate-pulse shrink-0" />
             ) : user ? (
-              <div className="relative" ref={dropdownRef}>
+              <div className="relative shrink-0" ref={dropdownRef}>
                 <button
                   type="button"
                   onClick={() => setUserDropdownOpen((v) => !v)}
-                  className={`flex items-center gap-2.5 p-1.5 pl-3 rounded-xl border transition-all duration-150 cursor-pointer ${theme.userBtn}`}
+                  className={`flex items-center gap-2 p-1.5 pl-2.5 rounded-xl border transition-all duration-150 cursor-pointer shrink-0 ${theme.userBtn}`}
                   aria-expanded={userDropdownOpen}
                   aria-label="User menu"
                 >
                   <div className="flex flex-col items-end leading-tight">
-                    <span className="text-xs font-bold max-w-[130px] truncate">
+                    <span className="text-xs font-bold max-w-[85px] 2xl:max-w-[120px] truncate">
                       {displayName}
                     </span>
                     <span className={`text-[10px] capitalize ${theme.userMuted}`}>
@@ -239,13 +239,13 @@ export function Navbar() {
 
                   {/* Status Badge */}
                   {profile && (
-                    <Badge variant={isAdmin ? 'default' : profile.status} size="sm">
+                    <Badge variant={isAdmin ? 'default' : profile.status} size="sm" className="hidden sm:inline-flex shrink-0">
                       {isAdmin ? 'Admin' : profile.status.replace('_', ' ')}
                     </Badge>
                   )}
 
                   <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${userDropdownOpen ? 'rotate-180' : ''
+                    className={`h-4 w-4 transition-transform duration-200 shrink-0 ${userDropdownOpen ? 'rotate-180' : ''
                       } ${solid ? 'text-slate-400' : 'text-slate-300'}`}
                   />
                 </button>
@@ -340,12 +340,12 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile Menu Trigger & Lang switcher */}
-          <div className="flex md:hidden items-center gap-2">
+          {/* Mobile & Tablet Menu Trigger */}
+          <div className="flex xl:hidden items-center gap-2">
             <button
               type="button"
               onClick={toggleLanguage}
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border transition-colors ${solid ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-white/20 bg-white/10 text-white'
+              className={`sm:hidden inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold border transition-colors ${solid ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-white/20 bg-white/10 text-white'
                 }`}
             >
               <span>{language === 'ml' ? 'മലയാളം' : 'EN'}</span>
@@ -366,7 +366,7 @@ export function Navbar() {
       {/* Mobile Drawer Dropdown */}
       {mobileMenuOpen && (
         <div
-          className={`md:hidden border-t px-4 pt-3 pb-5 space-y-1.5 transition-colors ${solid
+          className={`xl:hidden border-t px-4 pt-3 pb-5 space-y-1.5 transition-colors ${solid
               ? 'bg-white border-slate-200 text-slate-900 shadow-xl'
               : 'bg-[#0a1628] border-white/10 text-white'
             }`}
