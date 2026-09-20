@@ -217,9 +217,9 @@ export default function LandingPage() {
             {/* Action Buttons */}
             <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
               <Link href={primaryHref}>
-                <button className="group relative inline-flex items-center justify-center gap-3 px-9 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white font-black text-base shadow-[0_0_30px_rgba(16,185,129,0.55)] ring-4 ring-emerald-400/50 border border-emerald-300/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_40px_rgba(16,185,129,0.75)] active:scale-95 cursor-pointer">
-                  <span className="tracking-wide">{primaryLabel}</span>
-                  <ArrowRight className="h-5 w-5 text-white transition-transform group-hover:translate-x-1.5" />
+                <button className="group relative inline-flex items-center justify-center gap-3 px-9 py-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-950 font-black text-base shadow-2xl shadow-white/25 border-2 border-white transition-all duration-300 hover:-translate-y-1 hover:shadow-white/40 active:scale-95 cursor-pointer">
+                  <span className="tracking-wide text-slate-950 font-black">{primaryLabel}</span>
+                  <ArrowRight className="h-5 w-5 text-emerald-600 transition-transform group-hover:translate-x-1.5 stroke-[2.5]" />
                 </button>
               </Link>
 
