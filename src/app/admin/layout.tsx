@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  Landmark,
   UserCheck,
   Users,
   CreditCard,
@@ -122,54 +121,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const adminNav = [
-    {
-      label: isMl ? 'അവലോകനം' : 'Executive Overview',
-      shortLabel: isMl ? 'അവലോകനം' : 'Overview',
-      href: '/admin',
-      icon: LayoutDashboard,
-    },
-    {
-      label: isMl ? 'പ്രൊഫൈൽ വെരിഫിക്കേഷൻ' : 'Profile Verification',
-      shortLabel: isMl ? 'വെരിഫിക്കേഷൻ' : 'Verify',
-      href: '/admin/verification',
-      icon: UserCheck,
-      badge: pendingCount > 0 ? pendingCount : undefined,
-    },
-    {
-      label: isMl ? 'വീടുകളുടെ പട്ടിക' : 'Houses Directory',
-      shortLabel: isMl ? 'വീടുകൾ' : 'Houses',
-      href: '/admin/houses',
-      icon: Users,
-    },
-    {
-      label: isMl ? 'പേയ്‌മെന്റ് പരിശോധന' : 'Payment Review',
-      shortLabel: isMl ? 'പേയ്‌മെന്റുകൾ' : 'Payments',
-      href: '/admin/payments',
-      icon: CreditCard,
-      badge: paymentsReviewCount > 0 ? paymentsReviewCount : undefined,
-    },
-    {
-      label: isMl ? 'കുടിശ്ശികക്കാർ' : 'Dues Defaulters',
-      shortLabel: isMl ? 'കുടിശ്ശിക' : 'Defaulters',
-      href: '/admin/defaulters',
-      icon: AlertTriangle,
-    },
-    {
-      label: isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റുകൾ' : 'Marriage Certificates',
-      shortLabel: isMl ? 'സർട്ടിഫിക്കറ്റുകൾ' : 'Certs',
-      href: '/admin/marriage-certificates',
-      icon: FileCheck,
-      badge: pendingCertificatesCount > 0 ? pendingCertificatesCount : undefined,
-    },
-    {
-      label: isMl ? 'വരവ്-ചിലവ് ലെഡ്ജർ' : 'Financial Ledger',
-      shortLabel: isMl ? 'ലെഡ്ജർ' : 'Ledger',
-      href: '/admin/ledger',
-      icon: FileSpreadsheet,
-    },
-  ];
-
   // 4 primary daily operational tabs for mobile bottom dock
   const primaryMobileNav = [
     { label: isMl ? 'അവലോകനം' : 'Overview', href: '/admin', icon: LayoutDashboard },
@@ -219,82 +170,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="flex-1 flex flex-col bg-slate-100/70 min-h-screen">
-      {/* Desktop Subheader Navigation Bar */}
-      <div className="hidden sm:block bg-white border-b border-slate-200 px-4 sm:px-8 py-2.5 no-print">
-        <div className="max-w-7xl mx-auto flex items-center gap-2 min-w-max">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wider pr-2 border-r border-slate-200">
-            <ShieldCheck className="h-4 w-4 text-emerald-700" />
-            {isMl ? 'അഡ്മിൻ പാനൽ' : 'Admin Suite'}
-          </div>
-
-          {adminNav.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  isActive
-                    ? 'bg-emerald-700 text-white font-semibold shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                {item.label}
-                {item.badge !== undefined && (
-                  <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                      isActive ? 'bg-white text-emerald-800' : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Mobile Swipeable Top Bar */}
-      <div className="sm:hidden bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 py-2 overflow-x-auto no-scrollbar no-print">
-        <div className="flex items-center gap-1.5 min-w-max">
-          <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200 shrink-0">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-            Admin
-          </div>
-
-          {adminNav.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
-                  isActive
-                    ? 'bg-emerald-700 text-white font-bold shadow-xs'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-white' : 'text-slate-500'}`} />
-                <span>{item.shortLabel}</span>
-                {item.badge !== undefined && (
-                  <span
-                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                      isActive ? 'bg-white text-emerald-900' : 'bg-amber-100 text-amber-900'
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Main Admin Page Content with Mobile Bottom Safe-Padding */}
       <div className="flex-1 pb-24 sm:pb-8">{children}</div>
 
