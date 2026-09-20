@@ -6,6 +6,7 @@ import { Navbar } from '@/components/shared/Navbar';
 import { Footer } from '@/components/shared/Footer';
 import { TopProgressBar } from '@/components/shared/TopProgressBar';
 import { PwaRegister } from '@/components/shared/PwaRegister';
+import { PushNotificationPrompt } from '@/components/shared/PushNotificationPrompt';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -58,6 +59,7 @@ export default function RootLayout({
             <main className="flex-1 flex flex-col">{children}</main>
             <Footer />
             <PwaRegister />
+            <PushNotificationPrompt />
           </ToastProvider>
         </AuthProvider>
       </body>

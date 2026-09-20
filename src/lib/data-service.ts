@@ -61,6 +61,18 @@ export interface DuesSettings {
   updatedAt: string;
 }
 
+function dispatchPush(event: string, payload: any) {
+  if (typeof window !== 'undefined') {
+    fetch('/api/push/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event, payload }),
+    }).catch((err) => {
+      console.warn(`[Push] Failed to dispatch ${event}:`, err);
+    });
+  }
+}
+
 function calculateDueAmountForMonth(settings: DuesSettings, billingMonth: string): number {
   if (!settings || !Array.isArray(settings.history) || settings.history.length === 0) {
     return settings?.defaultAmount || 100;
@@ -966,6 +978,14 @@ export const DataService = {
       }
     }
 
+    // Trigger Web Push Notification
+    dispatchPush('registration_approved', {
+      houseName: house.house_name,
+      regNo: house.mahallu_reg_no,
+      userId: house.user_id,
+      houseId: house.id,
+    });
+
     return true;
   },
 
@@ -1012,6 +1032,14 @@ export const DataService = {
         console.warn('Supabase profile reject exception:', err);
       }
     }
+
+    // Trigger Web Push Notification
+    dispatchPush('registration_rejected', {
+      houseName: house.house_name,
+      reason,
+      userId: house.user_id,
+      houseId: house.id,
+    });
 
     return true;
   },
@@ -1085,6 +1113,13 @@ export const DataService = {
 
     notifyDataUpdated({ type: 'profile_update_submitted', house_id: params.house_id });
 
+    dispatchPush('profile_update_submitted', {
+      houseName: params.requested_details.house_name,
+      regNo: params.mahallu_reg_no,
+      houseId: params.house_id,
+      userId: params.user_id,
+    });
+
     return updatedRequest;
   },
 
@@ -1122,6 +1157,14 @@ export const DataService = {
 
     notifyDataUpdated({ type: 'profile_update_approved', updateId });
 
+    dispatchPush('profile_update_reviewed', {
+      houseName: approvedUpdate.requested_details.house_name,
+      regNo: approvedUpdate.mahallu_reg_no,
+      status: 'approved',
+      houseId: approvedUpdate.house_id,
+      userId: approvedUpdate.user_id,
+    });
+
     return true;
   },
 
@@ -1144,6 +1187,15 @@ export const DataService = {
     if (idx >= 0) memoryProfileUpdates[idx] = rejectedUpdate;
 
     notifyDataUpdated({ type: 'profile_update_rejected', updateId });
+
+    dispatchPush('profile_update_reviewed', {
+      houseName: rejectedUpdate.requested_details?.house_name || 'Household',
+      regNo: rejectedUpdate.mahallu_reg_no,
+      status: 'rejected',
+      reason,
+      houseId: rejectedUpdate.house_id,
+      userId: rejectedUpdate.user_id,
+    });
 
     return true;
   },
@@ -1625,6 +1677,17 @@ export const DataService = {
       }
     }
 
+    // Trigger Web Push Notification
+    dispatchPush('payment_submitted', {
+      houseName: targetHouse.house_name,
+      regNo: targetHouse.mahallu_reg_no,
+      amount: targetDue.amount || 100,
+      title: `Monthly Dues (${targetDue.billing_month})`,
+      utr: cleanRef,
+      houseId: targetHouse.id,
+      userId: targetHouse.user_id,
+    });
+
     return true;
   },
 
@@ -1832,6 +1895,8 @@ export const DataService = {
     }
 
     // Update in-memory state
+    let verifiedHouse: HouseWithDetails | undefined;
+    let verifiedDue: PaymentDue | undefined;
     for (const h of memoryHouses) {
       const due = h.payment_dues.find((d) => d.id === dueId || d.billing_month === dueId);
       if (due) {
@@ -1839,8 +1904,21 @@ export const DataService = {
         due.verified_at = new Date().toISOString();
         due.verified_by = adminId;
         due.rejection_reason = null;
+        verifiedHouse = h;
+        verifiedDue = due;
         break;
       }
+    }
+
+    if (verifiedHouse && verifiedDue) {
+      dispatchPush('payment_verified', {
+        houseName: verifiedHouse.house_name,
+        regNo: verifiedHouse.mahallu_reg_no,
+        amount: verifiedDue.amount,
+        title: `Monthly Dues (${verifiedDue.billing_month})`,
+        houseId: verifiedHouse.id,
+        userId: verifiedHouse.user_id,
+      });
     }
 
     if (typeof window !== 'undefined') {
@@ -1902,12 +1980,28 @@ export const DataService = {
     }
 
     // Update in-memory runtime cache
+    let rejectedHouse: HouseWithDetails | undefined;
+    let rejectedDue: PaymentDue | undefined;
     for (const h of memoryHouses) {
       const due = h.payment_dues.find((d) => d.id === dueId || d.billing_month === dueId);
       if (due) {
         due.status = 'failed';
         due.rejection_reason = reason;
+        rejectedHouse = h;
+        rejectedDue = due;
       }
+    }
+
+    if (rejectedHouse && rejectedDue) {
+      dispatchPush('payment_rejected', {
+        houseName: rejectedHouse.house_name,
+        regNo: rejectedHouse.mahallu_reg_no,
+        amount: rejectedDue.amount,
+        title: `Monthly Dues (${rejectedDue.billing_month})`,
+        reason,
+        houseId: rejectedHouse.id,
+        userId: rejectedHouse.user_id,
+      });
     }
 
     if (typeof window !== 'undefined') {
@@ -2772,6 +2866,15 @@ export const DataService = {
       window.dispatchEvent(new CustomEvent('mahallu_data_updated'));
       window.dispatchEvent(new CustomEvent('mahallu_requests_updated'));
     }
+
+    // Broadcast push notification to all resident devices
+    dispatchPush('special_request_created', {
+      title: data.request.title,
+      category: data.request.category,
+      amountType: data.request.amount_type,
+      fixedAmount: data.request.fixed_amount,
+    });
+
     return data.request;
   },
 

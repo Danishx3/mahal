@@ -286,6 +286,22 @@ export default function OnboardingPage() {
         // Handled
       }
       toast('House and family members registered successfully!', 'success');
+
+      // Dispatch Web Push Notifications (Admins & Resident)
+      fetch('/api/push/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event: 'registration_submitted',
+          payload: {
+            houseName: data.house.house_name,
+            division: data.house.division,
+            phone: data.house.phone,
+            userId: user.id,
+          },
+        }),
+      }).catch(() => {});
+
       router.push('/onboarding/pending');
     } catch (err: any) {
       console.error('Onboarding submission error:', err);

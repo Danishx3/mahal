@@ -5,6 +5,11 @@ import {
   sendMarriageApplicationSubmittedAdminEmail,
   sendMarriageApplicationApprovedUserEmail,
 } from '@/lib/email-service';
+import {
+  notifyMarriageAppSubmitted,
+  notifyMarriageAppApproved,
+  notifyMarriageAppRejected,
+} from '@/lib/push-service';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -170,6 +175,19 @@ export async function POST(request: Request) {
       console.error('[API ERROR] Failed to send admin email alert:', emailErr?.message);
     }
 
+    // Dispatch Web Push Notifications (Admins & Resident)
+    if (savedApplication) {
+      notifyMarriageAppSubmitted({
+        houseName: savedApplication.house_name,
+        regNo: savedApplication.mahallu_reg_no,
+        groom: savedApplication.husband_name,
+        bride: savedApplication.wife_full_name,
+        dateOfNikah: savedApplication.date_of_nikah,
+        houseId: savedApplication.house_id,
+        userId: savedApplication.user_id,
+      }).catch((e) => console.warn('[Push] Marriage app push error:', e));
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Marriage certificate application submitted successfully.',
@@ -285,6 +303,16 @@ export async function PATCH(request: Request) {
         console.error('[API ERROR] Failed to send user approval email:', emailErr?.message);
       }
 
+      // Dispatch Web Push Notification to Resident
+      notifyMarriageAppApproved({
+        houseName: finalApp.house_name,
+        groom: finalApp.husband_name,
+        bride: finalApp.wife_full_name,
+        certNo: assignedCertNo,
+        houseId: finalApp.house_id,
+        userId: finalApp.user_id,
+      }).catch((e) => console.warn('[Push] Marriage approval push error:', e));
+
       return NextResponse.json({
         success: true,
         message: 'Application approved successfully and applicant notified.',
@@ -316,6 +344,15 @@ export async function PATCH(request: Request) {
           ...updateData,
         };
       }
+
+      // Dispatch Web Push Notification to Resident
+      notifyMarriageAppRejected({
+        groom: finalApp.husband_name || targetApp?.husband_name || 'Applicant',
+        bride: finalApp.wife_full_name || targetApp?.wife_full_name || 'Applicant',
+        reason,
+        houseId: finalApp.house_id || targetApp?.house_id,
+        userId: finalApp.user_id || targetApp?.user_id,
+      }).catch((e) => console.warn('[Push] Marriage rejection push error:', e));
 
       return NextResponse.json({
         success: true,

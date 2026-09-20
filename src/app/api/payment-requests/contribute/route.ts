@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { PaymentRequestContribution } from '@/lib/supabase/types';
 import { createClient } from '@/lib/supabase/client';
+import {
+  notifyPaymentSubmitted,
+  notifyPaymentVerified,
+  notifyPaymentRejected,
+} from '@/lib/push-service';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -167,6 +172,32 @@ export async function POST(request: Request) {
       created_at: inserted.created_at,
     };
 
+    // Dispatch Web Push Notifications if submitted by resident for review
+    if (!isVerified) {
+      let houseName = 'Household';
+      let mahalluRegNo = '';
+      try {
+        const { data: h } = await (supabase.from('houses') as any)
+          .select('house_name, mahallu_reg_no')
+          .eq('id', houseId)
+          .maybeSingle();
+        if (h) {
+          houseName = h.house_name;
+          mahalluRegNo = h.mahallu_reg_no;
+        }
+      } catch {}
+
+      notifyPaymentSubmitted({
+        houseName,
+        regNo: mahalluRegNo,
+        amount: numAmount,
+        title: reqRow.title || 'Special Collection',
+        utr: cleanRef,
+        houseId,
+        userId: userId || undefined,
+      }).catch((e) => console.warn('[Push] Error in contribute submit:', e));
+    }
+
     return NextResponse.json({
       success: true,
       message: isVerified
@@ -236,6 +267,49 @@ export async function PATCH(request: Request) {
       rejection_reason: data.rejection_reason,
       created_at: data.created_at,
     };
+
+    // Dispatch Web Push Notifications to Resident
+    let houseName = 'Household';
+    let mahalluRegNo = '';
+    let reqTitle = 'Special Collection';
+    try {
+      const { data: h } = await (supabase.from('houses') as any)
+        .select('house_name, mahallu_reg_no')
+        .eq('id', data.house_id)
+        .maybeSingle();
+      if (h) {
+        houseName = h.house_name;
+        mahalluRegNo = h.mahallu_reg_no;
+      }
+      const { data: r } = await (supabase.from('payment_requests') as any)
+        .select('title')
+        .eq('id', data.request_id)
+        .maybeSingle();
+      if (r) {
+        reqTitle = r.title;
+      }
+    } catch {}
+
+    if (action === 'approve') {
+      notifyPaymentVerified({
+        houseName,
+        regNo: mahalluRegNo,
+        amount: Number(data.amount),
+        title: reqTitle,
+        houseId: data.house_id,
+        userId: data.user_id || undefined,
+      }).catch((e) => console.warn('[Push] Error in contribute approve:', e));
+    } else if (action === 'reject') {
+      notifyPaymentRejected({
+        houseName,
+        regNo: mahalluRegNo,
+        amount: Number(data.amount),
+        title: reqTitle,
+        reason: rejectionReason || 'Invalid transaction reference',
+        houseId: data.house_id,
+        userId: data.user_id || undefined,
+      }).catch((e) => console.warn('[Push] Error in contribute reject:', e));
+    }
 
     return NextResponse.json({
       success: true,
