@@ -149,17 +149,17 @@ export default function LandingPage() {
                 />
               </div>
               <div className="text-left leading-tight">
-                <span className="text-xs font-bold text-white tracking-tight block">
+                <span className={`text-xs font-bold text-white ${isMl ? 'tracking-normal' : 'tracking-tight'} block`}>
                   {isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്' : 'Kunjikkulam Juma Masjid'}
                 </span>
-                <span className="text-[10px] font-semibold text-emerald-400 tracking-wider uppercase block">
+                <span className={`${isMl ? 'text-[11px] font-medium tracking-normal' : 'text-[10px] font-semibold tracking-wider uppercase'} text-emerald-400 block`}>
                   {isMl ? 'ഔദ്യോഗിക മഹല്ല് പോർട്ടൽ' : 'Official Mahallu Portal'}
                 </span>
               </div>
             </div>
 
             {/* Heading */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15]">
+            <h1 className={`text-4xl sm:text-5xl lg:text-6xl font-extrabold ${isMl ? 'leading-[1.25] tracking-normal' : 'leading-[1.15] tracking-tight'}`}>
               {isMl ? (
                 <>
                   <span className="text-white">ഏകോപിത മഹല്ല്</span>{' '}
@@ -232,11 +232,11 @@ export default function LandingPage() {
         >
           {/* Section header */}
           <div className="text-center mb-14 space-y-3">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold uppercase tracking-widest border border-emerald-100">
+            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold ${isMl ? 'tracking-normal' : 'uppercase tracking-widest'} border border-emerald-100`}>
               <MapPin className="h-3 w-3" />
               {isMl ? 'ഭൂമിശാസ്ത്രപരമായ വിഭജനം' : 'Geographical Organization'}
             </span>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900">
+            <h2 className={`text-3xl sm:text-4xl font-extrabold text-slate-900 ${isMl ? 'tracking-normal leading-snug' : 'tracking-tight'}`}>
               {isMl ? '6 അഡ്മിനിസ്ട്രേറ്റീവ് ഡിവിഷനുകൾ' : '6 Administrative Divisions'}
             </h2>
             <p className="text-sm text-slate-500 max-w-lg mx-auto">

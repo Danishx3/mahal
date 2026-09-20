@@ -170,10 +170,10 @@ export function Navbar() {
               />
             </div>
             <div className="leading-tight">
-              <span className={`text-base font-bold tracking-tight block transition-colors duration-200 ${theme.brandTitle}`}>
+              <span className={`text-base font-bold ${isMl ? 'tracking-normal' : 'tracking-tight'} block transition-colors duration-200 ${theme.brandTitle}`}>
                 {isMl ? 'മഹല്ല് ജമാഅത്ത്' : "Mahallu Jama'ath"}
               </span>
-              <span className={`text-[10px] font-semibold uppercase tracking-widest block transition-colors duration-200 ${theme.brandSubtitle}`}>
+              <span className={`${isMl ? 'text-[11px] font-medium tracking-normal' : 'text-[10px] font-semibold uppercase tracking-widest'} block transition-colors duration-200 ${theme.brandSubtitle}`}>
                 {isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്' : 'Kunjikkulam Juma Masjid'}
               </span>
             </div>

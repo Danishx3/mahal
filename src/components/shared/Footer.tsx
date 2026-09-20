@@ -71,10 +71,10 @@ export function Footer() {
                 />
               </div>
               <div className="leading-tight">
-                <p className="font-bold text-white text-base tracking-tight group-hover:text-emerald-300 transition-colors">
+                <p className={`font-bold text-white text-base ${isMl ? 'tracking-normal' : 'tracking-tight'} group-hover:text-emerald-300 transition-colors`}>
                   {isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്' : 'Kunjikkulam Juma Masjid'}
                 </p>
-                <p className="text-[10px] text-emerald-400 font-semibold tracking-widest uppercase">
+                <p className={`${isMl ? 'text-[11px] font-medium tracking-normal' : 'text-[10px] uppercase tracking-widest'} text-emerald-400 font-semibold`}>
                   {isMl ? 'മഹല്ല് ജമാഅത്ത്' : "Mahallu Jama'ath"}
                 </p>
               </div>
@@ -89,7 +89,7 @@ export function Footer() {
 
           {/* Column 2: Navigation Shortcuts */}
           <div className="space-y-4">
-            <h4 className="text-xs font-bold text-slate-200 uppercase tracking-widest flex items-center gap-2">
+            <h4 className={`text-xs font-bold text-slate-200 ${isMl ? 'tracking-normal' : 'uppercase tracking-widest'} flex items-center gap-2`}>
               <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
               <span>{isMl ? 'നാവിഗേഷൻ' : 'Navigation'}</span>
             </h4>
@@ -115,7 +115,7 @@ export function Footer() {
 
           {/* Column 3: Platform Capabilities */}
           <div className="space-y-4">
-            <h4 className="text-xs font-bold text-slate-200 uppercase tracking-widest flex items-center gap-2">
+            <h4 className={`text-xs font-bold text-slate-200 ${isMl ? 'tracking-normal' : 'uppercase tracking-widest'} flex items-center gap-2`}>
               <CreditCard className="h-3.5 w-3.5 text-teal-400" />
               <span>{isMl ? 'പ്രധാന സേവനങ്ങൾ' : 'Platform Modules'}</span>
             </h4>
@@ -146,7 +146,7 @@ export function Footer() {
 
           {/* Column 4: Technology & Governance */}
           <div className="space-y-4">
-            <h4 className="text-xs font-bold text-slate-200 uppercase tracking-widest flex items-center gap-2">
+            <h4 className={`text-xs font-bold text-slate-200 ${isMl ? 'tracking-normal' : 'uppercase tracking-widest'} flex items-center gap-2`}>
               <MapPin className="h-3.5 w-3.5 text-amber-400" />
               <span>{isMl ? 'മഹല്ല് പരിധി' : 'Jurisdiction'}</span>
             </h4>
