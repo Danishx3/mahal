@@ -404,16 +404,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 );
               })}
             </div>
-
-            <div className="pt-2 border-t border-slate-100">
-              <Link
-                href="/dashboard"
-                onClick={() => setMoreMenuOpen(false)}
-                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
-              >
-                <span>Switch to Resident Portal</span>
-              </Link>
-            </div>
           </div>
         </div>
       )}
