@@ -36,10 +36,12 @@ import {
   Coins,
   Check,
   Sparkles,
+  Calendar,
+  ExternalLink,
 } from 'lucide-react';
 
 import { LoadingScreen } from '@/components/ui/LoadingAnimation';
-import { UpiQrCode } from '@/components/shared/UpiQrCode';
+import { UpiQrCode, buildUpiUri } from '@/components/shared/UpiQrCode';
 
 const formatMonthLabel = (billingMonth: string, isMl: boolean) => {
   if (!billingMonth) return '';
@@ -213,9 +215,15 @@ export default function ResidentPaymentCenter() {
   const verifiedDues = house.payment_dues.filter((d) => d.status === 'verified');
   const paidTotal = verifiedDues.reduce((sum, d) => sum + Number(d.amount), 0);
 
-  const pendingDues = house.payment_dues.filter((d) => d.status === 'pending');
-  const underReviewDues = house.payment_dues.filter((d) => d.status === 'under_review');
-  const failedDues = house.payment_dues.filter((d) => d.status === 'failed');
+  const pendingDues = house.payment_dues
+    .filter((d) => d.status === 'pending')
+    .sort((a, b) => b.billing_month.localeCompare(a.billing_month));
+  const underReviewDues = house.payment_dues
+    .filter((d) => d.status === 'under_review')
+    .sort((a, b) => b.billing_month.localeCompare(a.billing_month));
+  const failedDues = house.payment_dues
+    .filter((d) => d.status === 'failed')
+    .sort((a, b) => b.billing_month.localeCompare(a.billing_month));
 
   const pendingAmount = pendingDues.reduce((sum, d) => sum + Number(d.amount), 0);
 
@@ -325,14 +333,29 @@ export default function ResidentPaymentCenter() {
     };
   });
 
-  // Combined and sorted: recent activity first, then unsubmitted pending dues
+  // Combined and sorted: Failed & Pending first (action required), then Under Review, then Verified (newest to oldest)
   const allTransactions: UnifiedTransaction[] = [...dueTransactions, ...specialTransactions].sort((a, b) => {
+    const getStatusPriority = (status: string) => {
+      if (status === 'failed') return 1;
+      if (status === 'pending') return 2;
+      if (status === 'under_review') return 3;
+      if (status === 'verified') return 4;
+      return 5;
+    };
+    const priorityA = getStatusPriority(a.status);
+    const priorityB = getStatusPriority(b.status);
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
     if (a.dateForSorting && b.dateForSorting) {
       return b.dateForSorting - a.dateForSorting;
     }
     if (a.dateForSorting && !b.dateForSorting) return -1;
     if (!a.dateForSorting && b.dateForSorting) return 1;
-    return 0;
+    if (a.rawDue?.billing_month && b.rawDue?.billing_month) {
+      return b.rawDue.billing_month.localeCompare(a.rawDue.billing_month);
+    }
+    return b.title.localeCompare(a.title);
   });
 
   // Filter transactions by tab and by type
@@ -504,25 +527,38 @@ export default function ResidentPaymentCenter() {
     toast(isMl ? `UPI ഐഡി കോപ്പി ചെയ്തു: ${upiSettings.upiId}` : `UPI ID copied to clipboard: ${upiSettings.upiId}`, 'success');
   };
 
+  const handleCopyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast(isMl ? `${label} കോപ്പി ചെയ്തു: ${text}` : `Copied ${label}: ${text}`, 'success');
+  };
+
   return (
-    <div className="flex-1 bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="flex-1 bg-slate-50/70 py-4 sm:py-8 px-3 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-200">
+                {house.house_number ? `${isMl ? 'വീട്ടു നമ്പർ:' : 'House:'} #${house.house_number}` : (isMl ? 'കുടുംബം' : 'Household')}
+              </span>
+              <span className="text-xs font-semibold text-slate-700">
+                {house.house_name}
+              </span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               {isMl ? 'പ്രതിമാസ മാസവരി & രസീതുകൾ' : 'Monthly Dues & Receipts Center'}
             </h1>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 mt-0.5">
               {isMl
                 ? 'പ്രതിമാസ ₹100 മാസവരി കണക്കുകൾ, UPI പേയ്‌മെന്റ് റഫറൻസ് സമർപ്പണം, ഔദ്യോഗിക ഡിജിറ്റൽ രസീതുകൾ.'
                 : 'Track your monthly ₹100 contribution, submit UPI transaction references, and download official receipts.'}
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 self-start sm:self-auto">
             <Link href="/dashboard">
-              <Button variant="outline" size="sm" className="gap-2 text-slate-700 bg-white">
+              <Button variant="outline" size="sm" className="gap-1.5 text-slate-700 bg-white min-h-[38px] text-xs font-semibold">
                 <Home className="h-4 w-4 text-emerald-700" />
                 {isMl ? 'കുടുംബ വിവരങ്ങൾ' : 'Household Overview'}
               </Button>
@@ -530,172 +566,353 @@ export default function ResidentPaymentCenter() {
           </div>
         </div>
 
-        {/* 3 Metric Cards as Requested */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Card 1: Pending Dues Amount */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                {isMl ? 'കുടിശ്ശികയുള്ള മാസവരി തുക' : 'Pending Dues Amount'}
-              </span>
-              <div className="p-2 rounded-xl bg-amber-50 text-amber-700">
-                <Clock className="h-4 w-4" />
+        {/* 1. TOP SECTION: Pending Payments & Action Required (Prominently at the top) */}
+        {pendingDues.length > 0 || failedDues.length > 0 || rejectedSpecialContribs.length > 0 ? (
+          <div className="rounded-2xl sm:rounded-3xl p-4 sm:p-6 bg-gradient-to-br from-amber-500/10 via-amber-50/60 to-orange-500/10 border-2 border-amber-300 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-amber-500 text-white shrink-0 shadow-sm">
+                  <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-base sm:text-lg font-black text-amber-950">
+                      {isMl ? 'അടയ്ക്കാനുള്ള മാസവരികൾ & കുടിശ്ശിക' : 'Action Required: Pending Payments'}
+                    </h2>
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-200 text-amber-950">
+                      {pendingDues.length + failedDues.length + rejectedSpecialContribs.length} {isMl ? 'ഇനങ്ങൾ' : 'Items'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-900/90 mt-0.5">
+                    {isMl
+                      ? `ആകെ അടയ്ക്കാനുള്ള തുക: ${formatCurrency(pendingAmount + failedDues.reduce((s, d) => s + Number(d.amount), 0))}. UPI വഴി പണമടച്ച് UTR റഫറൻസ് സമർപ്പിക്കുക.`
+                      : `Total dues to clear: ${formatCurrency(pendingAmount + failedDues.reduce((s, d) => s + Number(d.amount), 0))}. Pay via UPI and submit UTR reference below.`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-stretch sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setShowHeroQr(!showHeroQr)}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-amber-300 hover:bg-amber-50 text-amber-900 text-xs font-bold transition-all shadow-xs cursor-pointer min-h-[40px]"
+                >
+                  <QrCode className="h-4 w-4 text-emerald-700" />
+                  <span>{showHeroQr ? (isMl ? 'QR മറയ്ക്കുക' : 'Hide QR') : (isMl ? 'UPI QR കോഡ്' : 'UPI QR Code')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyUpi}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-amber-300 hover:bg-amber-50 text-amber-900 text-xs font-bold transition-all shadow-xs cursor-pointer min-h-[40px]"
+                  title={isMl ? 'UPI ഐഡി കോപ്പി ചെയ്യുക' : 'Copy UPI ID'}
+                >
+                  <Copy className="h-3.5 w-3.5 text-slate-600" />
+                  <span className="hidden sm:inline">{upiSettings.upiId}</span>
+                  <span className="sm:hidden">{isMl ? 'UPI കോപ്പി' : 'Copy UPI'}</span>
+                </button>
               </div>
             </div>
-            <div className="mt-3">
-              <div className="text-2xl font-extrabold text-amber-900">
+
+            {/* Expandable Quick UPI QR Drawer */}
+            {showHeroQr && (
+              <div className="p-4 rounded-2xl bg-white border border-amber-200 shadow-sm flex flex-col items-center animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="text-center max-w-sm mb-2">
+                  <p className="text-xs font-bold text-slate-900">
+                    {isMl ? 'മഹല്ല് ഔദ്യോഗിക UPI QR കോഡ്' : 'Official Mahallu UPI QR Code'}
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    {isMl
+                      ? 'ഏതെങ്കിലും UPI ആപ്പ് (GPay, PhonePe, Paytm) വഴി സ്കാൻ ചെയ്ത് പണമയക്കുക'
+                      : 'Scan with Google Pay, PhonePe, Paytm or BHIM'}
+                  </p>
+                </div>
+                <UpiQrCode
+                  upiId={upiSettings.upiId}
+                  payeeName={upiSettings.payeeName}
+                  amount={pendingAmount > 0 ? pendingAmount : 100}
+                  note={`Dues - ${house.house_name}`}
+                  size={150}
+                  showDetails={true}
+                  showOpenAppButton={true}
+                />
+              </div>
+            )}
+
+            {/* Grid of Pending Dues & Re-submissions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Failed / Rejected Monthly Dues (Require immediate re-submission) */}
+              {failedDues.map((due) => (
+                <div
+                  key={`top-failed-${due.id}`}
+                  className="bg-white rounded-2xl p-4 border-2 border-rose-300 shadow-xs flex flex-col justify-between gap-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-rose-100 text-rose-700 shrink-0">
+                        <AlertTriangle className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-bold text-slate-900 block">
+                          {formatMonthLabel(due.billing_month, isMl)}
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          {isMl ? 'പ്രതിമാസ മാസവരി' : 'Monthly Maintenance Due'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-base font-black text-rose-900 block">
+                        {formatCurrency(due.amount)}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200">
+                        {isMl ? 'നിരസിച്ചു' : 'Rejected'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {due.rejection_reason && (
+                    <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-800">
+                      <span className="font-bold">{isMl ? 'കാരണം: ' : 'Reason: '}</span>
+                      {due.rejection_reason}
+                    </div>
+                  )}
+
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleOpenSubmitModal(due)}
+                    className="w-full justify-center gap-2 min-h-[44px] text-xs font-bold cursor-pointer"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    {isMl ? 'ശരിയായ UTR നൽകി വീണ്ടും സമർപ്പിക്കുക' : 'Re-submit Valid UTR Reference'}
+                  </Button>
+                </div>
+              ))}
+
+              {/* Pending Monthly Dues */}
+              {pendingDues.map((due) => (
+                <div
+                  key={`top-pending-${due.id}`}
+                  className="bg-white rounded-2xl p-4 border border-amber-300/80 hover:border-amber-400 shadow-xs flex flex-col justify-between gap-3 transition-all"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0">
+                        <Calendar className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-bold text-slate-900 block">
+                          {formatMonthLabel(due.billing_month, isMl)}
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          {isMl ? 'പ്രതിമാസ മാസവരി' : 'Monthly Maintenance Due'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-base font-black text-amber-900 block">
+                        {formatCurrency(due.amount)}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                        {isMl ? 'അടയ്ക്കാനുണ്ട്' : 'Pending'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleOpenSubmitModal(due)}
+                    className="w-full justify-center gap-2 min-h-[44px] text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white cursor-pointer shadow-xs"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    {isMl ? 'പണമടച്ച് UTR നൽകുക' : 'Pay via UPI & Submit UTR'}
+                  </Button>
+                </div>
+              ))}
+
+              {/* Rejected Special Contributions */}
+              {rejectedSpecialContribs.map((contrib) => {
+                const req = paymentRequests.find((r) => r.id === contrib.request_id);
+                return (
+                  <div
+                    key={`top-spl-rej-${contrib.id}`}
+                    className="bg-white rounded-2xl p-4 border-2 border-rose-300 shadow-xs flex flex-col justify-between gap-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 rounded-xl bg-rose-100 text-rose-700 shrink-0">
+                          <AlertTriangle className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-slate-900 block">
+                            {req?.title || (isMl ? 'പ്രത്യേക പിരിവ്' : 'Special Collection')}
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            {req?.category || (isMl ? 'പ്രത്യേക ഫണ്ട്' : 'Special Appeal')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-base font-black text-rose-900 block">
+                          {formatCurrency(contrib.amount)}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200">
+                          {isMl ? 'നിരസിച്ചു' : 'Rejected'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {contrib.rejection_reason && (
+                      <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-800">
+                        <span className="font-bold">{isMl ? 'കാരണം: ' : 'Reason: '}</span>
+                        {contrib.rejection_reason}
+                      </div>
+                    )}
+
+                    {req && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleOpenReqModal(req, contrib)}
+                        className="w-full justify-center gap-2 min-h-[44px] text-xs font-bold cursor-pointer"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        {isMl ? 'ശരിയായ UTR നൽകി വീണ്ടും സമർപ്പിക്കുക' : 'Re-submit Valid UTR Reference'}
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          /* Reassuring banner when 0 pending dues */
+          <div className="rounded-2xl sm:rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-emerald-500/10 via-emerald-50 to-teal-50 border border-emerald-300/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-emerald-600 text-white shrink-0 shadow-xs">
+                <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-bold text-emerald-950 flex items-center gap-1.5">
+                  <span>{isMl ? 'എല്ലാ മാസവരികളും കൃത്യമായി അടച്ചിട്ടുണ്ട്!' : 'All Monthly Dues Up to Date!'}</span>
+                  <Sparkles className="h-4 w-4 text-emerald-600" />
+                </h2>
+                <p className="text-xs text-emerald-800 mt-0.5">
+                  {isMl
+                    ? 'നിലവിൽ അടയ്ക്കാനുള്ള കുടിശ്ശികകളൊന്നുമില്ല. നിങ്ങളുടെ കൃത്യമായ സഹകരണത്തിന് മഹല്ല് കമ്മിറ്റിയുടെ നന്ദി.'
+                    : 'You have no pending dues. Thank you for your punctual support to the Mahallu community.'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-stretch sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setShowHeroQr(!showHeroQr)}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-emerald-300 text-emerald-800 text-xs font-semibold hover:bg-emerald-50 cursor-pointer min-h-[38px]"
+              >
+                <QrCode className="h-4 w-4 text-emerald-600" />
+                <span>{showHeroQr ? (isMl ? 'QR മറയ്ക്കുക' : 'Hide QR') : (isMl ? 'UPI QR കാണുക' : 'Show UPI QR')}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 2. Under Review Notice if any submissions are awaiting admin verification */}
+        {totalUnderReviewCount > 0 && (
+          <div className="rounded-2xl p-3.5 sm:p-4 bg-amber-50/90 border border-amber-200 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+            <div className="flex items-center gap-2.5">
+              <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+              <div>
+                <span className="font-bold block">
+                  {isMl
+                    ? `${totalUnderReviewCount} പേയ്‌മെന്റ് റഫറൻസുകൾ അഡ്മിൻ പരിശോധനയിലാണ്`
+                    : `${totalUnderReviewCount} payment reference(s) currently under admin verification`}
+                </span>
+                <span className="text-[11px] text-amber-800/80">
+                  {isMl
+                    ? 'ബാങ്ക് സ്റ്റേറ്റ്മെന്റുമായി ഒത്തുനോക്കിയ ശേഷം കമ്മിറ്റി ഇത് സ്ഥിരീകരിച്ച് ഔദ്യോഗിക രസീത് നൽകുന്നതാണ്.'
+                    : 'The Mahallu committee is reconciling transactions against bank records. Official receipts will be generated once verified.'}
+                </span>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-200 text-amber-950 self-start sm:self-auto">
+              {isMl ? 'പരിശോധനയിൽ' : 'In Verification'}
+            </span>
+          </div>
+        )}
+
+        {/* 3. Three Metric Cards - Responsive & Mobile Compact */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          {/* Card 1: Pending Dues Amount */}
+          <div className="bg-white p-2.5 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400 truncate">
+                {isMl ? 'കുടിശ്ശിക' : 'Pending'}
+              </span>
+              <div className="p-1 sm:p-2 rounded-xl bg-amber-50 text-amber-700 shrink-0">
+                <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              </div>
+            </div>
+            <div className="mt-1.5 sm:mt-3">
+              <div className="text-sm sm:text-2xl font-black text-amber-900 tracking-tight truncate">
                 {formatCurrency(pendingAmount)}
               </div>
-              <p className="text-xs text-slate-500 mt-1">
-                {pendingDues.length} {isMl ? 'മാസത്തെ കുടിശ്ശിക' : 'month(s) pending payment'}
+              <p className="text-[9px] sm:text-xs text-slate-500 mt-0.5 truncate">
+                {pendingDues.length} {isMl ? 'മാസത്തെ കുടിശ്ശിക' : 'month(s) pending'}
               </p>
             </div>
           </div>
 
           {/* Card 2: Paid Total */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+          <div className="bg-white p-2.5 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                {isMl ? 'ആകെ അടച്ച തുക (സ്ഥിരീകരിച്ചത്)' : 'Total Paid (Reconciled)'}
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400 truncate">
+                {isMl ? 'ആകെ അടച്ചത്' : 'Total Paid'}
               </span>
-              <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700">
-                <CheckCircle2 className="h-4 w-4" />
+              <div className="p-1 sm:p-2 rounded-xl bg-emerald-50 text-emerald-700 shrink-0">
+                <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </div>
             </div>
-            <div className="mt-3">
-              <div className="text-2xl font-extrabold text-emerald-800">
+            <div className="mt-1.5 sm:mt-3">
+              <div className="text-sm sm:text-2xl font-black text-emerald-800 tracking-tight truncate">
                 {formatCurrency(totalPaidReconciled)}
               </div>
-              <p className="text-xs text-slate-500 mt-1">
-                {verifiedDues.length} {isMl ? 'മാസവരി' : 'dues'} + {verifiedSpecialContribs.length} {isMl ? 'പ്രത്യേക സംഭാവന സ്ഥിരീകരിച്ചു' : 'special payment(s) verified'}
+              <p className="text-[9px] sm:text-xs text-slate-500 mt-0.5 truncate">
+                {verifiedDues.length + verifiedSpecialContribs.length} {isMl ? 'സ്ഥിരീകരിച്ചവ' : 'verified'}
               </p>
             </div>
           </div>
 
-          {/* Card 3: Failed / Rejected Submissions */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+          {/* Card 3: Failed / Rejected */}
+          <div className="bg-white p-2.5 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                {isMl ? 'നിരസിച്ചവ / പരാജയപ്പെട്ടവ' : 'Failed / Rejected'}
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-400 truncate">
+                {isMl ? 'നിരസിച്ചവ' : 'Rejected'}
               </span>
-              <div className="p-2 rounded-xl bg-rose-50 text-rose-700">
-                <AlertTriangle className="h-4 w-4" />
+              <div className="p-1 sm:p-2 rounded-xl bg-rose-50 text-rose-700 shrink-0">
+                <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </div>
             </div>
-            <div className="mt-3">
-              <div className="text-2xl font-extrabold text-rose-900">
+            <div className="mt-1.5 sm:mt-3">
+              <div className={`text-sm sm:text-2xl font-black tracking-tight truncate ${totalFailedCount > 0 ? 'text-rose-900' : 'text-slate-700'}`}>
                 {totalFailedCount}
               </div>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-[9px] sm:text-xs text-slate-500 mt-0.5 truncate">
                 {totalFailedCount > 0
-                  ? (isMl ? 'ശരിയായ UTR നൽകി വീണ്ടും സമർപ്പിക്കുക' : 'Requires re-submission of valid UTR')
-                  : (isMl ? 'എല്ലാ ഇടപാടുകളും കൃത്യമാണ്' : 'All submissions in good standing')}
+                  ? (isMl ? 'ശ്രദ്ധിക്കുക' : 'Needs action')
+                  : (isMl ? 'കൃത്യമാണ്' : 'All good')}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Active Billing Cycle Action Hero Card */}
-        {currentMonthDue && (
-          <div
-            className="bg-[#064e3b] text-white rounded-3xl p-6 sm:p-8 shadow-md"
-            style={{ background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #0f172a 100%)' }}
-          >
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-              <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-emerald-200 text-xs font-semibold backdrop-blur-xs">
-                  <span>{isMl ? 'നിലവിലെ ബില്ലിംഗ് മാസം:' : 'Current Billing Period:'}</span>
-                  <span className="font-bold text-white uppercase">
-                    {isMl ? formatMonthLabel(currentMonthDue.billing_month, true) : currentMonthDue.billing_month}
-                  </span>
-                </div>
-                <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
-                  {isMl ? 'പ്രതിമാസ മാസവരി:' : 'Monthly Membership Due:'} {formatCurrency(currentMonthDue.amount)}
-                </h2>
-                <p className="text-xs text-emerald-100/80 max-w-xl">
-                  {isMl
-                    ? 'മഹല്ല് അക്കൗണ്ടിലേക്ക് ഏതെങ്കിലും UPI ആപ്പ് (GPay, PhonePe, Paytm) വഴി പണമയച്ച ശേഷം 12 അക്ക UTR റഫറൻസ് നമ്പർ രേഖപ്പെടുത്തുക.'
-                    : 'Transfer via any UPI app (GPay, PhonePe, Paytm) to the Mahallu account, then enter your 12-digit UPI reference / UTR number below.'}
-                </p>
-                <div className="flex flex-wrap items-center gap-3 pt-1 text-xs">
-                  <span className="text-emerald-200 font-mono font-bold">UPI ID: {upiSettings.upiId}</span>
-                  <button
-                    onClick={handleCopyUpi}
-                    className="p-1 hover:bg-white/10 rounded transition-colors text-white"
-                    title={isMl ? 'UPI ഐഡി കോപ്പി ചെയ്യുക' : 'Copy UPI ID'}
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowHeroQr(!showHeroQr)}
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-[11px] font-semibold transition-colors border border-emerald-400/30 cursor-pointer"
-                  >
-                    <QrCode className="h-3 w-3" />
-                    {showHeroQr
-                      ? (isMl ? 'QR കോഡ് മറയ്ക്കുക' : 'Hide QR Code')
-                      : (isMl ? 'QR കോഡ് കാണിക്കുക' : 'Show QR Code')}
-                  </button>
-                </div>
-
-                {showHeroQr && (
-                  <div className="mt-3 p-3.5 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md max-w-xs text-slate-900 flex justify-center">
-                    <UpiQrCode
-                      upiId={upiSettings.upiId}
-                      payeeName={upiSettings.payeeName}
-                      amount={currentMonthDue.amount}
-                      note={`Monthly Dues ${currentMonthDue.billing_month} - ${house.house_name}`}
-                      size={140}
-                      showDetails={false}
-                      showOpenAppButton={true}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-                {currentMonthDue.status === 'pending' || currentMonthDue.status === 'failed' ? (
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    onClick={() => handleOpenSubmitModal(currentMonthDue)}
-                    className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold border-none shadow-lg gap-2"
-                  >
-                    <CreditCard className="h-5 w-5" />
-                    {isMl ? 'പണമടച്ച് UTR റഫറൻസ് നൽകുക' : 'Submit Payment Reference'}
-                  </Button>
-                ) : currentMonthDue.status === 'under_review' ? (
-                  <div className="bg-white/10 border border-white/20 px-5 py-3 rounded-2xl text-center">
-                    <p className="text-xs text-amber-300 font-semibold flex items-center justify-center gap-1.5">
-                      <Clock className="h-4 w-4" />
-                      {isMl ? 'സമർപ്പിച്ചു • പരിശോധനയിൽ' : 'Submitted & Under Review'}
-                    </p>
-                    <p className="text-[11px] text-emerald-100 mt-0.5 font-mono">
-                      Ref: {currentMonthDue.transaction_ref}
-                    </p>
-                  </div>
-                ) : (
-                  <Button
-                    variant="primary"
-                    size="lg"
-                    onClick={() => handleOpenReceipt(currentMonthDue)}
-                    className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold border-none shadow-lg gap-2"
-                  >
-                    <FileText className="h-5 w-5" />
-                    {isMl ? 'രസീത് കാണുക & പ്രിന്റ് ചെയ്യുക' : 'View & Print Receipt'}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Special Collections & Payment Requests from Mahallu Admin (Active Drives Only) */}
+        {/* 4. Special Collections & Payment Requests (Active Drives) */}
         {activeRequests.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
               <div>
-                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                   <HandCoins className="h-5 w-5 text-emerald-600" />
                   {isMl ? 'പ്രത്യേക പിരിവുകളും സംഭാവനകളും' : 'Special Collections & Payment Requests'}
                 </h2>
@@ -705,12 +922,12 @@ export default function ResidentPaymentCenter() {
                     : 'Community fundraising drives, mosque projects, charity appeals, and specific collections requested by the administration.'}
                 </p>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 self-start sm:self-auto">
-                {activeRequests.length} {isMl ? 'സജീവ പിരിവുകൾ' : 'Active Request(s)'}
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 self-start sm:self-auto">
+                {activeRequests.length} {isMl ? 'സജീവ പിരിവുകൾ' : 'Active Appeal(s)'}
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {activeRequests.map((req) => {
                 const myContrib = contributions.find(
                   (c) => c.request_id === req.id && c.house_id === house.id
@@ -731,29 +948,30 @@ export default function ResidentPaymentCenter() {
                 return (
                   <div
                     key={req.id}
-                    className={`bg-white rounded-2xl border p-5 shadow-xs flex flex-col justify-between transition-all ${isVerified
+                    className={`bg-white rounded-2xl border p-4 sm:p-5 shadow-xs flex flex-col justify-between transition-all ${
+                      isVerified
                         ? 'border-emerald-300 ring-1 ring-emerald-500/20 bg-emerald-50/20'
                         : isUnderReview
                           ? 'border-amber-300 ring-1 ring-amber-500/20 bg-amber-50/10'
                           : isRejected
                             ? 'border-rose-300 ring-1 ring-rose-500/20 bg-rose-50/10'
                             : 'border-slate-200 hover:border-emerald-400'
-                      }`}
+                    }`}
                   >
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       {/* Category & Status badges */}
                       <div className="flex items-center justify-between gap-1.5 flex-wrap">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
                             {req.category}
                           </span>
                           {req.amount_type === 'fixed' ? (
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-900 border border-blue-300">
                               {isMl ? `നിശ്ചിത തുക: ₹${req.fixed_amount}` : `Fixed: ₹${req.fixed_amount}`}
                             </span>
                           ) : (
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                              {isMl ? 'ഇഷ്ടമുള്ള തുക നൽകാം' : 'Pay as you wish'}
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                              {isMl ? 'ഇഷ്ടമുള്ള തുക' : 'Pay as you wish'}
                             </span>
                           )}
                         </div>
@@ -767,11 +985,11 @@ export default function ResidentPaymentCenter() {
 
                       {/* Title & Description */}
                       <div>
-                        <h3 className="font-bold text-slate-900 text-base tracking-tight">
+                        <h3 className="font-bold text-slate-900 text-sm sm:text-base tracking-tight">
                           {req.title}
                         </h3>
                         {req.description && (
-                          <p className="text-xs text-slate-600 mt-1 leading-relaxed line-clamp-3">
+                          <p className="text-xs text-slate-600 mt-1 leading-relaxed line-clamp-2 sm:line-clamp-3">
                             {req.description}
                           </p>
                         )}
@@ -797,7 +1015,7 @@ export default function ResidentPaymentCenter() {
                     </div>
 
                     {/* Household Contribution Status Card */}
-                    <div className="mt-4 pt-3 border-t border-slate-100">
+                    <div className="mt-3.5 pt-3 border-t border-slate-100">
                       {isVerified ? (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-100/70 border border-emerald-300 text-emerald-950">
@@ -821,7 +1039,7 @@ export default function ResidentPaymentCenter() {
                             variant="outline"
                             size="sm"
                             onClick={() => handleOpenSplReceipt(myContrib, req)}
-                            className="w-full text-xs font-semibold border-emerald-400 text-emerald-800 hover:bg-emerald-50 gap-1.5 cursor-pointer"
+                            className="w-full text-xs font-semibold border-emerald-400 text-emerald-800 hover:bg-emerald-50 gap-1.5 cursor-pointer min-h-[42px]"
                           >
                             <FileText className="h-3.5 w-3.5" />
                             {isMl ? 'ഡിജിറ്റൽ രസീത് കാണുക' : 'View Digital Receipt'}
@@ -850,7 +1068,7 @@ export default function ResidentPaymentCenter() {
                           <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-950 space-y-1">
                             <div className="flex items-center justify-between">
                               <span className="font-bold text-xs text-rose-900">
-                                {isMl ? 'സ്ഥിരീകരിക്കാൻ സാധിച്ചില്ല / നിരസിച്ചു' : 'Verification Disputed / Rejected'}
+                                {isMl ? 'സ്ഥിരീകരിക്കാൻ സാധിച്ചില്ല' : 'Verification Rejected'}
                               </span>
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-200 text-rose-900">
                                 {isMl ? 'പരാജയം' : 'Failed'}
@@ -866,7 +1084,7 @@ export default function ResidentPaymentCenter() {
                             variant="destructive"
                             size="sm"
                             onClick={() => handleOpenReqModal(req, myContrib)}
-                            className="w-full text-xs font-bold gap-1.5 cursor-pointer"
+                            className="w-full text-xs font-bold gap-1.5 cursor-pointer min-h-[42px]"
                           >
                             <CreditCard className="h-3.5 w-3.5" />
                             {isMl ? 'റഫറൻസ് വീണ്ടും സമർപ്പിക്കുക' : 'Re-submit Payment Reference'}
@@ -877,7 +1095,7 @@ export default function ResidentPaymentCenter() {
                           variant="primary"
                           size="sm"
                           onClick={() => handleOpenReqModal(req)}
-                          className="w-full text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white gap-2 shadow-xs cursor-pointer py-2.5"
+                          className="w-full text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white gap-2 shadow-xs cursor-pointer min-h-[44px]"
                         >
                           {req.amount_type === 'fixed' ? (
                             <>
@@ -901,13 +1119,12 @@ export default function ResidentPaymentCenter() {
           </div>
         )}
 
-
-        {/* Tabbed Transaction History Table (Monthly Dues & Special Collections) */}
+        {/* 5. Tabbed Transaction History Table & Mobile Cards */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
           {/* Tabs & Type Navigation */}
-          <div className="px-4 sm:px-6 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="p-3 sm:px-6 sm:py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
             <div>
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
                 <span>{isMl ? 'മാസവരി രേഖകളും ഇടപാട് ചരിത്രവും' : 'Dues Records & Transaction History'}</span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
                   {allTransactions.length} {isMl ? 'ആകെ' : 'Total'}
@@ -920,36 +1137,39 @@ export default function ResidentPaymentCenter() {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
-              {/* Type Filter Pills with smooth mobile swipe */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              {/* Type Filter Pills with smooth horizontal swipe on mobile */}
               <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-[11px] overflow-x-auto no-scrollbar">
                 <button
                   type="button"
                   onClick={() => setTypeFilter('all')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${typeFilter === 'all'
+                  className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    typeFilter === 'all'
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                  }`}
                 >
                   {isMl ? `എല്ലാം (${allTransactions.length})` : `All (${allTransactions.length})`}
                 </button>
                 <button
                   type="button"
                   onClick={() => setTypeFilter('monthly')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${typeFilter === 'monthly'
+                  className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    typeFilter === 'monthly'
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                  }`}
                 >
                   {isMl ? `മാസവരി (${dueTransactions.length})` : `Monthly Dues (${dueTransactions.length})`}
                 </button>
                 <button
                   type="button"
                   onClick={() => setTypeFilter('special')}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${typeFilter === 'special'
+                  className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    typeFilter === 'special'
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                  }`}
                 >
                   {isMl ? `പ്രത്യേക പിരിവുകൾ (${specialTransactions.length})` : `Special Appeals (${specialTransactions.length})`}
                 </button>
@@ -958,21 +1178,29 @@ export default function ResidentPaymentCenter() {
               {/* Status Filter Tabs with smooth mobile swipe */}
               <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
                 {[
-                  { id: 'all', label: isMl ? 'എല്ലാം' : 'All' },
-                  { id: 'pending', label: isMl ? 'അടയ്ക്കാനുള്ളവ' : 'Pending' },
-                  { id: 'under_review', label: isMl ? 'പരിശോധനയിൽ' : 'Under Review' },
-                  { id: 'verified', label: isMl ? 'സ്ഥിരീകരിച്ചവ' : 'Paid / Verified' },
-                  { id: 'failed', label: isMl ? 'പരാജയപ്പെട്ടവ' : 'Failed' },
+                  { id: 'all', label: isMl ? 'എല്ലാം' : 'All', count: allTransactions.length },
+                  { id: 'pending', label: isMl ? 'അടയ്ക്കാനുള്ളവ' : 'Pending', count: pendingDues.length },
+                  { id: 'under_review', label: isMl ? 'പരിശോധനയിൽ' : 'Under Review', count: totalUnderReviewCount },
+                  { id: 'verified', label: isMl ? 'സ്ഥിരീകരിച്ചവ' : 'Verified', count: verifiedDues.length + verifiedSpecialContribs.length },
+                  { id: 'failed', label: isMl ? 'പരാജയപ്പെട്ടവ' : 'Failed', count: totalFailedCount },
                 ].map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${activeTab === tab.id
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                      activeTab === tab.id
                         ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold'
                         : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                      }`}
+                    }`}
                   >
-                    {tab.label}
+                    <span>{tab.label}</span>
+                    {tab.count > 0 && (
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                        activeTab === tab.id ? 'bg-emerald-200 text-emerald-900 font-extrabold' : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {tab.count}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -1006,10 +1234,11 @@ export default function ResidentPaymentCenter() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-slate-900 text-sm">{tx.title}</span>
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${tx.sourceType === 'special_payment'
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              tx.sourceType === 'special_payment'
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                 : 'bg-slate-100 text-slate-700 border-slate-200'
-                              }`}
+                            }`}
                           >
                             {tx.categoryBadge}
                           </span>
@@ -1022,7 +1251,21 @@ export default function ResidentPaymentCenter() {
                         {formatCurrency(tx.amount)}
                       </td>
                       <td className="py-3.5 px-4 font-mono text-slate-700">
-                        {tx.transactionRef || '—'}
+                        {tx.transactionRef ? (
+                          <div className="inline-flex items-center gap-1.5">
+                            <span>{tx.transactionRef}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyText(tx.transactionRef!, 'UTR')}
+                              className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                              title={isMl ? 'UTR കോപ്പി ചെയ്യുക' : 'Copy UTR'}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td className="py-3.5 px-4">
                         <Badge variant={tx.status} size="sm">
@@ -1045,7 +1288,7 @@ export default function ResidentPaymentCenter() {
                         ) : tx.status === 'failed' ? (
                           <span className="text-rose-600 font-medium">{isMl ? 'സ്ഥിരീകരണം നിരസിച്ചു' : 'Verification rejected'}</span>
                         ) : (
-                          isMl ? 'അടവ് രേഖപ്പെടുത്തിയിട്ടില്ല' : 'Awaiting submission'
+                          <span className="text-amber-800 font-medium">{isMl ? 'അടവ് രേഖപ്പെടുത്തിയിട്ടില്ല' : 'Awaiting submission'}</span>
                         )}
                       </td>
                       <td className="py-3.5 px-6 text-right">
@@ -1055,7 +1298,7 @@ export default function ResidentPaymentCenter() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleOpenSplReceipt(tx.rawContrib!, tx.rawReq!)}
-                              className="gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer"
+                              className="gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer min-h-[36px]"
                             >
                               <FileText className="h-3.5 w-3.5" />
                               {isMl ? 'ഡിജിറ്റൽ രസീത്' : 'Digital Receipt'}
@@ -1065,7 +1308,7 @@ export default function ResidentPaymentCenter() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleOpenReceipt(tx.rawDue!)}
-                              className="gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer"
+                              className="gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer min-h-[36px]"
                             >
                               <FileText className="h-3.5 w-3.5" />
                               {isMl ? 'ഡിജിറ്റൽ രസീത്' : 'Digital Receipt'}
@@ -1076,8 +1319,9 @@ export default function ResidentPaymentCenter() {
                             variant="primary"
                             size="sm"
                             onClick={() => handleOpenSubmitModal(tx.rawDue!)}
-                            className="gap-1.5 cursor-pointer"
+                            className="gap-1.5 cursor-pointer min-h-[36px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold"
                           >
+                            <CreditCard className="h-3.5 w-3.5" />
                             {isMl ? 'പണമടച്ച് UTR നൽകുക' : 'Pay / Enter UTR'}
                           </Button>
                         ) : tx.status === 'failed' ? (
@@ -1086,8 +1330,9 @@ export default function ResidentPaymentCenter() {
                               variant="destructive"
                               size="sm"
                               onClick={() => handleOpenReqModal(tx.rawReq!, tx.rawContrib)}
-                              className="gap-1.5 cursor-pointer"
+                              className="gap-1.5 cursor-pointer min-h-[36px]"
                             >
+                              <CreditCard className="h-3.5 w-3.5" />
                               {isMl ? 'UTR വീണ്ടും സമർപ്പിക്കുക' : 'Re-submit UTR'}
                             </Button>
                           ) : tx.rawDue ? (
@@ -1095,13 +1340,16 @@ export default function ResidentPaymentCenter() {
                               variant="destructive"
                               size="sm"
                               onClick={() => handleOpenSubmitModal(tx.rawDue!)}
-                              className="gap-1.5 cursor-pointer"
+                              className="gap-1.5 cursor-pointer min-h-[36px]"
                             >
+                              <CreditCard className="h-3.5 w-3.5" />
                               {isMl ? 'UTR വീണ്ടും സമർപ്പിക്കുക' : 'Re-submit UTR'}
                             </Button>
                           ) : null
                         ) : (
-                          <span className="text-slate-400 text-xs italic">{isMl ? 'പരിശോധനയിൽ' : 'In Admin Queue'}</span>
+                          <span className="text-amber-800 text-xs font-semibold bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                            {isMl ? 'പരിശോധനയിൽ' : 'In Admin Queue'}
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -1119,7 +1367,7 @@ export default function ResidentPaymentCenter() {
               </div>
             ) : (
               filteredTransactions.map((tx) => (
-                <div key={tx.id} className="p-4 space-y-3 hover:bg-slate-50/50 transition-colors">
+                <div key={tx.id} className="p-3.5 sm:p-4 space-y-3 hover:bg-slate-50/50 transition-colors">
                   {/* Top row: Title, Category badge, Status */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="space-y-0.5">
@@ -1145,12 +1393,26 @@ export default function ResidentPaymentCenter() {
                   {/* Middle row: Amount & UTR */}
                   <div className="bg-slate-50/90 p-3 rounded-xl border border-slate-200/80 flex items-center justify-between text-xs">
                     <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">{isMl ? 'തുക' : 'Amount'}</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">{isMl ? 'തുക' : 'Amount'}</span>
                       <span className="font-extrabold text-base text-slate-900">{formatCurrency(tx.amount)}</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-[10px] text-slate-400 uppercase font-semibold block">{isMl ? 'ഇടപാട് UTR' : 'Transaction UTR'}</span>
-                      <span className="font-mono font-bold text-slate-800 text-xs">{tx.transactionRef || '—'}</span>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">{isMl ? 'ഇടപാട് UTR' : 'Transaction UTR'}</span>
+                      {tx.transactionRef ? (
+                        <div className="flex items-center gap-1 justify-end font-mono font-bold text-slate-800 text-xs">
+                          <span>{tx.transactionRef}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyText(tx.transactionRef!, 'UTR')}
+                            className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                            title={isMl ? 'UTR കോപ്പി ചെയ്യുക' : 'Copy UTR'}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="font-mono text-slate-400 text-xs">—</span>
+                      )}
                     </div>
                   </div>
 
@@ -1158,12 +1420,12 @@ export default function ResidentPaymentCenter() {
                   <div className="text-[11px]">
                     {tx.status === 'verified' && tx.verifiedAt ? (
                       <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                         {isMl ? `സ്ഥിരീകരിച്ചത്: ${formatDateTime(tx.verifiedAt)}` : `Verified on ${formatDateTime(tx.verifiedAt)}`}
                       </span>
                     ) : tx.status === 'under_review' ? (
                       <span className="text-amber-800 font-medium flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5 text-amber-600" />
+                        <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                         {isMl ? `സമർപ്പിച്ചത്: ${tx.submittedAt ? formatDateTime(tx.submittedAt) : 'സമീപകാലത്ത്'} • പരിശോധനയിൽ` : `Submitted ${tx.submittedAt ? formatDateTime(tx.submittedAt) : 'recently'} • Under Review`}
                       </span>
                     ) : tx.status === 'failed' && tx.rejectionReason ? (
@@ -1173,18 +1435,18 @@ export default function ResidentPaymentCenter() {
                       </span>
                     ) : tx.status === 'failed' ? (
                       <span className="text-rose-600 font-medium flex items-center gap-1">
-                        <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />
+                        <AlertTriangle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
                         {isMl ? 'സ്ഥിരീകരണം നിരസിച്ചു' : 'Verification rejected by administration'}
                       </span>
                     ) : (
-                      <span className="text-slate-400 flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5 text-slate-400" />
+                      <span className="text-amber-800 font-medium flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5 text-amber-600 shrink-0" />
                         {isMl ? 'അടവ് രേഖപ്പെടുത്തിയിട്ടില്ല' : 'Awaiting payment & reference submission'}
                       </span>
                     )}
                   </div>
 
-                  {/* Action Button */}
+                  {/* Action Button (Touch-Friendly Minimum 44px height) */}
                   <div>
                     {tx.status === 'verified' ? (
                       tx.sourceType === 'special_payment' && tx.rawContrib && tx.rawReq ? (
@@ -1192,7 +1454,7 @@ export default function ResidentPaymentCenter() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleOpenSplReceipt(tx.rawContrib!, tx.rawReq!)}
-                          className="w-full justify-center gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer min-h-[42px] font-semibold"
+                          className="w-full justify-center gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer min-h-[44px] font-bold"
                         >
                           <FileText className="h-4 w-4" />
                           {isMl ? 'ഡിജിറ്റൽ രസീത് കാണുക' : 'View Digital Receipt'}
@@ -1202,7 +1464,7 @@ export default function ResidentPaymentCenter() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleOpenReceipt(tx.rawDue!)}
-                          className="w-full justify-center gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer min-h-[42px] font-semibold"
+                          className="w-full justify-center gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer min-h-[44px] font-bold"
                         >
                           <FileText className="h-4 w-4" />
                           {isMl ? 'ഡിജിറ്റൽ രസീത് കാണുക' : 'View Digital Receipt'}
@@ -1213,7 +1475,7 @@ export default function ResidentPaymentCenter() {
                         variant="primary"
                         size="sm"
                         onClick={() => handleOpenSubmitModal(tx.rawDue!)}
-                        className="w-full justify-center gap-1.5 cursor-pointer min-h-[42px] font-semibold"
+                        className="w-full justify-center gap-1.5 cursor-pointer min-h-[44px] font-bold bg-emerald-700 hover:bg-emerald-800 text-white"
                       >
                         <CreditCard className="h-4 w-4" />
                         {isMl ? 'മാസവരി അടച്ച് UTR നൽകുക' : 'Pay Dues & Enter UTR'}
@@ -1224,7 +1486,7 @@ export default function ResidentPaymentCenter() {
                           variant="destructive"
                           size="sm"
                           onClick={() => handleOpenReqModal(tx.rawReq!, tx.rawContrib)}
-                          className="w-full justify-center gap-1.5 cursor-pointer min-h-[42px] font-semibold"
+                          className="w-full justify-center gap-1.5 cursor-pointer min-h-[44px] font-bold"
                         >
                           <CreditCard className="h-4 w-4" />
                           {isMl ? 'UTR വീണ്ടും സമർപ്പിക്കുക' : 'Re-submit UTR Reference'}
@@ -1234,14 +1496,14 @@ export default function ResidentPaymentCenter() {
                           variant="destructive"
                           size="sm"
                           onClick={() => handleOpenSubmitModal(tx.rawDue!)}
-                          className="w-full justify-center gap-1.5 cursor-pointer min-h-[42px] font-semibold"
+                          className="w-full justify-center gap-1.5 cursor-pointer min-h-[44px] font-bold"
                         >
                           <CreditCard className="h-4 w-4" />
                           {isMl ? 'UTR വീണ്ടും സമർപ്പിക്കുക' : 'Re-submit UTR Reference'}
                         </Button>
                       ) : null
                     ) : (
-                      <div className="py-2.5 text-center text-xs text-amber-800 font-semibold bg-amber-50 rounded-xl border border-amber-200/80">
+                      <div className="py-2.5 text-center text-xs text-amber-900 font-semibold bg-amber-50 rounded-xl border border-amber-200/80">
                         {isMl ? 'സമർപ്പിച്ചു • അഡ്മിൻ പരിശോധനയിൽ' : 'Submitted & Awaiting Admin Verification'}
                       </div>
                     )}
@@ -1309,10 +1571,11 @@ export default function ResidentPaymentCenter() {
             </label>
             <input
               type="text"
+              inputMode="text"
               placeholder="e.g. 423987123984 or UPI/20260905/4456123"
               value={transactionRef}
               onChange={(e) => setTransactionRef(e.target.value)}
-              className="w-full p-3 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none uppercase"
+              className="w-full p-3 rounded-xl border border-slate-300 font-mono text-base sm:text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none uppercase bg-white"
               required
             />
             <p className="text-[11px] text-slate-400 mt-1">
@@ -1322,15 +1585,21 @@ export default function ResidentPaymentCenter() {
             </p>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-slate-100">
             <Button
               type="button"
               variant="outline"
               onClick={() => setSubmitModalOpen(false)}
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[38px]"
             >
               {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
             </Button>
-            <Button type="submit" variant="primary" isLoading={isSubmitting}>
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={isSubmitting}
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-[38px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold"
+            >
               {isMl ? 'പരിശോധനയ്ക്കായി സമർപ്പിക്കുക' : 'Submit for Verification'}
             </Button>
           </div>
@@ -1469,10 +1738,11 @@ export default function ResidentPaymentCenter() {
               </label>
               <input
                 type="text"
+                inputMode="text"
                 placeholder="e.g. 423987123984 or UPI/20260905/4456123"
                 value={contribUtr}
                 onChange={(e) => setContribUtr(e.target.value)}
-                className="w-full p-3 rounded-xl border border-slate-300 font-mono text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none uppercase"
+                className="w-full p-3 rounded-xl border border-slate-300 font-mono text-base sm:text-xs focus:ring-2 focus:ring-emerald-600 focus:outline-none uppercase bg-white"
                 required
               />
               <p className="text-[11px] text-slate-400 mt-1">
@@ -1482,12 +1752,13 @@ export default function ResidentPaymentCenter() {
               </p>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-3 border-t border-slate-100">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setRequestModalOpen(false)}
                 disabled={isSubmittingContrib}
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[38px]"
               >
                 {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
               </Button>
@@ -1495,7 +1766,7 @@ export default function ResidentPaymentCenter() {
                 type="submit"
                 variant="primary"
                 isLoading={isSubmittingContrib}
-                className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
+                className="w-full sm:w-auto min-h-[44px] sm:min-h-[38px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
               >
                 {isMl ? 'സംഭാവന റഫറൻസ് സമർപ്പിക്കുക' : 'Submit Contribution Reference'}
               </Button>
