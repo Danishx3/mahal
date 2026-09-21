@@ -659,7 +659,6 @@ export default function OnboardingPage() {
                   </label>
                   <input
                     type="text"
-                    placeholder={isMl ? 'ഉദാഹരണത്തിന്: ബൈത്തുൽ നൂർ, അൽ റഹ്മ' : 'e.g., Baitul Noor, Darul Aman, Al Rahma'}
                     className={`w-full px-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 ${errors.house?.house_name ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
                       }`}
                     {...register('house.house_name')}
@@ -679,7 +678,6 @@ export default function OnboardingPage() {
                   </label>
                   <input
                     type="text"
-                    placeholder={isMl ? 'ഉദാഹരണത്തിന്: VII/142 അല്ലെങ്കിൽ വാർഡ് 4, ഡോർ 89' : 'e.g., VII/142 or Ward 4, Door 89'}
                     className={`w-full px-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 ${errors.house?.house_number ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
                       }`}
                     {...register('house.house_number')}
@@ -699,7 +697,6 @@ export default function OnboardingPage() {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g., MHL-ALU-042"
                     className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-mono uppercase transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 ${errors.house?.mahallu_reg_no ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
                       }`}
                     {...register('house.mahallu_reg_no')}
@@ -742,7 +739,6 @@ export default function OnboardingPage() {
                   </label>
                   <input
                     type="tel"
-                    placeholder="e.g., +91 98471 23456"
                     className={`w-full px-3.5 py-2.5 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-600 ${errors.house?.phone ? 'border-rose-400 bg-rose-50/30' : 'border-slate-300'
                       }`}
                     {...register('house.phone')}
@@ -869,7 +865,6 @@ export default function OnboardingPage() {
                           </label>
                           <input
                             type="text"
-                            placeholder={isMl ? 'തിരിച്ചറിയൽ രേഖയിലുള്ള പേര്' : 'Full name as per official ID'}
                             className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs"
                             {...register(`members.${index}.name` as const)}
                           />
