@@ -185,17 +185,7 @@ export function MarriageCertificateSlipModal({
               display: block;
               margin-bottom: 2px;
             }
-            .disclaimer-box {
-              background: #f0fdf4;
-              border: 1.5px solid #86efac;
-              border-radius: 8px;
-              padding: 8px 12px;
-              margin-top: 10px;
-              text-align: center;
-              font-size: 11px;
-              font-weight: 700;
-              color: #166534;
-            }
+
             .signatures-section {
               display: flex;
               justify-content: space-between;
@@ -314,11 +304,7 @@ export function MarriageCertificateSlipModal({
               </p>
             </div>
 
-            <!-- Prominent notice as requested by user -->
-            <div class="disclaimer-box">
-              📢 ശ്രദ്ധിക്കുക: ഇത് അപേക്ഷാ അക്നോളജ്മെന്റ് രേഖയാണ്. ഔദ്യോഗിക വിവാഹ സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക.<br/>
-              <span style="font-size: 10px; font-weight: 500; color: #15803d;">(NOTE: This is an Acknowledgment Slip. Please contact the Mahallu Committee office to collect the official stamped certificate.)</span>
-            </div>
+
 
             <!-- Signatures Section -->
             <div class="signatures-section">
@@ -383,21 +369,6 @@ export function MarriageCertificateSlipModal({
 
         {/* Modal Body / Reference Certificate Style Preview */}
         <div className="p-4 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto bg-slate-50/50">
-          {/* Important Notice Banner (Requested by user) */}
-          <div className="bg-amber-50 border-2 border-amber-300/80 rounded-2xl p-4 text-center space-y-1">
-            <p className="text-xs sm:text-sm font-extrabold text-amber-950 flex items-center justify-center gap-1.5">
-              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-              {isMl
-                ? 'നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു, സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക'
-                : 'Your application is accepted, contact mahal committee for certificate'}
-            </p>
-            <p className="text-[11px] sm:text-xs font-semibold text-amber-900">
-              {isMl
-                ? 'ഇതൊരു അപേക്ഷാ അക്നോളജ്മെന്റ് രേഖയാണ്. ഒറിജിനൽ സീൽ വെച്ച വിവാഹ സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.'
-                : 'This is an application acknowledgment slip. Please contact the Mahallu committee office to obtain the official stamped certificate.'}
-            </p>
-          </div>
-
           {/* Scanned Reference Style Certificate Preview Box */}
           <div className="bg-white rounded-2xl p-5 sm:p-7 border-2 border-sky-600 shadow-sm relative space-y-4">
             {/* Header matching physical certificate */}
