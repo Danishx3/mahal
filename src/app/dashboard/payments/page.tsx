@@ -367,7 +367,7 @@ export default function ResidentPaymentCenter() {
 
   const handleOpenSubmitModal = (due: PaymentDue) => {
     setSelectedDue(due);
-    setTransactionRef(due.transaction_ref || '');
+    setTransactionRef('');
     setSubmitModalOpen(true);
   };
 
@@ -403,6 +403,7 @@ export default function ResidentPaymentCenter() {
           'success'
         );
         setSubmitModalOpen(false);
+        setTransactionRef('');
 
         // Immediate optimistic UI update
         setHouse((prev) => {
@@ -454,7 +455,7 @@ export default function ResidentPaymentCenter() {
       // Custom / flexible amount: do NOT preselect any amount
       setContribAmount('');
     }
-    setContribUtr(existingContrib?.transaction_ref || '');
+    setContribUtr('');
     setRequestModalOpen(true);
   };
 
@@ -1404,7 +1405,10 @@ export default function ResidentPaymentCenter() {
       {/* Submit Payment Reference Modal */}
       <Modal
         isOpen={submitModalOpen}
-        onClose={() => setSubmitModalOpen(false)}
+        onClose={() => {
+          setSubmitModalOpen(false);
+          setTransactionRef('');
+        }}
         title={isMl ? 'മാസവരി പേയ്‌മെന്റ് റഫറൻസ് സമർപ്പിക്കുക (UTR)' : 'Submit Payment Reference (UTR)'}
         description={
           isMl
@@ -1474,7 +1478,10 @@ export default function ResidentPaymentCenter() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setSubmitModalOpen(false)}
+              onClick={() => {
+                setSubmitModalOpen(false);
+                setTransactionRef('');
+              }}
               className="w-full sm:w-auto min-h-[44px] sm:min-h-[38px]"
             >
               {isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
@@ -1510,7 +1517,11 @@ export default function ResidentPaymentCenter() {
       {/* Special Request Contribution & UPI Modal */}
       <Modal
         isOpen={requestModalOpen}
-        onClose={() => setRequestModalOpen(false)}
+        onClose={() => {
+          setRequestModalOpen(false);
+          setContribUtr('');
+          setContribAmount('');
+        }}
         title={
           selectedReq
             ? (isMl ? `സംഭാവന: ${selectedReq.title}` : `Contribute: ${selectedReq.title}`)
@@ -1641,7 +1652,11 @@ export default function ResidentPaymentCenter() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setRequestModalOpen(false)}
+                onClick={() => {
+                  setRequestModalOpen(false);
+                  setContribUtr('');
+                  setContribAmount('');
+                }}
                 disabled={isSubmittingContrib}
                 className="w-full sm:w-auto min-h-[44px] sm:min-h-[38px]"
               >
