@@ -303,7 +303,7 @@ export default function OnboardingPage() {
             userId: user.id,
           },
         }),
-      }).catch(() => {});
+      }).catch(() => { });
 
       router.push('/onboarding/pending');
     } catch (err: any) {
@@ -675,7 +675,7 @@ export default function OnboardingPage() {
                 {/* House Number / Ward No */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    {isMl ? 'പഞ്ചായത്ത് / വാർഡ് വീട്ടു നമ്പർ *' : 'Panchayat / Ward House Number *'}
+                    {isMl ? 'വീട്ടു നമ്പർ *' : 'House Number *'}
                   </label>
                   <input
                     type="text"
@@ -718,7 +718,7 @@ export default function OnboardingPage() {
                 {/* Division Selector */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    {isMl ? 'മഹല്ല് ഡിവിഷൻ / വാർഡ് *' : 'Mahallu Division / Ward *'}
+                    {isMl ? 'മഹല്ല് ഡിവിഷൻ *' : 'Mahallu Division *'}
                   </label>
                   <select
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600"
@@ -948,8 +948,9 @@ export default function OnboardingPage() {
                             className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs"
                             {...register(`members.${index}.job_status` as const)}
                           >
-                            <option value="Employed">{isMl ? 'ജോലി (നാട്ടിൽ)' : 'Employed (Local)'}</option>
+                            <option value="Employed">{isMl ? 'ജോലി (self)' : 'Employed (self)'}</option>
                             <option value="Business">{isMl ? 'ബിസിനസ്സ് / വ്യാപാരം' : 'Business / Trade'}</option>
+                            <option value="Government">{isMl ? 'ഗവൺമെൻ്റ് ജോലി' : 'Government Job'}</option>
                             <option value="Abroad">{isMl ? 'പ്രവാസി (NRI)' : 'Abroad / NRI'}</option>
                             <option value="Homemaker">{isMl ? 'വീട്ടമ്മ' : 'Homemaker'}</option>
                             <option value="Student">{isMl ? 'വിദ്യാർത്ഥി' : 'Student'}</option>
@@ -969,7 +970,10 @@ export default function OnboardingPage() {
                             className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs"
                             {...register(`members.${index}.general_education` as const)}
                           >
-                            <option value="Professional">{isMl ? 'പ്രൊഫഷണൽ (MBBS/B.Tech/CA)' : 'Professional (MBBS/B.Tech/CA)'}</option>
+                            <option value="Phd">{isMl ? 'പി.എച്ച്.ഡി' : 'PHD'}</option>
+                            <option value="MBBS">{isMl ? 'എം.ബി.ബി.എസ്' : 'MBBS'}</option>
+                            <option value="B.Tech">{isMl ? 'ബി.ടെക്' : 'B.Tech'}</option>
+                            <option value="CA">{isMl ? 'സി.എ' : 'CA'}</option>
                             <option value="PG">{isMl ? 'ബിരുദാനന്തര ബിരുദം (PG)' : 'Post Graduate (PG)'}</option>
                             <option value="Degree">{isMl ? 'ബിരുദം (Degree)' : 'Bachelor Degree (Graduate)'}</option>
                             <option value="Diploma">{isMl ? 'ഡിപ്ലോമ / ITI' : 'Diploma / ITI'}</option>
@@ -999,13 +1003,21 @@ export default function OnboardingPage() {
                             {...register(`members.${index}.religious_education` as const)}
                           >
                             <option value="Basic">{isMl ? 'ഖുർആൻ പാരായണം' : 'Basic Quran Reading'}</option>
-                            <option value="Madrasa-10th">{isMl ? 'മദ്രസ 10-ാം തരം' : 'Madrasa 10th Standard'}</option>
-                            <option value="Madrasa-12th">{isMl ? 'മദ്രസ 12-ാം തരം' : 'Madrasa 12th Standard'}</option>
-                            <option value="Madrasa-7th">{isMl ? 'മദ്രസ 7-ാം തരം' : 'Madrasa 7th Standard'}</option>
-                            <option value="Madrasa-5th">{isMl ? 'മദ്രസ 5-ാം തരം' : 'Madrasa 5th Standard'}</option>
                             <option value="Dars">{isMl ? 'ദർസ് വിദ്യാർത്ഥി' : 'Dars Student'}</option>
                             <option value="Islamic Scholar">{isMl ? 'ഇസ്‌ലാമിക് പണ്ഡിതൻ (ഫൈസി/ബാഖവി/ഹുദവി)' : 'Islamic Scholar (Faizy/Baqavi/Hudawi)'}</option>
                             <option value="Hafiz">{isMl ? 'ഹാഫിളുൽ ഖുർആൻ' : 'Hafiz-ul-Quran'}</option>
+                            <option value="12">12th Standard</option>
+                            <option value="11">11th Standard</option>
+                            <option value="10">10th Standard</option>
+                            <option value="9">9th Standard</option>
+                            <option value="8">8th Standard</option>
+                            <option value="7">7th Standard</option>
+                            <option value="6">6th Standard</option>
+                            <option value="5">5th Standard</option>
+                            <option value="4">4th Standard</option>
+                            <option value="3">3rd Standard</option>
+                            <option value="2">2nd Standard</option>
+                            <option value="1">1st Standard</option>
                             <option value="Other">{isMl ? 'മറ്റുള്ളവ' : 'Other'}</option>
                           </select>
                         </div>
