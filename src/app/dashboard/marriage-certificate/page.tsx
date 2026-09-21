@@ -283,7 +283,7 @@ export default function MarriageCertificateDashboardPage() {
     } catch (err: any) {
       toast(
         err?.message ||
-          (isMl ? 'അപേക്ഷ സമർപ്പിക്കാനായില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.' : 'Could not submit application. Please try again.'),
+        (isMl ? 'അപേക്ഷ സമർപ്പിക്കാനായില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.' : 'Could not submit application. Please try again.'),
         'error'
       );
     } finally {
@@ -688,43 +688,6 @@ export default function MarriageCertificateDashboardPage() {
             </p>
           </div>
 
-          {/* Prominent Guidelines / Alerts */}
-          <div className="p-6 sm:p-8 pb-0 space-y-3">
-            {/* Instruction Banner 1: Official Record Accuracy */}
-            <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 flex items-start gap-3 text-xs sm:text-sm text-sky-950">
-              <Info className="h-5 w-5 text-sky-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-extrabold text-sky-900">
-                  {isMl
-                    ? 'വിവരങ്ങൾ ഔദ്യോഗിക രേഖയിലുള്ളതുപോലെ നൽകുക (Enter details as official record)'
-                    : 'Enter all details strictly as per official records'}
-                </p>
-                <p className="text-sky-800 text-xs mt-0.5">
-                  {isMl
-                    ? 'വരന്റെയും വധുവിന്റെയും രക്ഷിതാക്കളുടെയും പേരുകൾ, വീട്ടുപേര്, വിലാസം എന്നിവ ആധാർ കാർഡ് / എസ്.എസ്.എൽ.സി സർട്ടിഫിക്കറ്റിലുള്ളതുപോലെ അക്ഷരത്തെറ്റുകളില്ലാതെ ഇംഗ്ലീഷിൽ രേഖപ്പെടുത്തുക.'
-                    : 'Ensure names, father names, house names, and addresses match official identification records (Aadhaar, SSLC, Passport) to avoid verification delays.'}
-                </p>
-              </div>
-            </div>
-
-            {/* Instruction Banner 2: Acknowledgment Notice */}
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-xs sm:text-sm text-amber-950">
-              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-extrabold text-amber-900">
-                  {isMl
-                    ? 'ശ്രദ്ധിക്കുക: ഇതൊരു അപേക്ഷാ അക്നോളജ്മെന്റ് രേഖ മാത്രമാണ്'
-                    : 'Notice: This digital form generates an Acknowledgment Slip'}
-                </p>
-                <p className="text-amber-800 text-xs mt-0.5">
-                  {isMl
-                    ? 'അപേക്ഷ സമർപ്പിച്ച ശേഷം ലഭ്യമാകുന്ന സ്ലിപ്പ് ഒരു അക്നോളജ്മെന്റ് മാത്രമാണ്. കമ്മിറ്റി പരിശോധിച്ച് നൽകുന്ന ഔദ്യോഗിക വിവാഹ സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.'
-                    : 'The slip generated upon submission is an application acknowledgment. Please contact the Mahallu committee office to collect the official stamped and signed certificate.'}
-                </p>
-              </div>
-            </div>
-          </div>
-
           <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-8">
             {/* Household Auto-filled Meta */}
             <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200/80 flex flex-wrap items-center justify-between gap-4 text-xs sm:text-sm">
@@ -742,8 +705,8 @@ export default function MarriageCertificateDashboardPage() {
                   {isMl && effectiveHouse?.division
                     ? DIVISION_LABELS_ML[effectiveHouse.division] || effectiveHouse.division
                     : effectiveHouse?.division
-                    ? DIVISION_LABELS[effectiveHouse.division] || effectiveHouse.division
-                    : ''}
+                      ? DIVISION_LABELS[effectiveHouse.division] || effectiveHouse.division
+                      : ''}
                 </span>
               </div>
               <div>
@@ -772,33 +735,6 @@ export default function MarriageCertificateDashboardPage() {
                     {isMl ? 'വരന്റെ പൂർണ്ണ പേര് *' : 'Husband Full Name *'}
                   </label>
 
-                  {/* Dropdown Suggestion from Household Members (age >= 21) */}
-                  {eligibleGroomMembers.length > 0 && (
-                    <div className="mb-2">
-                      <select
-                        value={
-                          eligibleGroomMembers.find(
-                            (m: any) => m.name.toLowerCase() === husbandName.trim().toLowerCase()
-                          )?.name || ''
-                        }
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val) {
-                            const found = eligibleGroomMembers.find((m: any) => m.name === val);
-                            if (found) handleSelectMember(found);
-                          }
-                        }}
-                        className="w-full px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50/60 text-slate-800 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-600 transition-all cursor-pointer"
-                      >
-                        <option value="">{isMl ? 'കുടുംബാംഗങ്ങളിൽ നിന്ന് തിരഞ്ഞെടുക്കുക (≥ 21 വയസ്സ്)' : 'Select from family members (≥ 21 yrs)'}</option>
-                        {eligibleGroomMembers.map((member: FamilyMember) => (
-                          <option key={member.id || member.name} value={member.name}>
-                            {member.name} ({member.relationship}, {member.age} {isMl ? 'വയസ്സ്' : 'yrs'})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
 
                   <input
                     type="text"
@@ -813,12 +749,10 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder={isMl ? 'ഔദ്യോഗിക രേഖയിലെ വരന്റെ പൂർണ്ണ പേര്' : 'Husband full name as in official record'}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.husband_name
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.husband_name
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.husband_name && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -845,12 +779,10 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder={isMl ? 'പിതാവിന്റെ പൂർണ്ണ പേര്' : "Father's full name"}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.husband_father_name
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.husband_father_name
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.husband_father_name && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -877,12 +809,10 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder={isMl ? 'വീട്ടുപേര്' : 'House name'}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.husband_house_name
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.husband_house_name
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.husband_house_name && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -909,12 +839,10 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder={isMl ? 'പോസ്റ്റ് ഓഫീസ് (e.g. Mariyad)' : 'e.g. Mariyad'}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.husband_post_office
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.husband_post_office
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.husband_post_office && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -941,12 +869,10 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder={isMl ? 'താലൂക്ക് (e.g. Ernad)' : 'e.g. Ernad'}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.husband_taluk
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.husband_taluk
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.husband_taluk && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -964,7 +890,6 @@ export default function MarriageCertificateDashboardPage() {
                     type="text"
                     value={husbandDistrict}
                     onChange={(e) => setHusbandDistrict(e.target.value.toUpperCase())}
-                    placeholder="MALAPPURAM"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-600 uppercase font-semibold"
                   />
                 </div>
@@ -978,7 +903,6 @@ export default function MarriageCertificateDashboardPage() {
                     type="text"
                     value={husbandState}
                     onChange={(e) => setHusbandState(e.target.value.toUpperCase())}
-                    placeholder="KERALA"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-600 uppercase font-semibold"
                   />
                 </div>
@@ -1031,12 +955,10 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder={isMl ? 'ഔദ്യോഗിക രേഖയിലെ വധുവിന്റെ പൂർണ്ണ പേര്' : 'Wife full name as in official record'}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.wife_full_name
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_full_name
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.wife_full_name && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -1063,12 +985,10 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder={isMl ? 'പിതാവിന്റെ പൂർണ്ണ പേര്' : "Father's full name"}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.wife_father_name
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_father_name
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.wife_father_name && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -1095,12 +1015,10 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder={isMl ? 'വീട്ടുപേര്' : 'House name'}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.wife_house_name
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_house_name
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.wife_house_name && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -1127,12 +1045,10 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder={isMl ? 'പോസ്റ്റ് ഓഫീസ്' : 'Post office name'}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.wife_post_office
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_post_office
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.wife_post_office && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -1159,12 +1075,10 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder={isMl ? 'താലൂക്ക് (e.g. Ernad)' : 'e.g. Ernad'}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.wife_taluk
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_taluk
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.wife_taluk && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -1182,7 +1096,6 @@ export default function MarriageCertificateDashboardPage() {
                     type="text"
                     value={wifeDistrict}
                     onChange={(e) => setWifeDistrict(e.target.value.toUpperCase())}
-                    placeholder="MALAPPURAM"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-600 uppercase font-semibold"
                   />
                 </div>
@@ -1196,7 +1109,6 @@ export default function MarriageCertificateDashboardPage() {
                     type="text"
                     value={wifeState}
                     onChange={(e) => setWifeState(e.target.value.toUpperCase())}
-                    placeholder="KERALA"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-600 uppercase font-semibold"
                   />
                 </div>
@@ -1246,11 +1158,10 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.date_of_nikah
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.date_of_nikah
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.date_of_nikah && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -1277,12 +1188,10 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder={isMl ? 'e.g. Ansari Juma Masjid, Mariyad അല്ലെങ്കിൽ ഓഡിറ്റോറിയം' : 'e.g. Ansari Juma Masjid, Mariyad or Venue name'}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                      formErrors.nikah_venue
-                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                    }`}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.nikah_venue
+                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                      }`}
                   />
                   {formErrors.nikah_venue && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
