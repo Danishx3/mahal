@@ -33,6 +33,7 @@ import {
   Sparkles,
   PlusCircle,
   HelpCircle,
+  AlertTriangle,
 } from 'lucide-react';
 
 export default function MarriageCertificateDashboardPage() {
@@ -58,19 +59,43 @@ export default function MarriageCertificateDashboardPage() {
     }, 80);
   };
 
-  // Form State
-  const [husbandName, setHusbandName] = useState('');
-  const [husbandDob, setHusbandDob] = useState('');
-  const [wifeFullName, setWifeFullName] = useState('');
-  const [wifeInitial, setWifeInitial] = useState('');
-  const [wifeFatherName, setWifeFatherName] = useState('');
-  const [wifeAddress, setWifeAddress] = useState('');
-  const [wifeDob, setWifeDob] = useState('');
-  const [dateOfNikah, setDateOfNikah] = useState('');
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-
   // Active household data
   const effectiveHouse = house || (user ? DataService.getHouseByUserId(user.id) : null);
+
+  // Form State: Groom / Husband
+  const [husbandName, setHusbandName] = useState('');
+  const [husbandFatherName, setHusbandFatherName] = useState('');
+  const [husbandHouseName, setHusbandHouseName] = useState('');
+  const [husbandPostOffice, setHusbandPostOffice] = useState('Mariyad');
+  const [husbandTaluk, setHusbandTaluk] = useState('Ernad');
+  const [husbandDistrict, setHusbandDistrict] = useState('MALAPPURAM');
+  const [husbandState, setHusbandState] = useState('KERALA');
+  const [husbandDob, setHusbandDob] = useState('');
+
+  // Form State: Bride / Wife
+  const [wifeFullName, setWifeFullName] = useState('');
+  const [wifeFatherName, setWifeFatherName] = useState('');
+  const [wifeHouseName, setWifeHouseName] = useState('');
+  const [wifePostOffice, setWifePostOffice] = useState('');
+  const [wifeTaluk, setWifeTaluk] = useState('Ernad');
+  const [wifeDistrict, setWifeDistrict] = useState('MALAPPURAM');
+  const [wifeState, setWifeState] = useState('KERALA');
+  const [wifeInitial, setWifeInitial] = useState('');
+  const [wifeAddress, setWifeAddress] = useState('');
+  const [wifeDob, setWifeDob] = useState('');
+
+  // Form State: Ceremony Details
+  const [dateOfNikah, setDateOfNikah] = useState('');
+  const [nikahVenue, setNikahVenue] = useState('Ansari Juma Masjid, Mariyad');
+
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Auto-fill default house name if available
+  useEffect(() => {
+    if (effectiveHouse?.house_name && !husbandHouseName) {
+      setHusbandHouseName(effectiveHouse.house_name);
+    }
+  }, [effectiveHouse?.house_name]);
 
   // Filter household family members age >= 21 (excluding female relatives) for husband suggestions
   const eligibleGroomMembers = useMemo(() => {
@@ -132,6 +157,9 @@ export default function MarriageCertificateDashboardPage() {
   // Handle member suggestion click
   const handleSelectMember = (member: FamilyMember) => {
     setHusbandName(member.name);
+    if (!husbandHouseName && effectiveHouse?.house_name) {
+      setHusbandHouseName(effectiveHouse.house_name);
+    }
     // Estimate approximate birth year based on age if DOB not set
     if (member.age) {
       const estYear = new Date().getFullYear() - member.age;
@@ -151,10 +179,6 @@ export default function MarriageCertificateDashboardPage() {
     );
   };
 
-  const handlePrintSlip = () => {
-    window.print();
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!effectiveHouse) {
@@ -164,13 +188,25 @@ export default function MarriageCertificateDashboardPage() {
 
     const payload = {
       husband_name: husbandName.trim(),
-      husband_dob: husbandDob,
+      husband_father_name: husbandFatherName.trim(),
+      husband_house_name: husbandHouseName.trim(),
+      husband_post_office: husbandPostOffice.trim(),
+      husband_taluk: husbandTaluk.trim(),
+      husband_district: husbandDistrict.trim() || 'MALAPPURAM',
+      husband_state: husbandState.trim() || 'KERALA',
+      husband_dob: husbandDob || undefined,
       wife_full_name: wifeFullName.trim(),
-      wife_initial: wifeInitial.trim(),
       wife_father_name: wifeFatherName.trim(),
-      wife_address: wifeAddress.trim(),
-      wife_dob: wifeDob,
+      wife_house_name: wifeHouseName.trim(),
+      wife_post_office: wifePostOffice.trim(),
+      wife_taluk: wifeTaluk.trim(),
+      wife_district: wifeDistrict.trim() || 'MALAPPURAM',
+      wife_state: wifeState.trim() || 'KERALA',
+      wife_initial: wifeInitial.trim() || undefined,
+      wife_address: wifeAddress.trim() || undefined,
+      wife_dob: wifeDob || undefined,
       date_of_nikah: dateOfNikah,
+      nikah_venue: nikahVenue.trim() || 'Ansari Juma Masjid, Mariyad',
     };
 
     // Validate using Zod schema
@@ -182,7 +218,12 @@ export default function MarriageCertificateDashboardPage() {
         errors[field] = issue.message;
       }
       setFormErrors(errors);
-      toast(isMl ? 'ദയവായി ആവശ്യമായ എല്ലാ വിവരങ്ങളും കൃത്യമായി പൂരിപ്പിക്കുക.' : 'Please complete all required fields correctly.', 'error');
+      toast(
+        isMl
+          ? 'ദയവായി ആവശ്യമായ എല്ലാ വിവരങ്ങളും ഔദ്യോഗിക രേഖകൾ പ്രകാരം കൃത്യമായി പൂരിപ്പിക്കുക.'
+          : 'Please complete all required fields accurately as per official records.',
+        'error'
+      );
       return;
     }
 
@@ -204,24 +245,47 @@ export default function MarriageCertificateDashboardPage() {
 
       toast(
         isMl
-          ? 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ മഹല്ല് ഭരണസമിതിക്ക് സമർപ്പിച്ചു. കമ്മിറ്റിക്ക് ഇമെയിൽ അറിയിപ്പ് അയച്ചിട്ടുണ്ട്.'
-          : 'Your marriage certificate application has been sent to Mahallu administration. Committee has been notified by email.',
+          ? 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സമർപ്പിച്ചു. അക്നോളജ്മെന്റ് സ്ലിപ്പ് ലഭ്യമാണ്.'
+          : 'Your application has been submitted. Acknowledgment slip is now ready.',
         'success'
       );
 
       // Clear form
       setHusbandName('');
+      setHusbandFatherName('');
+      setHusbandHouseName('');
+      setHusbandPostOffice('Mariyad');
+      setHusbandTaluk('Ernad');
+      setHusbandDistrict('MALAPPURAM');
+      setHusbandState('KERALA');
       setHusbandDob('');
+
       setWifeFullName('');
-      setWifeInitial('');
       setWifeFatherName('');
+      setWifeHouseName('');
+      setWifePostOffice('');
+      setWifeTaluk('Ernad');
+      setWifeDistrict('MALAPPURAM');
+      setWifeState('KERALA');
+      setWifeInitial('');
       setWifeAddress('');
       setWifeDob('');
+
       setDateOfNikah('');
+      setNikahVenue('Ansari Juma Masjid, Mariyad');
       setShowForm(false);
-      loadApplications();
+      await loadApplications();
+
+      // Open acknowledgment slip automatically for immediate printing
+      if (result) {
+        setSelectedAppForSlip(result);
+      }
     } catch (err: any) {
-      toast(err?.message || (isMl ? 'അപേക്ഷ സമർപ്പിക്കാനായില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.' : 'Could not submit application. Please try again.'), 'error');
+      toast(
+        err?.message ||
+          (isMl ? 'അപേക്ഷ സമർപ്പിക്കാനായില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.' : 'Could not submit application. Please try again.'),
+        'error'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -248,23 +312,25 @@ export default function MarriageCertificateDashboardPage() {
         <div className="space-y-1.5 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold uppercase tracking-wider border border-emerald-200/60">
             <Heart className="h-3.5 w-3.5 text-emerald-600 fill-emerald-100" />
-            {isMl ? 'ഔദ്യോഗിക മഹല്ല് രജിസ്ട്രി' : 'Official Mahallu Registry'}
+            {isMl ? 'മഹല്ല് വിവാഹ രജിസ്ട്രി' : 'Mahallu Marriage Registry'}
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             {isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ' : 'Marriage Certificate Application'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
             {isMl
-              ? 'മഹല്ല് വിവാഹ സർട്ടിഫിക്കറ്റിനായി ഓൺലൈനായി അപേക്ഷിക്കുക. കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് ഭരണസമിതി നേരിട്ടാണ് അപേക്ഷകൾ പരിശോധിച്ച് നടപടി സ്വീകരിക്കുന്നത്.'
-              : 'Apply online for official Mahallu marriage certificate verification. Applications are reviewed directly by the Kunjikkulam Juma Masjid Administration Committee.'}
+              ? 'വിവാഹ സർട്ടിഫിക്കറ്റിനായി വിവരങ്ങൾ ഔദ്യോഗിക രേഖകളിലുള്ളതുപോലെ സമർപ്പിക്കുക. ഓൺലൈൻ സ്ലിപ്പ് അക്നോളജ്മെന്റാണ്, ഔദ്യോഗിക സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക.'
+              : 'Submit marriage certificate details as per official records. The digital slip is an application acknowledgment. Contact Mahallu Committee for the official certificate.'}
           </p>
           <div className="flex flex-wrap items-center gap-3 pt-2 text-xs text-slate-600">
             <span className="font-semibold text-slate-900">
-              {isMl ? 'കുടുംബം:' : 'Household:'} <span className="text-emerald-700">{effectiveHouse?.house_name || (isMl ? 'എന്റെ വീട്' : 'My Household')}</span>
+              {isMl ? 'കുടുംബം:' : 'Household:'}{' '}
+              <span className="text-emerald-700">{effectiveHouse?.house_name || (isMl ? 'എന്റെ വീട്' : 'My Household')}</span>
             </span>
             <span className="text-slate-300">•</span>
             <span>
-              {isMl ? 'മഹല്ല് രജി. നമ്പർ:' : 'Reg No:'} <span className="font-mono font-bold text-slate-800">{effectiveHouse?.mahallu_reg_no || 'N/A'}</span>
+              {isMl ? 'മഹല്ല് രജി. നമ്പർ:' : 'Reg No:'}{' '}
+              <span className="font-mono font-bold text-slate-800">{effectiveHouse?.mahallu_reg_no || 'N/A'}</span>
             </span>
           </div>
         </div>
@@ -281,11 +347,7 @@ export default function MarriageCertificateDashboardPage() {
             </Button>
           )}
           {showForm && applications.length > 0 && (
-            <Button
-              onClick={() => setShowForm(false)}
-              variant="outline"
-              className="w-full md:w-auto"
-            >
+            <Button onClick={() => setShowForm(false)} variant="outline" className="w-full md:w-auto">
               {isMl ? 'നിലവിലെ അപേക്ഷകൾ കാണുക' : 'View Existing Applications'}
             </Button>
           )}
@@ -297,7 +359,7 @@ export default function MarriageCertificateDashboardPage() {
         <div className="space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-emerald-600" />
-            {isMl ? `അംഗീകരിച്ച സർട്ടിഫിക്കറ്റുകൾ (${approvedApps.length})` : `Approved Certificates (${approvedApps.length})`}
+            {isMl ? `അംഗീകരിച്ച അപേക്ഷകൾ (${approvedApps.length})` : `Approved Applications (${approvedApps.length})`}
           </h2>
 
           {approvedApps.map((app) => (
@@ -305,14 +367,13 @@ export default function MarriageCertificateDashboardPage() {
               key={app.id}
               className="bg-white rounded-3xl border-2 border-emerald-500 shadow-md p-6 sm:p-8 relative overflow-hidden"
             >
-              {/* Top Accent Ribbon */}
               <div
                 className="absolute top-0 left-0 right-0 h-2 bg-emerald-600"
                 style={{ background: 'linear-gradient(to right, #10b981, #14b8a6, #059669)' }}
               />
 
               <div className="space-y-6">
-                {/* User Notification Banner */}
+                {/* Notice Banner */}
                 <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-3.5">
                     <div className="h-10 w-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
@@ -326,8 +387,8 @@ export default function MarriageCertificateDashboardPage() {
                       </h3>
                       <p className="text-xs sm:text-sm text-emerald-800 mt-0.5">
                         {isMl
-                          ? 'നിങ്ങളുടെ വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സ്വീകരിച്ചു. ഒറിജിനൽ സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുന്നതിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.'
-                          : 'Your marriage certificate application has been accepted. Please contact the Mahallu committee office to collect the original certificate.'}
+                          ? 'ഇത് അപേക്ഷാ അക്നോളജ്മെന്റ് രേഖയാണ്. ഔദ്യോഗിക സീൽ വെച്ച വിവാഹ സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.'
+                          : 'This is an application acknowledgment slip. Please contact the Mahallu committee office to obtain the official stamped certificate.'}
                       </p>
                     </div>
                   </div>
@@ -343,7 +404,7 @@ export default function MarriageCertificateDashboardPage() {
                   </Button>
                 </div>
 
-                {/* Details Bento Grid */}
+                {/* Details Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Groom & Bride Info */}
                   <div className="bg-slate-50/80 rounded-2xl p-4 sm:p-5 border border-slate-200/80 space-y-3">
@@ -352,29 +413,40 @@ export default function MarriageCertificateDashboardPage() {
                       {isMl ? 'ദമ്പതികളുടെ വിവരങ്ങൾ' : 'Couple Information'}
                     </div>
                     <div className="space-y-2 text-xs sm:text-sm">
-                      <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
-                        <span className="text-slate-500">{isMl ? 'വരൻ (ഭർത്താവ്):' : 'Husband (Groom):'}</span>
-                        <span className="font-bold text-slate-900">{app.husband_name}</span>
+                      <div className="flex justify-between items-start py-1 border-b border-slate-200/60">
+                        <span className="text-slate-500">{isMl ? 'വരൻ:' : 'Husband:'}</span>
+                        <div className="text-right">
+                          <span className="font-bold text-slate-900 block">{app.husband_name}</span>
+                          {app.husband_father_name && (
+                            <span className="text-slate-500 text-xs block">S/o {app.husband_father_name}</span>
+                          )}
+                          <span className="text-slate-500 text-xs block">
+                            {app.husband_house_name || app.house_name}, {app.husband_post_office || 'Mariyad'}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
-                        <span className="text-slate-500">{isMl ? 'വരന്റെ ജനനത്തീയതി:' : 'Husband DOB:'}</span>
-                        <span className="font-medium text-slate-700">{app.husband_dob}</span>
+
+                      <div className="flex justify-between items-start py-1 border-b border-slate-200/60">
+                        <span className="text-slate-500">{isMl ? 'വധു:' : 'Wife:'}</span>
+                        <div className="text-right">
+                          <span className="font-bold text-slate-900 block">{app.wife_full_name}</span>
+                          {app.wife_father_name && (
+                            <span className="text-slate-500 text-xs block">D/o {app.wife_father_name}</span>
+                          )}
+                          <span className="text-slate-500 text-xs block">
+                            {app.wife_house_name || app.wife_address || '—'}, {app.wife_post_office || ''}
+                          </span>
+                        </div>
                       </div>
+
                       <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
-                        <span className="text-slate-500">{isMl ? 'വധു (ഭാര്യ):' : 'Wife (Bride):'}</span>
-                        <span className="font-bold text-slate-900">{app.wife_full_name}</span>
-                      </div>
-                      <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
-                        <span className="text-slate-500">{isMl ? 'വധുവിന്റെ ഇനിഷ്യൽ:' : 'Wife Initial (Full Form):'}</span>
-                        <span className="font-medium text-slate-700">{app.wife_initial}</span>
-                      </div>
-                      <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
-                        <span className="text-slate-500">{isMl ? 'വധുവിന്റെ പിതാവ്:' : "Wife's Father:"}</span>
-                        <span className="font-medium text-slate-700">{app.wife_father_name}</span>
-                      </div>
-                      <div className="flex justify-between items-center py-1">
-                        <span className="text-slate-500">{isMl ? 'നിക്കാഹ് തീയതി:' : 'Date of Nikah:'}</span>
+                        <span className="text-slate-500">{isMl ? 'നിക്കാഹ് തീയതി:' : 'Nikah Date:'}</span>
                         <span className="font-bold text-emerald-800">{app.date_of_nikah}</span>
+                      </div>
+
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-slate-500">{isMl ? 'വേദി / സ്ഥലം:' : 'Ceremony Place:'}</span>
+                        <span className="font-medium text-slate-800">{app.nikah_venue || 'Ansari Juma Masjid, Mariyad'}</span>
                       </div>
                     </div>
                   </div>
@@ -384,23 +456,23 @@ export default function MarriageCertificateDashboardPage() {
                     <div className="space-y-3">
                       <div className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                         <FileCheck className="h-3.5 w-3.5 text-emerald-600" />
-                        {isMl ? 'സർട്ടിഫിക്കറ്റ് വിവരങ്ങൾ' : 'Certificate Details'}
+                        {isMl ? 'അക്നോളജ്മെന്റ് രേഖ' : 'Acknowledgment Details'}
                       </div>
                       <div className="space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
-                          <span className="text-slate-500">{isMl ? 'സർട്ടിഫിക്കറ്റ് നമ്പർ:' : 'Certificate Ref No:'}</span>
+                          <span className="text-slate-500">{isMl ? 'റഫറൻസ് നമ്പർ:' : 'Ref. No:'}</span>
                           <span className="font-mono font-extrabold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-md">
                             {app.certificate_number || 'MHL-MC-2026-PENDING'}
                           </span>
                         </div>
                         <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
                           <span className="text-slate-500">{isMl ? 'നിലവിലെ സ്ഥിതി:' : 'Status:'}</span>
-                          <Badge variant="approved">{isMl ? 'അംഗീകരിച്ചു (Approved)' : 'Accepted & Approved'}</Badge>
+                          <Badge variant="approved">{isMl ? 'അംഗീകരിച്ചു (Approved)' : 'Accepted & Verified'}</Badge>
                         </div>
                         <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
-                          <span className="text-slate-500">{isMl ? 'അംഗീകരിച്ച തീയതി:' : 'Approval Date:'}</span>
+                          <span className="text-slate-500">{isMl ? 'തീയതി:' : 'Date:'}</span>
                           <span className="font-medium text-slate-700">
-                            {app.reviewed_at ? formatDateTime(app.reviewed_at) : (isMl ? 'അംഗീകരിച്ചു' : 'Approved')}
+                            {app.reviewed_at ? formatDateTime(app.reviewed_at) : formatDateTime(app.submitted_at)}
                           </span>
                         </div>
                         {app.admin_notes && (
@@ -418,13 +490,13 @@ export default function MarriageCertificateDashboardPage() {
                     <div className="mt-4 bg-emerald-50/80 border border-emerald-200/80 rounded-xl p-3.5 text-xs text-emerald-950 space-y-1">
                       <div className="font-bold flex items-center gap-1.5 text-emerald-900">
                         <Building2 className="h-3.5 w-3.5 text-emerald-700" />
-                        {isMl ? 'മഹല്ല് കമ്മിറ്റി ഹെൽപ്പ്‌ഡെസ്ക്' : 'Mahallu Committee Helpdesk'}
+                        {isMl ? 'മഹല്ല് കമ്മിറ്റി ഓഫീസ്' : 'Mahallu Committee Office'}
                       </div>
                       <p className="text-emerald-800">
                         {isMl ? (
-                          <>കമ്മിറ്റിയുമായി ബന്ധപ്പെടുമ്പോൾ റഫറൻസ് നമ്പർ <strong className="font-mono font-bold text-emerald-950">{app.certificate_number}</strong> ഓർമ്മിപ്പിക്കുക.</>
+                          <>റഫറൻസ് നമ്പർ <strong className="font-mono font-bold text-emerald-950">{app.certificate_number}</strong> സഹിതം മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി നേരിട്ട് ബന്ധപ്പെട്ട് ഔദ്യോഗിക സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുക.</>
                         ) : (
-                          <>Please quote reference number <strong className="font-mono font-bold text-emerald-950">{app.certificate_number}</strong> when contacting the committee.</>
+                          <>Please quote reference <strong className="font-mono font-bold text-emerald-950">{app.certificate_number}</strong> when contacting the committee office to collect the official stamped certificate.</>
                         )}
                       </p>
                       <p className="flex items-center gap-2 pt-1 font-semibold text-emerald-900">
@@ -462,8 +534,8 @@ export default function MarriageCertificateDashboardPage() {
                       {app.husband_name} &amp; {app.wife_full_name}
                     </h3>
                     <p className="text-xs text-slate-500">
-                      {isMl ? 'നിക്കാഹ് തീയതി:' : 'Nikah Date:'} <strong className="text-slate-700">{app.date_of_nikah}</strong> • {isMl ? 'സമർപ്പിച്ചത്:' : 'Submitted:'}{' '}
-                      {formatDateTime(app.submitted_at)}
+                      {isMl ? 'നിക്കാഹ് തീയതി:' : 'Nikah Date:'} <strong className="text-slate-700">{app.date_of_nikah}</strong> • {isMl ? 'വേദി:' : 'Place:'}{' '}
+                      <strong className="text-slate-700">{app.nikah_venue || 'Ansari Juma Masjid, Mariyad'}</strong>
                     </p>
                   </div>
                 </div>
@@ -476,7 +548,7 @@ export default function MarriageCertificateDashboardPage() {
                     className="text-amber-800 border-amber-300 hover:bg-amber-50 text-xs font-semibold flex items-center gap-1"
                   >
                     <Printer className="h-3.5 w-3.5" />
-                    {isMl ? 'സ്ലിപ്പ് പ്രിന്റ് ചെയ്യുക' : 'Print Slip'}
+                    {isMl ? 'അക്നോളജ്മെന്റ് സ്ലിപ്പ്' : 'Print Slip'}
                   </Button>
                   <Badge variant="pending" size="md">
                     {isMl ? 'പരിശോധനയിലാണ്' : 'Pending Verification'}
@@ -484,34 +556,44 @@ export default function MarriageCertificateDashboardPage() {
                 </div>
               </div>
 
-              <div className="bg-amber-50/60 border border-amber-200/60 rounded-2xl p-4 text-xs sm:text-sm text-amber-900 flex items-start gap-3">
-                <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold">{isMl ? 'അപേക്ഷ മഹല്ല് കമ്മിറ്റിക്ക് ലഭിച്ചു' : 'Application Received by Committee'}</p>
-                  <p className="text-xs text-amber-800 mt-0.5">
+              {/* Advisory note */}
+              <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 text-xs sm:text-sm text-amber-900 flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-bold">
                     {isMl
-                      ? 'നിങ്ങൾ നൽകിയ വിവരങ്ങൾ മഹല്ല് നിക്കാഹ് രജിസ്റ്ററുമായി ഒത്തുനോക്കുകയാണ്. അപേക്ഷ അംഗീകരിച്ചാലുടൻ അറിയിപ്പ് ലഭിക്കുന്നതാണ്.'
-                      : 'Your application details are currently being cross-referenced with the official Mahallu Nikah register. You will receive an automated email notification as soon as the application is accepted.'}
+                      ? 'അപേക്ഷ സമർപ്പിച്ചു. സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക.'
+                      : 'Application submitted. Contact Mahal Committee for official certificate.'}
+                  </p>
+                  <p className="text-xs text-amber-800">
+                    {isMl
+                      ? 'നൽകിയിട്ടുള്ള വിവരങ്ങൾ മഹല്ല് നിക്കാഹ് രജിസ്റ്ററുമായി ഒത്തുനോക്കുകയാണ്. ഔദ്യോഗിക വിവാഹ സർട്ടിഫിക്കറ്റിനായി അക്നോളജ്മെന്റ് സ്ലിപ്പുമായി കമ്മിറ്റി ഓഫീസിൽ ബന്ധപ്പെടുക.'
+                      : 'Your application is being verified against the Nikah register. Please present the acknowledgment slip to the Mahallu committee office to obtain your official certificate.'}
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-slate-600 pt-1">
-                <div>
-                  <span className="text-slate-400 block">{isMl ? 'വരന്റെ ജനനത്തീയതി' : 'Groom DOB'}</span>
-                  <span className="font-semibold text-slate-800">{app.husband_dob}</span>
+              {/* Summary Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs text-slate-600 pt-1">
+                <div className="bg-slate-50 p-2.5 rounded-xl">
+                  <span className="text-slate-400 block">{isMl ? 'വരന്റെ പിതാവ്' : "Groom's Father"}</span>
+                  <span className="font-semibold text-slate-800">{app.husband_father_name || '—'}</span>
                 </div>
-                <div>
-                  <span className="text-slate-400 block">{isMl ? 'വധുവിന്റെ ഇനിഷ്യൽ' : 'Bride Initial'}</span>
-                  <span className="font-semibold text-slate-800">{app.wife_initial}</span>
+                <div className="bg-slate-50 p-2.5 rounded-xl">
+                  <span className="text-slate-400 block">{isMl ? 'വരന്റെ വീട് / പി.ഒ' : 'Groom House / PO'}</span>
+                  <span className="font-semibold text-slate-800">
+                    {app.husband_house_name || app.house_name}, {app.husband_post_office || 'Mariyad'}
+                  </span>
                 </div>
-                <div>
-                  <span className="text-slate-400 block">{isMl ? 'വധുവിന്റെ പിതാവ്' : 'Bride Father'}</span>
-                  <span className="font-semibold text-slate-800">{app.wife_father_name}</span>
+                <div className="bg-slate-50 p-2.5 rounded-xl">
+                  <span className="text-slate-400 block">{isMl ? 'വധുവിന്റെ പിതാവ്' : "Bride's Father"}</span>
+                  <span className="font-semibold text-slate-800">{app.wife_father_name || '—'}</span>
                 </div>
-                <div>
-                  <span className="text-slate-400 block">{isMl ? 'വധുവിന്റെ ജനനത്തീയതി' : 'Bride DOB'}</span>
-                  <span className="font-semibold text-slate-800">{app.wife_dob}</span>
+                <div className="bg-slate-50 p-2.5 rounded-xl">
+                  <span className="text-slate-400 block">{isMl ? 'വധുവിന്റെ വീട് / പി.ഒ' : 'Bride House / PO'}</span>
+                  <span className="font-semibold text-slate-800">
+                    {app.wife_house_name || '—'}, {app.wife_post_office || '—'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -544,20 +626,34 @@ export default function MarriageCertificateDashboardPage() {
 
               <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-xs text-rose-900 space-y-1">
                 <span className="font-bold block">{isMl ? 'കമ്മിറ്റി നൽകിയ കാരണം:' : 'Reason for Rejection from Committee:'}</span>
-                <p>{app.rejection_reason || (isMl ? 'വിവരങ്ങൾ സ്ഥിരീകരിക്കാനായില്ല.' : 'Could not verify Nikah details with local registry.')}</p>
+                <p>{app.rejection_reason || (isMl ? 'വിവരങ്ങൾ ഔദ്യോഗിക രേഖകളുമായി ഒത്തുപോകുന്നില്ല.' : 'Details do not match official records.')}</p>
               </div>
 
               <div className="flex justify-end">
                 <Button
                   onClick={() => {
                     setHusbandName(app.husband_name);
-                    setHusbandDob(app.husband_dob);
+                    setHusbandFatherName(app.husband_father_name || '');
+                    setHusbandHouseName(app.husband_house_name || app.house_name);
+                    setHusbandPostOffice(app.husband_post_office || 'Mariyad');
+                    setHusbandTaluk(app.husband_taluk || 'Ernad');
+                    setHusbandDistrict(app.husband_district || 'MALAPPURAM');
+                    setHusbandState(app.husband_state || 'KERALA');
+                    setHusbandDob(app.husband_dob || '');
+
                     setWifeFullName(app.wife_full_name);
-                    setWifeInitial(app.wife_initial);
-                    setWifeFatherName(app.wife_father_name);
-                    setWifeAddress(app.wife_address);
-                    setWifeDob(app.wife_dob);
+                    setWifeFatherName(app.wife_father_name || '');
+                    setWifeHouseName(app.wife_house_name || '');
+                    setWifePostOffice(app.wife_post_office || '');
+                    setWifeTaluk(app.wife_taluk || 'Ernad');
+                    setWifeDistrict(app.wife_district || 'MALAPPURAM');
+                    setWifeState(app.wife_state || 'KERALA');
+                    setWifeInitial(app.wife_initial || '');
+                    setWifeAddress(app.wife_address || '');
+                    setWifeDob(app.wife_dob || '');
+
                     setDateOfNikah(app.date_of_nikah);
+                    setNikahVenue(app.nikah_venue || 'Ansari Juma Masjid, Mariyad');
                     openFormAndScroll();
                   }}
                   variant="outline"
@@ -580,16 +676,53 @@ export default function MarriageCertificateDashboardPage() {
           >
             <div className="flex items-center gap-2 text-xs font-bold text-emerald-300 uppercase tracking-wider mb-2">
               <PlusCircle className="h-4 w-4 text-emerald-400" />
-              {isMl ? 'പുതിയ അപേക്ഷാ ഫോറം' : 'New Application Form'}
+              {isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷാ ഫോറം' : 'Marriage Certificate Application Form'}
             </div>
             <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-              {isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ' : 'Marriage Certificate Request'}
+              {isMl ? 'ഔദ്യോഗിക വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ' : 'Official Marriage Certificate Application'}
             </h2>
             <p className="text-xs sm:text-sm text-emerald-100/90 mt-1 max-w-2xl leading-relaxed">
               {isMl
-                ? 'ഔദ്യോഗിക രേഖകളിലുള്ളതുപോലെ വരന്റെയും വധുവിന്റെയും വിവരങ്ങൾ പൂരിപ്പിക്കുക. മഹല്ല് കമ്മിറ്റി പരിശോധിച്ച് അപ്‌ഡേറ്റുകൾ നൽകുന്നതാണ്.'
-                : 'Fill in the groom and bride details as recorded in official records. Once submitted, Mahallu committee will verify the registry and dispatch email updates.'}
+                ? 'വിവരങ്ങൾ ഔദ്യോഗിക രേഖകളിലുള്ളതുപോലെ (ആധാർ, എസ്.എസ്.എൽ.സി) കൃത്യമായി നൽകുക. ഓൺലൈൻ സ്ലിപ്പ് അക്നോളജ്മെന്റാണ്, സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക.'
+                : 'Enter details strictly as per official records (Aadhaar, SSLC, etc.). The online slip is an acknowledgment. Contact Mahal Committee for the official certificate.'}
             </p>
+          </div>
+
+          {/* Prominent Guidelines / Alerts */}
+          <div className="p-6 sm:p-8 pb-0 space-y-3">
+            {/* Instruction Banner 1: Official Record Accuracy */}
+            <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 flex items-start gap-3 text-xs sm:text-sm text-sky-950">
+              <Info className="h-5 w-5 text-sky-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-extrabold text-sky-900">
+                  {isMl
+                    ? 'വിവരങ്ങൾ ഔദ്യോഗിക രേഖയിലുള്ളതുപോലെ നൽകുക (Enter details as official record)'
+                    : 'Enter all details strictly as per official records'}
+                </p>
+                <p className="text-sky-800 text-xs mt-0.5">
+                  {isMl
+                    ? 'വരന്റെയും വധുവിന്റെയും രക്ഷിതാക്കളുടെയും പേരുകൾ, വീട്ടുപേര്, വിലാസം എന്നിവ ആധാർ കാർഡ് / എസ്.എസ്.എൽ.സി സർട്ടിഫിക്കറ്റിലുള്ളതുപോലെ അക്ഷരത്തെറ്റുകളില്ലാതെ ഇംഗ്ലീഷിൽ രേഖപ്പെടുത്തുക.'
+                    : 'Ensure names, father names, house names, and addresses match official identification records (Aadhaar, SSLC, Passport) to avoid verification delays.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Instruction Banner 2: Acknowledgment Notice */}
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-xs sm:text-sm text-amber-950">
+              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-extrabold text-amber-900">
+                  {isMl
+                    ? 'ശ്രദ്ധിക്കുക: ഇതൊരു അപേക്ഷാ അക്നോളജ്മെന്റ് രേഖ മാത്രമാണ്'
+                    : 'Notice: This digital form generates an Acknowledgment Slip'}
+                </p>
+                <p className="text-amber-800 text-xs mt-0.5">
+                  {isMl
+                    ? 'അപേക്ഷ സമർപ്പിച്ച ശേഷം ലഭ്യമാകുന്ന സ്ലിപ്പ് ഒരു അക്നോളജ്മെന്റ് മാത്രമാണ്. കമ്മിറ്റി പരിശോധിച്ച് നൽകുന്ന ഔദ്യോഗിക വിവാഹ സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.'
+                    : 'The slip generated upon submission is an application acknowledgment. Please contact the Mahallu committee office to collect the official stamped and signed certificate.'}
+                </p>
+              </div>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-8">
@@ -607,8 +740,10 @@ export default function MarriageCertificateDashboardPage() {
                 <span className="text-slate-500 block">{isMl ? 'വിഭാഗം' : 'Division'}</span>
                 <span className="font-medium text-slate-800 capitalize">
                   {isMl && effectiveHouse?.division
-                    ? (DIVISION_LABELS_ML[effectiveHouse.division] || effectiveHouse.division)
-                    : (effectiveHouse?.division ? DIVISION_LABELS[effectiveHouse.division] || effectiveHouse.division : '')}
+                    ? DIVISION_LABELS_ML[effectiveHouse.division] || effectiveHouse.division
+                    : effectiveHouse?.division
+                    ? DIVISION_LABELS[effectiveHouse.division] || effectiveHouse.division
+                    : ''}
                 </span>
               </div>
               <div>
@@ -617,24 +752,24 @@ export default function MarriageCertificateDashboardPage() {
               </div>
             </div>
 
-            {/* 1. GROOM (HUSBAND) SECTION */}
+            {/* ═══════════════ 1. GROOM (HUSBAND) SECTION ═══════════════ */}
             <div className="space-y-4">
               <div className="border-b border-slate-200 pb-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                 <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2 flex-wrap">
                   <User className="h-4 w-4 text-emerald-700 shrink-0" />
-                  <span>{isMl ? 'ഭാഗം 1: വരന്റെ വിവരങ്ങൾ' : 'Section 1: Husband (Groom) Information'}</span>
+                  <span>{isMl ? 'ഭാഗം 1: വരന്റെ വിവരങ്ങൾ (ഭർത്താവ്)' : 'Section 1: Husband (Groom) Information'}</span>
                   {!isMl && <span className="text-xs font-normal text-slate-500">• വരന്റെ വിവരങ്ങൾ</span>}
                 </h3>
                 <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/60 self-start sm:self-auto shrink-0">
-                  {isMl ? 'നിയമാനുസൃത കുറഞ്ഞ പ്രായം: 21' : 'Legal Min. Age: 21'}
+                  {isMl ? 'ഔദ്യോഗിക രേഖ പ്രകാരം നൽകുക' : 'As per official record'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
                 {/* Husband Name Input */}
-                <div>
+                <div className="sm:col-span-2 md:col-span-2">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    {isMl ? 'വരന്റെ പൂർണ്ണ പേര് *' : 'Husband Name (Full Name) *'}
+                    {isMl ? 'വരന്റെ പൂർണ്ണ പേര് *' : 'Husband Full Name *'}
                   </label>
 
                   {/* Dropdown Suggestion from Household Members (age >= 21) */}
@@ -653,7 +788,7 @@ export default function MarriageCertificateDashboardPage() {
                             if (found) handleSelectMember(found);
                           }
                         }}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 text-slate-800 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-600 transition-all cursor-pointer"
+                        className="w-full px-3.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50/60 text-slate-800 text-xs sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-200 focus:border-emerald-600 transition-all cursor-pointer"
                       >
                         <option value="">{isMl ? 'കുടുംബാംഗങ്ങളിൽ നിന്ന് തിരഞ്ഞെടുക്കുക (≥ 21 വയസ്സ്)' : 'Select from family members (≥ 21 yrs)'}</option>
                         {eligibleGroomMembers.map((member: FamilyMember) => (
@@ -678,11 +813,12 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder={isMl ? 'വരന്റെ പൂർണ്ണ പേര്' : 'Husband full name'}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.husband_name
-                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                      }`}
+                    placeholder={isMl ? 'ഔദ്യോഗിക രേഖയിലെ വരന്റെ പൂർണ്ണ പേര്' : 'Husband full name as in official record'}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+                      formErrors.husband_name
+                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                    }`}
                   />
                   {formErrors.husband_name && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -691,59 +827,194 @@ export default function MarriageCertificateDashboardPage() {
                   )}
                 </div>
 
-                {/* Husband Date of Birth */}
+                {/* Husband's Father Name */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    {isMl ? 'വരന്റെ ജനനത്തീയതി *' : 'Husband Date of Birth *'}
+                    {isMl ? 'വരന്റെ പിതാവിന്റെ പേര് *' : "Husband's Father's Name *"}
+                  </label>
+                  <input
+                    type="text"
+                    value={husbandFatherName}
+                    onChange={(e) => {
+                      setHusbandFatherName(e.target.value);
+                      if (formErrors.husband_father_name) {
+                        setFormErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.husband_father_name;
+                          return n;
+                        });
+                      }
+                    }}
+                    placeholder={isMl ? 'പിതാവിന്റെ പൂർണ്ണ പേര്' : "Father's full name"}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+                      formErrors.husband_father_name
+                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                    }`}
+                  />
+                  {formErrors.husband_father_name && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {formErrors.husband_father_name}
+                    </p>
+                  )}
+                </div>
+
+                {/* Husband House Name */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {isMl ? 'വരന്റെ വീട്ടുപേര് *' : 'Husband House Name *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={husbandHouseName}
+                    onChange={(e) => {
+                      setHusbandHouseName(e.target.value);
+                      if (formErrors.husband_house_name) {
+                        setFormErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.husband_house_name;
+                          return n;
+                        });
+                      }
+                    }}
+                    placeholder={isMl ? 'വീട്ടുപേര്' : 'House name'}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+                      formErrors.husband_house_name
+                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                    }`}
+                  />
+                  {formErrors.husband_house_name && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {formErrors.husband_house_name}
+                    </p>
+                  )}
+                </div>
+
+                {/* Husband Post Office */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {isMl ? 'പോസ്റ്റ് ഓഫീസ് (P.O.) *' : 'Post Office (P.O.) *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={husbandPostOffice}
+                    onChange={(e) => {
+                      setHusbandPostOffice(e.target.value);
+                      if (formErrors.husband_post_office) {
+                        setFormErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.husband_post_office;
+                          return n;
+                        });
+                      }
+                    }}
+                    placeholder={isMl ? 'പോസ്റ്റ് ഓഫീസ് (e.g. Mariyad)' : 'e.g. Mariyad'}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+                      formErrors.husband_post_office
+                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                    }`}
+                  />
+                  {formErrors.husband_post_office && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {formErrors.husband_post_office}
+                    </p>
+                  )}
+                </div>
+
+                {/* Husband Taluk */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {isMl ? 'താലൂക്ക് *' : 'Taluk *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={husbandTaluk}
+                    onChange={(e) => {
+                      setHusbandTaluk(e.target.value);
+                      if (formErrors.husband_taluk) {
+                        setFormErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.husband_taluk;
+                          return n;
+                        });
+                      }
+                    }}
+                    placeholder={isMl ? 'താലൂക്ക് (e.g. Ernad)' : 'e.g. Ernad'}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+                      formErrors.husband_taluk
+                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                    }`}
+                  />
+                  {formErrors.husband_taluk && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {formErrors.husband_taluk}
+                    </p>
+                  )}
+                </div>
+
+                {/* Husband District */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {isMl ? 'ജില്ല *' : 'District *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={husbandDistrict}
+                    onChange={(e) => setHusbandDistrict(e.target.value.toUpperCase())}
+                    placeholder="MALAPPURAM"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-600 uppercase font-semibold"
+                  />
+                </div>
+
+                {/* Husband State */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {isMl ? 'സംസ്ഥാനം *' : 'State *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={husbandState}
+                    onChange={(e) => setHusbandState(e.target.value.toUpperCase())}
+                    placeholder="KERALA"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-600 uppercase font-semibold"
+                  />
+                </div>
+
+                {/* Husband DOB (Optional) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {isMl ? 'വരന്റെ ജനനത്തീയതി (ഐച്ഛികം)' : 'Husband Date of Birth (Optional)'}
                   </label>
                   <input
                     type="date"
                     value={husbandDob}
                     max={maxGroomDob}
-                    onChange={(e) => {
-                      setHusbandDob(e.target.value);
-                      if (formErrors.husband_dob) {
-                        setFormErrors((prev) => {
-                          const n = { ...prev };
-                          delete n.husband_dob;
-                          return n;
-                        });
-                      }
-                    }}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.husband_dob
-                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                      }`}
+                    onChange={(e) => setHusbandDob(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-600"
                   />
-                  {formErrors.husband_dob ? (
-                    <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" /> {formErrors.husband_dob}
-                    </p>
-                  ) : (
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      {isMl ? 'വിവാഹ തീയതിയിൽ 21 വയസോ അതിൽ കൂടുതലോ പ്രായമുണ്ടായിരിക്കണം.' : 'Must be 21 or older on wedding date.'}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
 
-            {/* 2. BRIDE (WIFE) SECTION */}
+            {/* ═══════════════ 2. BRIDE (WIFE) SECTION ═══════════════ */}
             <div className="space-y-4">
               <div className="border-b border-slate-200 pb-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                 <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2 flex-wrap">
                   <User className="h-4 w-4 text-teal-700 shrink-0" />
-                  <span>{isMl ? 'ഭാഗം 2: വധുവിന്റെ വിവരങ്ങൾ' : 'Section 2: Wife (Bride) Information'}</span>
+                  <span>{isMl ? 'ഭാഗം 2: വധുവിന്റെ വിവരങ്ങൾ (ഭാര്യ)' : 'Section 2: Wife (Bride) Information'}</span>
                   {!isMl && <span className="text-xs font-normal text-slate-500">• വധുവിന്റെ വിവരങ്ങൾ</span>}
                 </h3>
                 <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200/60 self-start sm:self-auto shrink-0">
-                  {isMl ? 'നിയമാനുസൃത കുറഞ്ഞ പ്രായം: 18' : 'Legal Min. Age: 18'}
+                  {isMl ? 'ഔദ്യോഗിക രേഖ പ്രകാരം നൽകുക' : 'As per official record'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
                 {/* Wife Full Name */}
-                <div>
+                <div className="sm:col-span-2 md:col-span-2">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
                     {isMl ? 'വധുവിന്റെ പൂർണ്ണ പേര് *' : 'Wife Full Name *'}
                   </label>
@@ -760,11 +1031,12 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder={isMl ? 'വധുവിന്റെ പൂർണ്ണ പേര്' : 'Wife full name'}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_full_name
-                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                      }`}
+                    placeholder={isMl ? 'ഔദ്യോഗിക രേഖയിലെ വധുവിന്റെ പൂർണ്ണ പേര്' : 'Wife full name as in official record'}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+                      formErrors.wife_full_name
+                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                    }`}
                   />
                   {formErrors.wife_full_name && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -773,45 +1045,10 @@ export default function MarriageCertificateDashboardPage() {
                   )}
                 </div>
 
-                {/* Wife Initial (Full Form) */}
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    {isMl ? 'വധുവിന്റെ ഇനിഷ്യൽ (പൂർണ്ണ രൂപം) *' : 'Wife Initial (Full Form) *'}
-                  </label>
-                  <input
-                    type="text"
-                    value={wifeInitial}
-                    onChange={(e) => {
-                      setWifeInitial(e.target.value);
-                      if (formErrors.wife_initial) {
-                        setFormErrors((prev) => {
-                          const n = { ...prev };
-                          delete n.wife_initial;
-                          return n;
-                        });
-                      }
-                    }}
-                    placeholder={isMl ? 'വധുവിന്റെ ഇനിഷ്യൽ (പൂർണ്ണ രൂപം)' : 'Wife initial (full form)'}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_initial
-                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                      }`}
-                  />
-                  {formErrors.wife_initial ? (
-                    <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" /> {formErrors.wife_initial}
-                    </p>
-                  ) : (
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      {isMl ? 'വധുവിന്റെ ഇനിഷ്യൽ പൂർണ്ണമായ വാക്കായി രേഖപ്പെടുത്തുക.' : "Enter bride's initials with complete word expansion."}
-                    </p>
-                  )}
-                </div>
-
                 {/* Wife Father Full Name */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    {isMl ? 'വധുവിന്റെ പിതാവിന്റെ പൂർണ്ണ പേര് *' : "Wife's Father Full Name *"}
+                    {isMl ? 'വധുവിന്റെ പിതാവിന്റെ പേര് *' : "Wife's Father's Name *"}
                   </label>
                   <input
                     type="text"
@@ -826,11 +1063,12 @@ export default function MarriageCertificateDashboardPage() {
                         });
                       }
                     }}
-                    placeholder={isMl ? 'വധുവിന്റെ പിതാവിന്റെ പൂർണ്ണ പേര്' : "Wife's father full name"}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_father_name
-                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                      }`}
+                    placeholder={isMl ? 'പിതാവിന്റെ പൂർണ്ണ പേര്' : "Father's full name"}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+                      formErrors.wife_father_name
+                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                    }`}
                   />
                   {formErrors.wife_father_name && (
                     <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
@@ -839,111 +1077,219 @@ export default function MarriageCertificateDashboardPage() {
                   )}
                 </div>
 
-                {/* Wife Date of Birth */}
+                {/* Wife House Name */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    {isMl ? 'വധുവിന്റെ ജനനത്തീയതി *' : 'Wife Date of Birth *'}
+                    {isMl ? 'വധുവിന്റെ വീട്ടുപേര് *' : 'Wife House Name *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={wifeHouseName}
+                    onChange={(e) => {
+                      setWifeHouseName(e.target.value);
+                      if (formErrors.wife_house_name) {
+                        setFormErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.wife_house_name;
+                          return n;
+                        });
+                      }
+                    }}
+                    placeholder={isMl ? 'വീട്ടുപേര്' : 'House name'}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+                      formErrors.wife_house_name
+                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                    }`}
+                  />
+                  {formErrors.wife_house_name && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {formErrors.wife_house_name}
+                    </p>
+                  )}
+                </div>
+
+                {/* Wife Post Office */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {isMl ? 'പോസ്റ്റ് ഓഫീസ് (P.O.) *' : 'Post Office (P.O.) *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={wifePostOffice}
+                    onChange={(e) => {
+                      setWifePostOffice(e.target.value);
+                      if (formErrors.wife_post_office) {
+                        setFormErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.wife_post_office;
+                          return n;
+                        });
+                      }
+                    }}
+                    placeholder={isMl ? 'പോസ്റ്റ് ഓഫീസ്' : 'Post office name'}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+                      formErrors.wife_post_office
+                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                    }`}
+                  />
+                  {formErrors.wife_post_office && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {formErrors.wife_post_office}
+                    </p>
+                  )}
+                </div>
+
+                {/* Wife Taluk */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {isMl ? 'താലൂക്ക് *' : 'Taluk *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={wifeTaluk}
+                    onChange={(e) => {
+                      setWifeTaluk(e.target.value);
+                      if (formErrors.wife_taluk) {
+                        setFormErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.wife_taluk;
+                          return n;
+                        });
+                      }
+                    }}
+                    placeholder={isMl ? 'താലൂക്ക് (e.g. Ernad)' : 'e.g. Ernad'}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+                      formErrors.wife_taluk
+                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                    }`}
+                  />
+                  {formErrors.wife_taluk && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {formErrors.wife_taluk}
+                    </p>
+                  )}
+                </div>
+
+                {/* Wife District */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {isMl ? 'ജില്ല *' : 'District *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={wifeDistrict}
+                    onChange={(e) => setWifeDistrict(e.target.value.toUpperCase())}
+                    placeholder="MALAPPURAM"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-600 uppercase font-semibold"
+                  />
+                </div>
+
+                {/* Wife State */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {isMl ? 'സംസ്ഥാനം *' : 'State *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={wifeState}
+                    onChange={(e) => setWifeState(e.target.value.toUpperCase())}
+                    placeholder="KERALA"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-600 uppercase font-semibold"
+                  />
+                </div>
+
+                {/* Wife DOB (Optional) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {isMl ? 'വധുവിന്റെ ജനനത്തീയതി (ഐച്ഛികം)' : 'Wife Date of Birth (Optional)'}
                   </label>
                   <input
                     type="date"
                     value={wifeDob}
                     max={maxBrideDob}
-                    onChange={(e) => {
-                      setWifeDob(e.target.value);
-                      if (formErrors.wife_dob) {
-                        setFormErrors((prev) => {
-                          const n = { ...prev };
-                          delete n.wife_dob;
-                          return n;
-                        });
-                      }
-                    }}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_dob
-                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                      }`}
+                    onChange={(e) => setWifeDob(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-emerald-600"
                   />
-                  {formErrors.wife_dob ? (
-                    <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" /> {formErrors.wife_dob}
-                    </p>
-                  ) : (
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      {isMl ? 'വിവാഹ തീയതിയിൽ 18 വയസോ അതിൽ കൂടുതലോ പ്രായമുണ്ടായിരിക്കണം.' : 'Must be 18 or older on wedding date.'}
-                    </p>
-                  )}
-                </div>
-
-                {/* Wife Permanent Address */}
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    {isMl ? 'വധുവിന്റെ സ്ഥിര മേൽവിലാസം *' : 'Wife Permanent Address *'}
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={wifeAddress}
-                    onChange={(e) => {
-                      setWifeAddress(e.target.value);
-                      if (formErrors.wife_address) {
-                        setFormErrors((prev) => {
-                          const n = { ...prev };
-                          delete n.wife_address;
-                          return n;
-                        });
-                      }
-                    }}
-                    placeholder={isMl ? 'വധുവിന്റെ സ്ഥിര മേൽവിലാസം' : 'Wife permanent address'}
-                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.wife_address
-                      ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                      : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
-                      }`}
-                  />
-                  {formErrors.wife_address && (
-                    <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" /> {formErrors.wife_address}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
 
-            {/* 3. NIKAH EVENT DATE */}
+            {/* ═══════════════ 3. CEREMONY DETAILS SECTION ═══════════════ */}
             <div className="space-y-4">
               <div className="border-b border-slate-200 pb-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                 <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2 flex-wrap">
                   <Calendar className="h-4 w-4 text-emerald-700 shrink-0" />
-                  <span>{isMl ? 'ഭാഗം 3: നിക്കാഹ് തീയതി' : 'Section 3: Nikah Ceremony Date'}</span>
-                  {!isMl && <span className="text-xs font-normal text-slate-500">• നിക്കാഹ് തീയതി</span>}
+                  <span>{isMl ? 'ഭാഗം 3: നിക്കാഹ് ചടങ്ങിന്റെ വിവരങ്ങൾ' : 'Section 3: Nikah Ceremony Details'}</span>
+                  {!isMl && <span className="text-xs font-normal text-slate-500">• തീയതിയും വേദിയും</span>}
                 </h3>
               </div>
 
-              <div className="max-w-sm">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  {isMl ? 'നിക്കാഹ് തീയതി *' : 'Date of Nikah *'}
-                </label>
-                <input
-                  type="date"
-                  value={dateOfNikah}
-                  onChange={(e) => {
-                    setDateOfNikah(e.target.value);
-                    if (formErrors.date_of_nikah) {
-                      setFormErrors((prev) => {
-                        const n = { ...prev };
-                        delete n.date_of_nikah;
-                        return n;
-                      });
-                    }
-                  }}
-                  className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${formErrors.date_of_nikah
-                    ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
-                    : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {/* Date of Nikah */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {isMl ? 'നിക്കാഹ് നടന്ന തീയതി *' : 'Date of Nikah *'}
+                  </label>
+                  <input
+                    type="date"
+                    value={dateOfNikah}
+                    onChange={(e) => {
+                      setDateOfNikah(e.target.value);
+                      if (formErrors.date_of_nikah) {
+                        setFormErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.date_of_nikah;
+                          return n;
+                        });
+                      }
+                    }}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+                      formErrors.date_of_nikah
+                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
                     }`}
-                />
-                {formErrors.date_of_nikah && (
-                  <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {formErrors.date_of_nikah}
-                  </p>
-                )}
+                  />
+                  {formErrors.date_of_nikah && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {formErrors.date_of_nikah}
+                    </p>
+                  )}
+                </div>
+
+                {/* Nikah Ceremony Place / Venue */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    {isMl ? 'നിക്കാഹ് നടന്ന സ്ഥലം / വേദി *' : 'Ceremony Place / Venue *'}
+                  </label>
+                  <input
+                    type="text"
+                    value={nikahVenue}
+                    onChange={(e) => {
+                      setNikahVenue(e.target.value);
+                      if (formErrors.nikah_venue) {
+                        setFormErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.nikah_venue;
+                          return n;
+                        });
+                      }
+                    }}
+                    placeholder={isMl ? 'e.g. Ansari Juma Masjid, Mariyad അല്ലെങ്കിൽ ഓഡിറ്റോറിയം' : 'e.g. Ansari Juma Masjid, Mariyad or Venue name'}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+                      formErrors.nikah_venue
+                        ? 'border-rose-400 focus:ring-rose-200 bg-rose-50/20'
+                        : 'border-slate-200 focus:border-emerald-600 focus:ring-emerald-100'
+                    }`}
+                  />
+                  {formErrors.nikah_venue && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" /> {formErrors.nikah_venue}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -952,8 +1298,8 @@ export default function MarriageCertificateDashboardPage() {
               <HelpCircle className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
               <p>
                 {isMl
-                  ? 'ഈ അപേക്ഷ സമർപ്പിക്കുന്നതിലൂടെ, നൽകിയിട്ടുള്ള വിവരങ്ങൾ കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് മഹല്ല് നിക്കാഹ് രജിസ്റ്ററിലുള്ള വിവരങ്ങളുമായി പൂർണ്ണമായും ഒത്തുപോകുന്നതാണെന്ന് നിങ്ങൾ സാക്ഷ്യപ്പെടുത്തുന്നു. അപേക്ഷാ വിവരങ്ങൾ ഭരണസമിതിക്ക് സ്വമേധയാ ലഭിക്കുന്നതാണ്.'
-                  : 'By submitting this application, you declare that the particulars provided above correspond accurately with the official Nikah register of Kunjikkulam Juma Masjid Mahallu. An automatic email notification will be dispatched to the administrative committee.'}
+                  ? 'ഈ അപേക്ഷ സമർപ്പിക്കുന്നതിലൂടെ, നൽകിയിട്ടുള്ള വിവരങ്ങൾ ഔദ്യോഗിക രേഖകളുമായും മഹല്ല് നിക്കാഹ് രജിസ്റ്ററിലുള്ള വിവരങ്ങളുമായും പൂർണ്ണമായും ഒത്തുപോകുന്നതാണെന്ന് സാക്ഷ്യപ്പെടുത്തുന്നു. ഓൺലൈനായി ലഭിക്കുന്ന രേഖ അപേക്ഷാ അക്നോളജ്മെന്റ് മാത്രമാണ്.'
+                  : 'By submitting this application, you declare that all details match official records and the mahallu nikah register. You acknowledge that the online printable slip is an acknowledgment document, and the official signed/sealed certificate must be collected from the Mahallu committee.'}
               </p>
             </div>
 

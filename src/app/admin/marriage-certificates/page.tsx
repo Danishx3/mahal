@@ -97,9 +97,14 @@ export default function AdminMarriageCertificatesPage() {
       const q = searchQuery.toLowerCase().trim();
       return (
         app.husband_name.toLowerCase().includes(q) ||
+        (app.husband_father_name && app.husband_father_name.toLowerCase().includes(q)) ||
+        (app.husband_house_name && app.husband_house_name.toLowerCase().includes(q)) ||
         app.wife_full_name.toLowerCase().includes(q) ||
+        (app.wife_father_name && app.wife_father_name.toLowerCase().includes(q)) ||
+        (app.wife_house_name && app.wife_house_name.toLowerCase().includes(q)) ||
         app.house_name.toLowerCase().includes(q) ||
         app.mahallu_reg_no.toLowerCase().includes(q) ||
+        (app.nikah_venue && app.nikah_venue.toLowerCase().includes(q)) ||
         (app.certificate_number && app.certificate_number.toLowerCase().includes(q)) ||
         (app.applicant_phone && app.applicant_phone.includes(q))
       );
@@ -415,45 +420,63 @@ export default function AdminMarriageCertificatesPage() {
                 {/* Details 3-Column Bento Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
                   {/* Column 1: Groom */}
-                  <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/70 space-y-2">
+                  <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/70 space-y-1.5">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                      {isMl ? 'വരൻ' : 'Husband (Groom)'}
+                      {isMl ? 'വരന്റെ വിവരങ്ങൾ' : 'Husband (Groom)'}
                     </span>
                     <div>
-                      <span className="font-bold text-slate-900 block">{app.husband_name}</span>
-                      <span className="text-slate-500 text-xs">{isMl ? 'ജനനത്തീയതി:' : 'DOB:'} {app.husband_dob}</span>
+                      <span className="font-bold text-slate-900 block text-sm">{app.husband_name}</span>
+                      {app.husband_father_name && (
+                        <span className="text-slate-600 text-xs block font-medium">S/o {app.husband_father_name}</span>
+                      )}
+                      <span className="text-slate-500 text-xs block">
+                        {app.husband_house_name || app.house_name}, P.O. {app.husband_post_office || 'Mariyad'}
+                      </span>
+                      <span className="text-slate-500 text-xs block">
+                        Taluk: {app.husband_taluk || 'Ernad'}, {app.husband_district || 'MALAPPURAM'}
+                      </span>
                     </div>
                   </div>
 
                   {/* Column 2: Bride */}
-                  <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/70 space-y-2">
+                  <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/70 space-y-1.5">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                      {isMl ? 'വധു' : 'Wife (Bride)'}
+                      {isMl ? 'വധുവിന്റെ വിവരങ്ങൾ' : 'Wife (Bride)'}
                     </span>
                     <div>
-                      <span className="font-bold text-slate-900 block">{app.wife_full_name}</span>
-                      <span className="text-slate-500 text-xs block">{isMl ? 'ഇനീഷ്യൽ:' : 'Initial:'} {app.wife_initial}</span>
-                      <span className="text-slate-500 text-xs block">{isMl ? 'പിതാവ്:' : 'Father:'} {app.wife_father_name}</span>
-                      <span className="text-slate-500 text-xs block">{isMl ? 'ജനനത്തീയതി:' : 'DOB:'} {app.wife_dob}</span>
+                      <span className="font-bold text-slate-900 block text-sm">{app.wife_full_name}</span>
+                      {app.wife_father_name && (
+                        <span className="text-slate-600 text-xs block font-medium">D/o {app.wife_father_name}</span>
+                      )}
+                      <span className="text-slate-500 text-xs block">
+                        {app.wife_house_name || app.wife_address || '—'}, P.O. {app.wife_post_office || '—'}
+                      </span>
+                      <span className="text-slate-500 text-xs block">
+                        Taluk: {app.wife_taluk || '—'}, {app.wife_district || 'MALAPPURAM'}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Column 3: Event & Contact */}
-                  <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/70 space-y-2">
+                  {/* Column 3: Ceremony & Contact */}
+                  <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-200/70 space-y-1.5">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                      {isMl ? 'നിക്കാഹും ഫോൺ നമ്പറും' : 'Nikah & Contact'}
+                      {isMl ? 'നിക്കാഹ് ചടങ്ങും ഫോണും' : 'Nikah & Contact'}
                     </span>
                     <div className="space-y-1 text-xs">
                       <div className="flex items-center gap-1.5 font-bold text-emerald-800">
-                        <Calendar className="h-3.5 w-3.5" />
+                        <Calendar className="h-3.5 w-3.5 shrink-0" />
                         {isMl ? 'നിക്കാഹ്:' : 'Nikah:'} {app.date_of_nikah}
                       </div>
+                      <div className="text-slate-700 flex items-start gap-1">
+                        <Building2 className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
+                        <span className="truncate">{app.nikah_venue || 'Ansari Juma Masjid, Mariyad'}</span>
+                      </div>
                       <div className="flex items-center gap-1.5 text-slate-600">
-                        <Phone className="h-3.5 w-3.5 text-slate-400" />
+                        <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                         {app.applicant_phone || (isMl ? 'ഫോൺ ലഭ്യമല്ല' : 'No phone')}
                       </div>
                       <div className="flex items-center gap-1.5 text-slate-600 truncate">
-                        <Mail className="h-3.5 w-3.5 text-slate-400" />
+                        <Mail className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                         {app.applicant_email || (isMl ? 'ഇമെയിൽ ലഭ്യമല്ല' : 'No email')}
                       </div>
                     </div>
@@ -462,14 +485,8 @@ export default function AdminMarriageCertificatesPage() {
 
                 {/* Bride Address & Committee Notes */}
                 <div className="bg-slate-50/50 rounded-xl p-3 border border-slate-200/60 text-xs text-slate-600 space-y-1">
-                  <div className="flex items-start gap-2">
-                    <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0 mt-0.5" />
-                    <span>
-                      <strong className="text-slate-700">{isMl ? 'വധുവിന്റെ വിലാസം:' : 'Bride Address:'}</strong> {app.wife_address}
-                    </span>
-                  </div>
                   {app.admin_notes && (
-                    <div className="flex items-start gap-2 text-emerald-800 pt-1">
+                    <div className="flex items-start gap-2 text-emerald-800">
                       <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
                       <span>
                         <strong>{isMl ? 'കമ്മിറ്റി കുറിപ്പ്:' : 'Committee Remarks:'}</strong> {app.admin_notes}
@@ -477,7 +494,7 @@ export default function AdminMarriageCertificatesPage() {
                     </div>
                   )}
                   {app.rejection_reason && (
-                    <div className="flex items-start gap-2 text-rose-800 pt-1">
+                    <div className="flex items-start gap-2 text-rose-800">
                       <X className="h-3.5 w-3.5 text-rose-600 shrink-0 mt-0.5" />
                       <span>
                         <strong>{isMl ? 'നിരസിക്കാനുള്ള കാരണം:' : 'Rejection Reason:'}</strong> {app.rejection_reason}
@@ -729,6 +746,21 @@ export default function AdminMarriageCertificatesPage() {
           title={isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷാ വിവരങ്ങൾ' : 'Marriage Certificate Application Summary'}
         >
           <div className="space-y-4 text-xs sm:text-sm">
+            {/* Note about official certificate vs digital acknowledgment */}
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-900 flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">
+                  {isMl ? 'ഔദ്യോഗിക സർട്ടിഫിക്കറ്റ് വിതരണം' : 'Official Certificate Issuance'}
+                </p>
+                <p className="text-amber-800 text-[11px] mt-0.5">
+                  {isMl
+                    ? 'ഈ സിസ്റ്റം നൽകുന്നത് അപേക്ഷാ അക്നോളജ്മെന്റാണ്. ഒറിജിനൽ സീൽ വെച്ച വിവാഹ സർട്ടിഫിക്കറ്റ് മഹല്ല് കമ്മിറ്റി ഓഫീസിൽ നേരിട്ട് ഒപ്പുവെച്ച് വിതരണം ചെയ്യുക.'
+                    : 'This system provides an acknowledgment slip. The official physical marriage certificate must be signed and stamped at the Mahallu committee office.'}
+                </p>
+              </div>
+            </div>
+
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2.5">
               <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                 <span className="text-slate-500">{isMl ? 'നില' : 'Status'}</span>
@@ -739,7 +771,7 @@ export default function AdminMarriageCertificatesPage() {
                 </Badge>
               </div>
               <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                <span className="text-slate-500">{isMl ? 'സർട്ടിഫിക്കറ്റ് നമ്പർ' : 'Certificate No.'}</span>
+                <span className="text-slate-500">{isMl ? 'റഫറൻസ് നമ്പർ' : 'Ref. No'}</span>
                 <span className="font-mono font-bold text-emerald-800">
                   {selectedApp.certificate_number || (isMl ? 'നൽകിയിട്ടില്ല' : 'Not yet assigned')}
                 </span>
@@ -750,40 +782,90 @@ export default function AdminMarriageCertificatesPage() {
                   {selectedApp.house_name} ({selectedApp.mahallu_reg_no})
                 </span>
               </div>
-              <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                <span className="text-slate-500">{isMl ? 'വരൻ' : 'Husband (Groom)'}</span>
-                <span className="font-bold text-slate-900">{selectedApp.husband_name}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                <span className="text-slate-500">{isMl ? 'വരന്റെ ജനനത്തീയതി' : 'Husband DOB'}</span>
-                <span className="font-semibold text-slate-700">{selectedApp.husband_dob}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                <span className="text-slate-500">{isMl ? 'വധു' : 'Wife (Bride)'}</span>
-                <span className="font-bold text-slate-900">{selectedApp.wife_full_name}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                <span className="text-slate-500">{isMl ? 'വധുവിന്റെ ഇനീഷ്യൽ' : 'Wife Initial (Full Form)'}</span>
-                <span className="font-semibold text-slate-700">{selectedApp.wife_initial}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                <span className="text-slate-500">{isMl ? 'വധുവിന്റെ പിതാവ്' : 'Wife\'s Father'}</span>
-                <span className="font-semibold text-slate-700">{selectedApp.wife_father_name}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                <span className="text-slate-500">{isMl ? 'വധുവിന്റെ ജനനത്തീയതി' : 'Wife DOB'}</span>
-                <span className="font-semibold text-slate-700">{selectedApp.wife_dob}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                <span className="text-slate-500">{isMl ? 'നിക്കാഹ് തീയതി' : 'Date of Nikah'}</span>
-                <span className="font-bold text-emerald-800">{selectedApp.date_of_nikah}</span>
-              </div>
-              <div className="flex justify-between items-start border-b border-slate-200 pb-2">
-                <span className="text-slate-500 shrink-0">{isMl ? 'വധുവിന്റെ വിലാസം' : 'Wife Address'}</span>
-                <span className="font-medium text-slate-800 text-right max-w-[65%]">
-                  {selectedApp.wife_address}
+
+              {/* Groom Details */}
+              <div className="pt-1 border-b border-slate-200 pb-2 space-y-1">
+                <span className="text-emerald-800 font-bold uppercase tracking-wider text-[11px] block">
+                  {isMl ? '1. വരന്റെ ഔദ്യോഗിക വിവരങ്ങൾ' : '1. Husband (Groom) Information'}
                 </span>
+                <div className="grid grid-cols-2 gap-2 text-slate-700">
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">{isMl ? 'പേര്' : 'Name'}</span>
+                    <span className="font-bold text-slate-900">{selectedApp.husband_name}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">{isMl ? 'പിതാവിന്റെ പേര്' : "Father's Name"}</span>
+                    <span className="font-semibold">{selectedApp.husband_father_name || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">{isMl ? 'വീട്ടുപേര്' : 'House Name'}</span>
+                    <span>{selectedApp.husband_house_name || selectedApp.house_name}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">{isMl ? 'പോസ്റ്റ് ഓഫീസ്' : 'Post Office'}</span>
+                    <span>{selectedApp.husband_post_office || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">{isMl ? 'താലൂക്ക് & ജില്ല' : 'Taluk & District'}</span>
+                    <span>{selectedApp.husband_taluk || '—'}, {selectedApp.husband_district || 'MALAPPURAM'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">{isMl ? 'സംസ്ഥാനം' : 'State'}</span>
+                    <span>{selectedApp.husband_state || 'KERALA'}</span>
+                  </div>
+                </div>
               </div>
+
+              {/* Bride Details */}
+              <div className="pt-1 border-b border-slate-200 pb-2 space-y-1">
+                <span className="text-teal-800 font-bold uppercase tracking-wider text-[11px] block">
+                  {isMl ? '2. വധുവിന്റെ ഔദ്യോഗിക വിവരങ്ങൾ' : '2. Wife (Bride) Information'}
+                </span>
+                <div className="grid grid-cols-2 gap-2 text-slate-700">
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">{isMl ? 'പേര്' : 'Name'}</span>
+                    <span className="font-bold text-slate-900">{selectedApp.wife_full_name}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">{isMl ? 'പിതാവിന്റെ പേര്' : "Father's Name"}</span>
+                    <span className="font-semibold">{selectedApp.wife_father_name || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">{isMl ? 'വീട്ടുപേര്' : 'House Name'}</span>
+                    <span>{selectedApp.wife_house_name || selectedApp.wife_address || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">{isMl ? 'പോസ്റ്റ് ഓഫീസ്' : 'Post Office'}</span>
+                    <span>{selectedApp.wife_post_office || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">{isMl ? 'താലൂക്ക് & ജില്ല' : 'Taluk & District'}</span>
+                    <span>{selectedApp.wife_taluk || '—'}, {selectedApp.wife_district || 'MALAPPURAM'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">{isMl ? 'സംസ്ഥാനം' : 'State'}</span>
+                    <span>{selectedApp.wife_state || 'KERALA'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ceremony Details */}
+              <div className="pt-1 border-b border-slate-200 pb-2 space-y-1">
+                <span className="text-sky-800 font-bold uppercase tracking-wider text-[11px] block">
+                  {isMl ? '3. നിക്കാഹ് ചടങ്ങിന്റെ വിവരങ്ങൾ' : '3. Ceremony Details'}
+                </span>
+                <div className="grid grid-cols-2 gap-2 text-slate-700">
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">{isMl ? 'നിക്കാഹ് തീയതി' : 'Nikah Date'}</span>
+                    <span className="font-bold text-emerald-800">{selectedApp.date_of_nikah}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">{isMl ? 'ചടങ്ങ് നടന്ന സ്ഥലം / വേദി' : 'Ceremony Place / Venue'}</span>
+                    <span className="font-medium">{selectedApp.nikah_venue || 'Ansari Juma Masjid, Mariyad'}</span>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex justify-between items-center border-b border-slate-200 pb-2">
                 <span className="text-slate-500">{isMl ? 'ഫോൺ നമ്പർ' : 'Applicant Phone'}</span>
                 <span className="font-semibold text-slate-700">{selectedApp.applicant_phone}</span>

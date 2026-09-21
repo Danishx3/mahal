@@ -410,13 +410,25 @@ export async function sendMarriageApplicationSubmittedAdminEmail(
     applicant_email: string;
     applicant_phone: string;
     husband_name: string;
-    husband_dob: string;
+    husband_father_name?: string | null;
+    husband_house_name?: string | null;
+    husband_post_office?: string | null;
+    husband_taluk?: string | null;
+    husband_district?: string | null;
+    husband_state?: string | null;
+    husband_dob?: string | null;
     wife_full_name: string;
-    wife_initial: string;
-    wife_father_name: string;
-    wife_address: string;
-    wife_dob: string;
+    wife_father_name?: string | null;
+    wife_house_name?: string | null;
+    wife_post_office?: string | null;
+    wife_taluk?: string | null;
+    wife_district?: string | null;
+    wife_state?: string | null;
+    wife_initial?: string | null;
+    wife_address?: string | null;
+    wife_dob?: string | null;
     date_of_nikah: string;
+    nikah_venue?: string | null;
     submitted_at: string;
   },
   adminEmails: string[] = []

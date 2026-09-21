@@ -46,13 +46,25 @@ export async function GET(request: Request) {
       applicant_email: row.applicant_email,
       applicant_phone: row.applicant_phone,
       husband_name: row.husband_name,
-      husband_dob: row.husband_dob,
+      husband_father_name: row.husband_father_name || null,
+      husband_house_name: row.husband_house_name || null,
+      husband_post_office: row.husband_post_office || null,
+      husband_taluk: row.husband_taluk || null,
+      husband_district: row.husband_district || 'MALAPPURAM',
+      husband_state: row.husband_state || 'KERALA',
+      husband_dob: row.husband_dob || null,
       wife_full_name: row.wife_full_name,
-      wife_initial: row.wife_initial,
       wife_father_name: row.wife_father_name,
-      wife_address: row.wife_address,
-      wife_dob: row.wife_dob,
+      wife_house_name: row.wife_house_name || null,
+      wife_post_office: row.wife_post_office || null,
+      wife_taluk: row.wife_taluk || null,
+      wife_district: row.wife_district || 'MALAPPURAM',
+      wife_state: row.wife_state || 'KERALA',
+      wife_initial: row.wife_initial || null,
+      wife_address: row.wife_address || null,
+      wife_dob: row.wife_dob || null,
       date_of_nikah: row.date_of_nikah,
+      nikah_venue: row.nikah_venue || null,
       status: row.status,
       certificate_number: row.certificate_number,
       admin_notes: row.admin_notes,
@@ -80,29 +92,45 @@ export async function POST(request: Request) {
       applicant_email,
       applicant_phone,
       husband_name,
+      husband_father_name,
+      husband_house_name,
+      husband_post_office,
+      husband_taluk,
+      husband_district,
+      husband_state,
       husband_dob,
       wife_full_name,
-      wife_initial,
       wife_father_name,
+      wife_house_name,
+      wife_post_office,
+      wife_taluk,
+      wife_district,
+      wife_state,
+      wife_initial,
       wife_address,
       wife_dob,
       date_of_nikah,
+      nikah_venue,
     } = body;
 
     // Validate required fields
     if (
       !house_id ||
       !husband_name?.trim() ||
-      !husband_dob ||
+      !husband_father_name?.trim() ||
+      !husband_house_name?.trim() ||
+      !husband_post_office?.trim() ||
+      !husband_taluk?.trim() ||
       !wife_full_name?.trim() ||
-      !wife_initial?.trim() ||
       !wife_father_name?.trim() ||
-      !wife_address?.trim() ||
-      !wife_dob ||
-      !date_of_nikah
+      !wife_house_name?.trim() ||
+      !wife_post_office?.trim() ||
+      !wife_taluk?.trim() ||
+      !date_of_nikah ||
+      !nikah_venue?.trim()
     ) {
       return NextResponse.json(
-        { error: 'All fields including groom, bride, father, address, and nikah date are required.' },
+        { error: 'All essential fields for groom, bride, both parents, address, and nikah venue are required.' },
         { status: 400 }
       );
     }
@@ -116,13 +144,25 @@ export async function POST(request: Request) {
       applicant_email: (applicant_email || '').trim(),
       applicant_phone: (applicant_phone || '').trim(),
       husband_name: husband_name.trim(),
-      husband_dob,
+      husband_father_name: husband_father_name.trim(),
+      husband_house_name: husband_house_name.trim(),
+      husband_post_office: husband_post_office.trim(),
+      husband_taluk: husband_taluk.trim(),
+      husband_district: (husband_district || 'MALAPPURAM').trim().toUpperCase(),
+      husband_state: (husband_state || 'KERALA').trim().toUpperCase(),
+      husband_dob: husband_dob || null,
       wife_full_name: wife_full_name.trim(),
-      wife_initial: wife_initial.trim(),
       wife_father_name: wife_father_name.trim(),
-      wife_address: wife_address.trim(),
-      wife_dob,
+      wife_house_name: wife_house_name.trim(),
+      wife_post_office: wife_post_office.trim(),
+      wife_taluk: wife_taluk.trim(),
+      wife_district: (wife_district || 'MALAPPURAM').trim().toUpperCase(),
+      wife_state: (wife_state || 'KERALA').trim().toUpperCase(),
+      wife_initial: (wife_initial || '').trim() || null,
+      wife_address: (wife_address || `${wife_house_name}, ${wife_post_office}`).trim(),
+      wife_dob: wife_dob || null,
       date_of_nikah,
+      nikah_venue: nikah_venue.trim(),
       status: 'pending',
       certificate_number: null,
       admin_notes: null,
@@ -272,11 +312,24 @@ export async function PATCH(request: Request) {
         finalApp = updated;
       }
 
-      // Ensure critical email fields are populated from request body or targetApp
+      // Ensure critical email fields and certificate fields are populated from request body or targetApp
       finalApp.applicant_email = finalApp.applicant_email || applicant_email || targetApp?.applicant_email || '';
       finalApp.husband_name = finalApp.husband_name || husband_name || targetApp?.husband_name || 'Groom';
+      finalApp.husband_father_name = finalApp.husband_father_name || targetApp?.husband_father_name || null;
+      finalApp.husband_house_name = finalApp.husband_house_name || targetApp?.husband_house_name || null;
+      finalApp.husband_post_office = finalApp.husband_post_office || targetApp?.husband_post_office || null;
+      finalApp.husband_taluk = finalApp.husband_taluk || targetApp?.husband_taluk || null;
+      finalApp.husband_district = finalApp.husband_district || targetApp?.husband_district || 'MALAPPURAM';
+      finalApp.husband_state = finalApp.husband_state || targetApp?.husband_state || 'KERALA';
       finalApp.wife_full_name = finalApp.wife_full_name || wife_full_name || targetApp?.wife_full_name || 'Bride';
+      finalApp.wife_father_name = finalApp.wife_father_name || targetApp?.wife_father_name || '';
+      finalApp.wife_house_name = finalApp.wife_house_name || targetApp?.wife_house_name || null;
+      finalApp.wife_post_office = finalApp.wife_post_office || targetApp?.wife_post_office || null;
+      finalApp.wife_taluk = finalApp.wife_taluk || targetApp?.wife_taluk || null;
+      finalApp.wife_district = finalApp.wife_district || targetApp?.wife_district || 'MALAPPURAM';
+      finalApp.wife_state = finalApp.wife_state || targetApp?.wife_state || 'KERALA';
       finalApp.date_of_nikah = finalApp.date_of_nikah || date_of_nikah || targetApp?.date_of_nikah || '';
+      finalApp.nikah_venue = finalApp.nikah_venue || targetApp?.nikah_venue || null;
       finalApp.house_name = finalApp.house_name || house_name || targetApp?.house_name || 'Household';
       finalApp.mahallu_reg_no = finalApp.mahallu_reg_no || mahallu_reg_no || targetApp?.mahallu_reg_no || '';
 

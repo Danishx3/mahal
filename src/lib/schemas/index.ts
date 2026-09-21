@@ -98,35 +98,94 @@ export const adminRejectionSchema = z.object({
 });
 
 export const marriageCertificateSchema = z.object({
+  // Husband / Groom Details
   husband_name: z
     .string()
     .min(2, 'Husband name must be at least 2 characters')
-    .max(100, 'Husband name cannot exceed 100 characters'),
+    .max(150, 'Husband name cannot exceed 150 characters'),
+  husband_father_name: z
+    .string()
+    .min(2, "Husband's father's name must be at least 2 characters")
+    .max(150, "Husband's father's name cannot exceed 150 characters"),
+  husband_house_name: z
+    .string()
+    .min(2, 'Husband house name must be at least 2 characters')
+    .max(150, 'Husband house name cannot exceed 150 characters'),
+  husband_post_office: z
+    .string()
+    .min(2, 'Husband post office is required')
+    .max(100, 'Post office cannot exceed 100 characters'),
+  husband_taluk: z
+    .string()
+    .min(2, 'Husband taluk is required')
+    .max(100, 'Taluk cannot exceed 100 characters'),
+  husband_district: z
+    .string()
+    .min(2, 'Husband district is required')
+    .max(100, 'District cannot exceed 100 characters'),
+  husband_state: z
+    .string()
+    .min(2, 'Husband state is required')
+    .max(100, 'State cannot exceed 100 characters'),
   husband_dob: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Date of Birth required (YYYY-MM-DD)'),
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Date of Birth required (YYYY-MM-DD)')
+    .optional()
+    .or(z.literal('')),
+
+  // Wife / Bride Details
   wife_full_name: z
     .string()
     .min(2, 'Wife full name must be at least 2 characters')
-    .max(100, 'Wife name cannot exceed 100 characters'),
-  wife_initial: z
-    .string()
-    .min(1, 'Wife initial (full form) is required, e.g. P.K (Puthan Kulam)')
-    .max(100, 'Wife initial cannot exceed 100 characters'),
+    .max(150, 'Wife name cannot exceed 150 characters'),
   wife_father_name: z
     .string()
     .min(2, "Wife's father's full name must be at least 2 characters")
-    .max(100, "Father's name cannot exceed 100 characters"),
+    .max(150, "Father's name cannot exceed 150 characters"),
+  wife_house_name: z
+    .string()
+    .min(2, 'Wife house name must be at least 2 characters')
+    .max(150, 'Wife house name cannot exceed 150 characters'),
+  wife_post_office: z
+    .string()
+    .min(2, 'Wife post office is required')
+    .max(100, 'Post office cannot exceed 100 characters'),
+  wife_taluk: z
+    .string()
+    .min(2, 'Wife taluk is required')
+    .max(100, 'Taluk cannot exceed 100 characters'),
+  wife_district: z
+    .string()
+    .min(2, 'Wife district is required')
+    .max(100, 'District cannot exceed 100 characters'),
+  wife_state: z
+    .string()
+    .min(2, 'Wife state is required')
+    .max(100, 'State cannot exceed 100 characters'),
+  wife_initial: z
+    .string()
+    .max(100, 'Wife initial cannot exceed 100 characters')
+    .optional()
+    .or(z.literal('')),
   wife_address: z
     .string()
-    .min(5, 'Please provide the complete residential address of wife (minimum 5 characters)')
-    .max(500, 'Address cannot exceed 500 characters'),
+    .max(500, 'Address cannot exceed 500 characters')
+    .optional()
+    .or(z.literal('')),
   wife_dob: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Date of Birth required (YYYY-MM-DD)'),
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Date of Birth required (YYYY-MM-DD)')
+    .optional()
+    .or(z.literal('')),
+
+  // Ceremony Details
   date_of_nikah: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid Date of Nikah required (YYYY-MM-DD)'),
+  nikah_venue: z
+    .string()
+    .min(2, 'Nikah ceremony place/venue is required')
+    .max(255, 'Venue cannot exceed 255 characters'),
 });
 
 export type HouseInput = z.infer<typeof houseSchema>;

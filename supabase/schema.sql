@@ -609,5 +609,56 @@ CREATE POLICY "Admins have full access to admin security settings"
     ON public.admin_security_settings FOR ALL
     USING (public.is_admin());
 
+-- ==========================================
+-- 11. Marriage Certificates (Nikah Registry)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS public.marriage_certificates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    house_id UUID NOT NULL REFERENCES public.houses(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL,
+    mahallu_reg_no VARCHAR(100) NOT NULL,
+    house_name VARCHAR(150) NOT NULL,
+    applicant_email VARCHAR(255) NOT NULL,
+    applicant_phone VARCHAR(50) NOT NULL,
+    husband_name VARCHAR(150) NOT NULL,
+    husband_father_name VARCHAR(150),
+    husband_house_name VARCHAR(150),
+    husband_post_office VARCHAR(100),
+    husband_taluk VARCHAR(100),
+    husband_district VARCHAR(100) DEFAULT 'MALAPPURAM',
+    husband_state VARCHAR(100) DEFAULT 'KERALA',
+    husband_dob DATE,
+    wife_full_name VARCHAR(150) NOT NULL,
+    wife_father_name VARCHAR(150) NOT NULL,
+    wife_house_name VARCHAR(150),
+    wife_post_office VARCHAR(100),
+    wife_taluk VARCHAR(100),
+    wife_district VARCHAR(100) DEFAULT 'MALAPPURAM',
+    wife_state VARCHAR(100) DEFAULT 'KERALA',
+    wife_initial VARCHAR(100),
+    wife_address TEXT,
+    wife_dob DATE,
+    date_of_nikah DATE NOT NULL,
+    nikah_venue VARCHAR(255),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    certificate_number VARCHAR(100),
+    admin_notes TEXT,
+    rejection_reason TEXT,
+    submitted_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_marriage_cert_house_id ON public.marriage_certificates(house_id);
+CREATE INDEX IF NOT EXISTS idx_marriage_cert_status ON public.marriage_certificates(status);
+CREATE INDEX IF NOT EXISTS idx_marriage_cert_submitted ON public.marriage_certificates(submitted_at DESC);
+
+ALTER TABLE public.marriage_certificates ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow read marriage_certificates" ON public.marriage_certificates FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Allow insert marriage_certificates" ON public.marriage_certificates FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "Allow update marriage_certificates" ON public.marriage_certificates FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "Allow delete marriage_certificates" ON public.marriage_certificates FOR DELETE TO authenticated USING (true);
+
 
 

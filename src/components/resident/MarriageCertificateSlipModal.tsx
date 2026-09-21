@@ -4,7 +4,7 @@ import React from 'react';
 import { MarriageCertificateApplication } from '@/lib/supabase/types';
 import { useLanguage } from '@/lib/context/LanguageContext';
 import { formatDateTime } from '@/lib/utils';
-import { Printer, CheckCircle2, FileCheck, X, Building2, User, Calendar, MapPin } from 'lucide-react';
+import { Printer, CheckCircle2, FileCheck, X, Building2, User, Calendar, MapPin, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 interface MarriageCertificateSlipModalProps {
@@ -22,10 +22,21 @@ export function MarriageCertificateSlipModal({
   const isMl = language === 'ml';
   if (!isOpen || !application) return null;
 
-  const certNumber = application.certificate_number || `MHL-MC-${new Date().getFullYear()}-PENDING`;
+  const certNumber = application.certificate_number || `MRB-ACK-${new Date().getFullYear()}-${application.id.slice(0, 5).toUpperCase()}`;
   const isApproved = application.status === 'approved';
-  const submittedAtFormatted = formatDateTime(application.submitted_at);
-  const reviewedAtFormatted = application.reviewed_at ? formatDateTime(application.reviewed_at) : null;
+  const issueDateFormatted = application.reviewed_at
+    ? new Date(application.reviewed_at).toLocaleDateString('en-GB')
+    : new Date(application.submitted_at).toLocaleDateString('en-GB');
+
+  // Format Nikah date as DD/MM/YYYY
+  const formatNikahDate = (d?: string) => {
+    if (!d) return '—';
+    const parts = d.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return d;
+  };
 
   const handlePrint = () => {
     let printFrame = document.getElementById('marriage-slip-print-frame') as HTMLIFrameElement | null;
@@ -54,11 +65,11 @@ export function MarriageCertificateSlipModal({
       <html lang="en">
         <head>
           <meta charset="utf-8" />
-          <title>Acknowledgment - ${certNumber} - Kunjikkulam Juma Masjid</title>
+          <title>Marriage Certificate Acknowledgment - ${certNumber}</title>
           <style>
             @page {
               size: A4 portrait;
-              margin: 12mm 15mm 12mm 15mm;
+              margin: 10mm 12mm 10mm 12mm;
             }
             * {
               box-sizing: border-box;
@@ -70,332 +81,266 @@ export function MarriageCertificateSlipModal({
             }
             body {
               background: #ffffff;
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-              color: #0f172a;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              color: #0c4a6e;
               display: flex;
               justify-content: center;
               padding: 0;
             }
-            .slip-card {
+            .certificate-frame {
               width: 100%;
-              max-width: 720px;
+              max-width: 760px;
               background: #ffffff;
-              border: 1.5px solid #cbd5e1;
-              border-radius: 12px;
-              padding: 24px 28px;
+              border: 3.5px solid #0369a1;
+              outline: 1.5px solid #0369a1;
+              outline-offset: 4px;
+              border-radius: 6px;
+              padding: 24px 28px 20px;
               position: relative;
-              margin: 0 auto;
+              margin: 4px auto;
             }
-            .header-row {
+            .header-committee {
+              text-align: center;
+              border-bottom: 2px solid #0284c7;
+              padding-bottom: 12px;
+            }
+            .header-committee h1 {
+              font-size: 21px;
+              font-weight: 900;
+              color: #0369a1;
+              letter-spacing: 0.8px;
+              text-transform: uppercase;
+              margin-bottom: 3px;
+              font-family: 'Arial Black', -apple-system, sans-serif;
+            }
+            .header-committee p {
+              font-size: 11.5px;
+              font-weight: 700;
+              color: #0284c7;
+              letter-spacing: 0.4px;
+              text-transform: uppercase;
+              line-height: 1.35;
+            }
+            .meta-row {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              padding-bottom: 16px;
-              border-bottom: 2px solid #047857;
-            }
-            .header-left {
-              display: flex;
-              align-items: center;
-              gap: 12px;
-            }
-            .masjid-emblem {
-              width: 48px;
-              height: 48px;
-              border-radius: 12px;
-              background-color: #065f46;
-              color: #ffffff;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 22px;
-              font-weight: bold;
-              flex-shrink: 0;
-            }
-            .title-wrap h1 {
-              font-size: 18px;
+              padding: 10px 0 6px;
+              font-size: 13px;
               font-weight: 800;
-              color: #064e3b;
-              text-transform: uppercase;
-              letter-spacing: 0.02em;
-              line-height: 1.2;
+              color: #0369a1;
             }
-            .title-wrap p {
-              font-size: 11px;
-              font-weight: 600;
-              color: #047857;
-              margin-top: 2px;
-            }
-            .header-right {
-              text-align: right;
-            }
-            .status-badge {
-              display: inline-block;
-              padding: 4px 10px;
-              border-radius: 6px;
-              background-color: ${isApproved ? '#ecfdf5' : '#fffbeb'};
-              color: ${isApproved ? '#065f46' : '#92400e'};
-              border: 1px solid ${isApproved ? '#a7f3d0' : '#fde68a'};
-              font-size: 11px;
-              font-weight: 800;
-              text-transform: uppercase;
-              letter-spacing: 0.04em;
-            }
-            .cert-no {
-              font-size: 12px;
-              font-family: monospace;
-              font-weight: 800;
+            .meta-row .reg-no span,
+            .meta-row .issue-date span {
               color: #0f172a;
-              margin-top: 5px;
+              font-family: monospace;
+              border-bottom: 1px dotted #0369a1;
+              padding-bottom: 1px;
             }
-            .doc-title-bar {
+            .title-banner {
               text-align: center;
-              margin: 16px 0 14px;
-              padding: 6px 12px;
-              background: #f8fafc;
-              border: 1px solid #e2e8f0;
-              border-radius: 6px;
+              margin: 12px 0 10px;
             }
-            .doc-title-bar h2 {
-              font-size: 13px;
-              font-weight: 800;
-              color: #1e293b;
+            .title-banner h2 {
+              font-size: 23px;
+              font-weight: 900;
+              color: #0284c7;
               text-transform: uppercase;
-              letter-spacing: 0.05em;
+              letter-spacing: 1.5px;
+              display: inline-block;
+              font-family: 'Arial Black', sans-serif;
             }
-            .doc-title-bar p {
-              font-size: 10px;
-              color: #64748b;
-              font-weight: 500;
-            }
-            .banner-box {
-              background: ${isApproved ? '#f0fdf4' : '#fefce8'};
-              border: 1.5px solid ${isApproved ? '#86efac' : '#fde047'};
-              border-radius: 8px;
-              padding: 12px 14px;
-              margin-bottom: 14px;
+            .ack-badge {
+              display: block;
               text-align: center;
-            }
-            .banner-title {
-              font-size: 13px;
+              font-size: 10px;
               font-weight: 800;
-              color: ${isApproved ? '#166534' : '#854d0e'};
+              color: #b45309;
+              background: #fffbeb;
+              border: 1px dashed #f59e0b;
+              border-radius: 6px;
+              padding: 4px 10px;
+              margin: 4px auto 14px;
+              width: fit-content;
+              letter-spacing: 0.5px;
+              text-transform: uppercase;
+            }
+            .body-text {
+              font-size: 13.5px;
+              line-height: 2.15;
+              color: #0f172a;
+              font-weight: 500;
+              margin-bottom: 16px;
+            }
+            .field-val {
+              font-weight: 800;
+              color: #0284c7;
+              border-bottom: 1.5px dotted #0284c7;
+              padding: 0 4px;
+              display: inline;
+              text-transform: uppercase;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            }
+            .body-text .line-clause {
+              display: block;
               margin-bottom: 2px;
             }
-            .banner-sub {
+            .disclaimer-box {
+              background: #f0fdf4;
+              border: 1.5px solid #86efac;
+              border-radius: 8px;
+              padding: 8px 12px;
+              margin-top: 10px;
+              text-align: center;
               font-size: 11px;
-              font-weight: 600;
-              color: ${isApproved ? '#15803d' : '#a16207'};
-            }
-            .table-section {
-              width: 100%;
-              border-collapse: collapse;
-              margin-bottom: 14px;
-              font-size: 11px;
-            }
-            .table-section th {
-              background: #f1f5f9;
-              color: #334155;
               font-weight: 700;
-              text-align: left;
-              padding: 6px 10px;
-              border: 1px solid #e2e8f0;
-              font-size: 10px;
-              text-transform: uppercase;
-              letter-spacing: 0.04em;
+              color: #166534;
             }
-            .table-section td {
-              padding: 6px 10px;
-              border: 1px solid #e2e8f0;
-              color: #0f172a;
-            }
-            .table-section td.label-col {
-              width: 32%;
-              background: #f8fafc;
-              font-weight: 600;
-              color: #475569;
-            }
-            .table-section td.value-col {
-              font-weight: 700;
-            }
-
-            .signatures-row {
+            .signatures-section {
               display: flex;
               justify-content: space-between;
               align-items: flex-end;
-              padding-top: 24px;
-              border-top: 1px solid #e2e8f0;
-              margin-top: 10px;
+              padding-top: 40px;
+              margin-top: 20px;
             }
-            .sig-box {
+            .sig-block {
               text-align: center;
-              width: 140px;
+              width: 170px;
             }
             .sig-line {
-              border-top: 1px dotted #94a3b8;
-              margin-bottom: 4px;
+              border-bottom: 1px dotted #0284c7;
+              margin-bottom: 5px;
+              height: 24px;
             }
-            .sig-label {
-              font-size: 9.5px;
-              font-weight: 700;
-              color: #475569;
+            .sig-title {
+              font-size: 12px;
+              font-weight: 800;
+              color: #0369a1;
               text-transform: uppercase;
             }
-            .seal-box {
-              width: 80px;
-              height: 60px;
-              border: 1px dashed #94a3b8;
-              border-radius: 6px;
+            .sig-date {
+              font-size: 10px;
+              color: #64748b;
+              margin-top: 2px;
+            }
+            .seal-block {
+              width: 90px;
+              height: 70px;
+              border: 1.5px dashed #0284c7;
+              border-radius: 50%;
               display: flex;
+              flex-direction: column;
               align-items: center;
               justify-content: center;
               font-size: 9px;
-              font-weight: 700;
-              color: #94a3b8;
+              font-weight: 800;
+              color: #0284c7;
               text-transform: uppercase;
               text-align: center;
+              line-height: 1.15;
             }
-            .footer-line {
+            .footer-contact {
+              border-top: 1px solid #e2e8f0;
+              margin-top: 18px;
+              padding-top: 8px;
               text-align: center;
-              font-size: 9px;
-              color: #94a3b8;
-              margin-top: 16px;
+              font-size: 9.5px;
+              color: #64748b;
+              font-weight: 600;
             }
           </style>
         </head>
         <body>
-          <div class="slip-card">
-            <div class="header-row">
-              <div class="header-left">
-                <div class="masjid-emblem">🕌</div>
-                <div class="title-wrap">
-                  <h1>${isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്' : 'Kunjikkulam Juma Masjid'}</h1>
-                  <p>${isMl ? 'മഹല്ല് കമ്മിറ്റി • നിക്കാഹ് & വിവാഹ രജിസ്ട്രി' : 'Mahallu Committee • Nikah & Marriage Registry'}</p>
-                </div>
-              </div>
-              <div class="header-right">
-                <div class="status-badge">${isMl ? (isApproved ? 'അംഗീകരിച്ചു (Approved)' : 'പരിശോധനയിലാണ്') : (isApproved ? 'Accepted & Approved' : 'Pending Review')}</div>
-                <div class="cert-no">Ref: ${certNumber}</div>
-              </div>
+          <div class="certificate-frame">
+            <!-- Header matching scanned reference certificate -->
+            <div class="header-committee">
+              <h1>MARIYAD-KUNHIKULAM MAHALLU COMMITTEE</h1>
+              <p>ANSARI JUMA MASJID, MARIYAD, MANJERI,</p>
+              <p>MALAPPURAM, KERALA, INDIA 676 122</p>
             </div>
 
-            <div class="doc-title-bar">
-              <h2>${isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സ്വീകൃതി പത്രം' : 'Marriage Certificate Application Acknowledgment'}</h2>
-              <p>${isMl ? 'Marriage Certificate Application Acknowledgment' : 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സ്വീകൃതി പത്രം'}</p>
+            <!-- Meta row -->
+            <div class="meta-row">
+              <div class="reg-no">Reg. No: <span>${certNumber}</span></div>
+              <div class="issue-date">Issue Date: <span>${issueDateFormatted}</span></div>
             </div>
 
-            ${
-              isApproved
-                ? `
-            <div class="banner-box">
-              <div class="banner-title">🎉 ${isMl ? 'നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു, സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക' : 'Your application is accepted, contact mahal committee for certificate'}</div>
-              <div class="banner-sub">${isMl ? 'നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുന്നതിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.' : 'നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുന്നതിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.'}</div>
+            <!-- Title -->
+            <div class="title-banner">
+              <h2>CERTIFICATE OF MARRIAGE</h2>
             </div>
-            `
-                : `
-            <div class="banner-box">
-              <div class="banner-title">⏳ ${isMl ? 'അപേക്ഷ പരിശോധനയിലാണ്' : 'Application Under Verification'}</div>
-              <div class="banner-sub">${isMl ? 'നിങ്ങളുടെ അപേക്ഷ മഹല്ല് കമ്മിറ്റിയുടെ പരിശോധനയിലാണ്.' : 'നിങ്ങളുടെ അപേക്ഷ മഹല്ല് കമ്മിറ്റിയുടെ പരിശോധനയിലാണ്.'}</div>
+
+            <div class="ack-badge">
+              അപേക്ഷാ അക്നോളജ്മെന്റ് • APPLICATION ACKNOWLEDGMENT
             </div>
-            `
-            }
 
-            <table class="table-section">
-              <thead>
-                <tr>
-                  <th colspan="2">${isMl ? 'ദമ്പതികളുടെയും നിക്കാഹിന്റെയും വിവരങ്ങൾ' : 'Couple & Nikah Details'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td class="label-col">${isMl ? 'വരന്റെ പേര്' : 'Husband Name (Groom)'}</td>
-                  <td class="value-col">${application.husband_name}</td>
-                </tr>
-                <tr>
-                  <td class="label-col">${isMl ? 'വരന്റെ ജനനത്തീയതി' : 'Husband Date of Birth'}</td>
-                  <td class="value-col">${application.husband_dob}</td>
-                </tr>
-                <tr>
-                  <td class="label-col">${isMl ? 'വധുവിന്റെ പേര്' : 'Wife Full Name (Bride)'}</td>
-                  <td class="value-col">${application.wife_full_name} (${application.wife_initial})</td>
-                </tr>
-                <tr>
-                  <td class="label-col">${isMl ? 'വധുവിന്റെ ജനനത്തീയതി' : 'Wife Date of Birth'}</td>
-                  <td class="value-col">${application.wife_dob}</td>
-                </tr>
-                <tr>
-                  <td class="label-col">${isMl ? 'വധുവിന്റെ പിതാവ്' : "Wife Father's Name"}</td>
-                  <td class="value-col">${application.wife_father_name}</td>
-                </tr>
-                <tr>
-                  <td class="label-col">${isMl ? 'വധുവിന്റെ സ്ഥിര മേൽവിലാസം' : 'Wife Permanent Address'}</td>
-                  <td class="value-col">${application.wife_address}</td>
-                </tr>
-                <tr>
-                  <td class="label-col">${isMl ? 'നിക്കാഹ് തീയതി' : 'Date of Nikah Ceremony'}</td>
-                  <td class="value-col" style="color: #065f46;">${application.date_of_nikah}</td>
-                </tr>
-              </tbody>
-            </table>
+            <!-- Certificate Body formatted with dotted lines like scanned reference -->
+            <div class="body-text">
+              <span class="line-clause">
+                This is to certify that Mr. <span class="field-val">${application.husband_name || '—'}</span>
+              </span>
+              <span class="line-clause">
+                S/o. <span class="field-val">${application.husband_father_name || '—'}</span>
+              </span>
+              <span class="line-clause">
+                House, <span class="field-val">${application.husband_house_name || application.house_name || '—'}</span>
+              </span>
+              <span class="line-clause">
+                PO, <span class="field-val">${application.husband_post_office || '—'}</span> &nbsp;&nbsp;&nbsp;&nbsp; Taluk, <span class="field-val">${application.husband_taluk || '—'}</span>
+              </span>
+              <span class="line-clause">
+                district, <span class="field-val">${application.husband_district || 'MALAPPURAM'}</span> &nbsp;&nbsp;&nbsp;&nbsp; State, <span class="field-val">${application.husband_state || 'KERALA'}</span>
+              </span>
+              <span class="line-clause">
+                has married Ms. <span class="field-val">${application.wife_full_name || '—'}</span>
+              </span>
+              <span class="line-clause">
+                D/o. <span class="field-val">${application.wife_father_name || '—'}</span>
+              </span>
+              <span class="line-clause">
+                House <span class="field-val">${application.wife_house_name || '—'}</span>
+              </span>
+              <span class="line-clause">
+                PO, <span class="field-val">${application.wife_post_office || '—'}</span> &nbsp;&nbsp;&nbsp;&nbsp; Taluk <span class="field-val">${application.wife_taluk || '—'}</span>
+              </span>
+              <span class="line-clause">
+                district, <span class="field-val">${application.wife_district || 'MALAPPURAM'}</span> &nbsp;&nbsp;&nbsp;&nbsp; State, <span class="field-val">${application.wife_state || 'KERALA'}</span>
+              </span>
+              <span class="line-clause">
+                on <span class="field-val">${formatNikahDate(application.date_of_nikah)}</span>.
+              </span>
+              <p style="margin-top: 10px; text-align: justify; line-height: 1.7;">
+                The Nikah ceremony was solemnised at <span class="field-val">${application.nikah_venue || 'Ansari Juma Masjid, Mariyad'}</span> under the leadership of Khatib, Ansari Juma Masjid, in accordance with the Islamic Law of Sharia't, as per the records maintained in this Masjid.
+              </p>
+            </div>
 
-            <table class="table-section">
-              <thead>
-                <tr>
-                  <th colspan="2">${isMl ? 'കുടുംബ വിവരങ്ങളും അപേക്ഷാ വിവരങ്ങളും' : 'Household & Application Particulars'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td class="label-col">${isMl ? 'കുടുംബം / മഹല്ല് രജി. നമ്പർ' : 'Household Name / Reg No.'}</td>
-                  <td class="value-col">${application.house_name} • ${isMl ? 'മഹല്ല് രജി. നമ്പർ:' : 'Reg No:'} ${application.mahallu_reg_no}</td>
-                </tr>
-                <tr>
-                  <td class="label-col">${isMl ? 'ബന്ധപ്പെടാനുള്ള വിവരങ്ങൾ' : 'Applicant Contact'}</td>
-                  <td class="value-col">${isMl ? 'ഫോൺ:' : 'Phone:'} ${application.applicant_phone} | ${isMl ? 'ഇമെയിൽ:' : 'Email:'} ${application.applicant_email}</td>
-                </tr>
-                <tr>
-                  <td class="label-col">${isMl ? 'അപേക്ഷ സമർപ്പിച്ചത്' : 'Application Submitted At'}</td>
-                  <td class="value-col">${submittedAtFormatted}</td>
-                </tr>
-                ${
-                  reviewedAtFormatted
-                    ? `
-                <tr>
-                  <td class="label-col">${isMl ? 'അംഗീകരിച്ച തീയതി' : 'Committee Approval Date'}</td>
-                  <td class="value-col">${reviewedAtFormatted}</td>
-                </tr>
-                `
-                    : ''
-                }
-                ${
-                  application.admin_notes
-                    ? `
-                <tr>
-                  <td class="label-col">${isMl ? 'കമ്മിറ്റിയുടെ കുറിപ്പ്' : 'Committee Remarks'}</td>
-                  <td class="value-col">${application.admin_notes}</td>
-                </tr>
-                `
-                    : ''
-                }
-              </tbody>
-            </table>
+            <!-- Prominent notice as requested by user -->
+            <div class="disclaimer-box">
+              📢 ശ്രദ്ധിക്കുക: ഇത് അപേക്ഷാ അക്നോളജ്മെന്റ് രേഖയാണ്. ഔദ്യോഗിക വിവാഹ സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക.<br/>
+              <span style="font-size: 10px; font-weight: 500; color: #15803d;">(NOTE: This is an Acknowledgment Slip. Please contact the Mahallu Committee office to collect the official stamped certificate.)</span>
+            </div>
 
-
-            <div class="signatures-row">
-              <div class="sig-box">
+            <!-- Signatures Section -->
+            <div class="signatures-section">
+              <div class="sig-block">
                 <div class="sig-line"></div>
-                <div class="sig-label">${isMl ? 'അപേക്ഷകന്റെ ഒപ്പ്' : 'Applicant Signature'}</div>
+                <div class="sig-title">Secretary</div>
+                <div class="sig-date">${issueDateFormatted}</div>
               </div>
-              <div class="seal-box">
-                ${isMl ? 'മഹല്ല്<br/>സീൽ' : 'Mahallu<br/>Seal'}
+
+              <div class="seal-block">
+                MAHALLU<br/>SEAL / മുദ്ര
               </div>
-              <div class="sig-box">
+
+              <div class="sig-block">
                 <div class="sig-line"></div>
-                <div class="sig-label">${isMl ? 'ജനറൽ സെക്രട്ടറി / ഖാസി' : 'General Secretary / Qazi'}</div>
+                <div class="sig-title">Khatib</div>
+                <div class="sig-date">Ansari Juma Masjid</div>
               </div>
             </div>
 
-            <div class="footer-line">
-              ${isMl ? 'തയ്യാറാക്കിയത്' : 'Generated on'} ${new Date().toLocaleDateString()} • ${isMl ? 'ഔദ്യോഗിക ഡിജിറ്റൽ രജിസ്ട്രി സ്ലിപ്പ് • കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് മഹല്ല്' : 'Official Digital Registry Slip • Kunjikkulam Juma Masjid Mahallu'}
+            <div class="footer-contact">
+              Official Digital Acknowledgment • Kunjikkulam-Mariyad Mahallu Committee • Helpline: +91 9846045482 • Reg. No: ${application.mahallu_reg_no}
             </div>
           </div>
         </body>
@@ -413,132 +358,207 @@ export function MarriageCertificateSlipModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden my-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden my-4 sm:my-6">
         {/* Modal Top Bar */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
+        <div className="bg-[#0369a1] text-white px-5 sm:px-6 py-4 flex items-center justify-between border-b border-sky-800">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm">
-              <FileCheck className="h-4 w-4" />
+            <div className="h-8 w-8 rounded-xl bg-white/10 text-white flex items-center justify-center font-bold text-sm">
+              <FileCheck className="h-4 w-4 text-sky-200" />
             </div>
             <div>
               <h2 className="text-sm font-bold tracking-tight">
                 {isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ് അക്നോളജ്മെന്റ്' : 'Marriage Certificate Acknowledgment'}
               </h2>
-              <p className="text-[11px] text-slate-400 font-mono">Ref: {certNumber}</p>
+              <p className="text-[11px] text-sky-200 font-mono">Ref: {certNumber}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-sky-200 hover:text-white hover:bg-sky-800 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Modal Content / Preview */}
-        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-          {/* Header Banner */}
-          <div className="text-center pb-4 border-b border-slate-100">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-2 border border-emerald-200/80">
-              <Building2 className="h-3.5 w-3.5 text-emerald-600" />
-              {isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ് മഹല്ല് കമ്മിറ്റി' : 'Kunjikkulam Juma Masjid Mahallu Committee'}
-            </div>
-            <h1 className="text-lg sm:text-xl font-black text-slate-900">
-              {isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സ്വീകൃതി പത്രം' : 'Marriage Certificate Application Acknowledgment'}
-            </h1>
-            <p className="text-xs text-slate-500 font-medium">
-              {isMl ? 'Marriage Certificate Application Acknowledgment' : 'വിവാഹ സർട്ടിഫിക്കറ്റ് അപേക്ഷ സ്വീകൃതി പത്രം'}
+        {/* Modal Body / Reference Certificate Style Preview */}
+        <div className="p-4 sm:p-6 space-y-4 max-h-[75vh] overflow-y-auto bg-slate-50/50">
+          {/* Important Notice Banner (Requested by user) */}
+          <div className="bg-amber-50 border-2 border-amber-300/80 rounded-2xl p-4 text-center space-y-1">
+            <p className="text-xs sm:text-sm font-extrabold text-amber-950 flex items-center justify-center gap-1.5">
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+              {isMl
+                ? 'നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു, സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക'
+                : 'Your application is accepted, contact mahal committee for certificate'}
+            </p>
+            <p className="text-[11px] sm:text-xs font-semibold text-amber-900">
+              {isMl
+                ? 'ഇതൊരു അപേക്ഷാ അക്നോളജ്മെന്റ് രേഖയാണ്. ഒറിജിനൽ സീൽ വെച്ച വിവാഹ സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.'
+                : 'This is an application acknowledgment slip. Please contact the Mahallu committee office to obtain the official stamped certificate.'}
             </p>
           </div>
 
-          {/* Status Message */}
-          {isApproved ? (
-            <div className="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-4 text-center space-y-1">
-              <p className="text-sm sm:text-base font-extrabold text-emerald-950 flex items-center justify-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                {isMl
-                  ? 'നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു, സർട്ടിഫിക്കറ്റിനായി മഹല്ല് കമ്മിറ്റിയുമായി ബന്ധപ്പെടുക'
-                  : 'Your application is accepted, contact mahal committee for certificate'}
-              </p>
-              <p className="text-xs font-semibold text-emerald-800">
-                {isMl
-                  ? 'നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുന്നതിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.'
-                  : 'നിങ്ങളുടെ അപേക്ഷ സ്വീകരിച്ചു. സർട്ടിഫിക്കറ്റ് കൈപ്പറ്റുന്നതിനായി മഹല്ല് കമ്മിറ്റി ഓഫീസുമായി ബന്ധപ്പെടുക.'}
+          {/* Scanned Reference Style Certificate Preview Box */}
+          <div className="bg-white rounded-2xl p-5 sm:p-7 border-2 border-sky-600 shadow-sm relative space-y-4">
+            {/* Header matching physical certificate */}
+            <div className="text-center pb-3 border-b-2 border-sky-600">
+              <h3 className="text-sm sm:text-base font-black text-sky-900 uppercase tracking-wide">
+                MARIYAD-KUNHIKULAM MAHALLU COMMITTEE
+              </h3>
+              <p className="text-[11px] font-bold text-sky-700 uppercase tracking-wide">
+                ANSARI JUMA MASJID, MARIYAD, MANJERI, MALAPPURAM, KERALA 676 122
               </p>
             </div>
-          ) : (
-            <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 text-center space-y-1">
-              <p className="text-sm font-bold text-amber-950">
-                {isMl ? 'അപേക്ഷ പരിശോധനയിലാണ്' : 'Application Under Verification'}
-              </p>
-              <p className="text-xs text-amber-800">
-                {isMl ? 'നിങ്ങളുടെ അപേക്ഷ മഹല്ല് കമ്മിറ്റിയുടെ പരിശോധനയിലാണ്.' : 'നിങ്ങളുടെ അപേക്ഷ മഹല്ല് കമ്മിറ്റിയുടെ പരിശോധനയിലാണ്.'}
-              </p>
-            </div>
-          )}
 
-          {/* Couple Particulars */}
-          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-3">
-            <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5 text-emerald-700" />
-              {isMl ? 'അപേക്ഷകരുടെയും ദമ്പതികളുടെയും വിവരങ്ങൾ' : 'Applicant & Couple Details'}
+            {/* Meta row */}
+            <div className="flex justify-between items-center text-xs font-bold text-sky-800 pt-1">
+              <div>Reg. No: <span className="text-slate-900 font-mono underline decoration-dotted">{certNumber}</span></div>
+              <div>Issue Date: <span className="text-slate-900 underline decoration-dotted">{issueDateFormatted}</span></div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-              <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">{isMl ? 'വരൻ (ഭർത്താവ്)' : 'Husband (Groom)'}</span>
-                <span className="font-bold text-slate-900">{application.husband_name}</span>
-                <span className="text-slate-500 block text-[11px] mt-0.5">{isMl ? 'ജനനം:' : 'DOB:'} {application.husband_dob}</span>
+
+            {/* Title */}
+            <div className="text-center py-1">
+              <h4 className="text-base sm:text-lg font-black text-sky-900 uppercase tracking-wider">
+                CERTIFICATE OF MARRIAGE
+              </h4>
+              <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 mt-0.5">
+                {isMl ? 'അപേക്ഷാ അക്നോളജ്മെന്റ് സ്ലിപ്പ്' : 'Application Acknowledgment Slip'}
+              </span>
+            </div>
+
+            {/* Body matching dotted lines format */}
+            <div className="text-xs sm:text-[13px] leading-relaxed text-slate-800 space-y-2 pt-2">
+              <p>
+                This is to certify that Mr.{' '}
+                <strong className="text-sky-900 font-extrabold underline decoration-dotted uppercase">
+                  {application.husband_name}
+                </strong>
+              </p>
+              <p>
+                S/o.{' '}
+                <strong className="text-sky-900 font-bold underline decoration-dotted uppercase">
+                  {application.husband_father_name || '—'}
+                </strong>
+              </p>
+              <p>
+                House,{' '}
+                <strong className="text-sky-900 font-bold underline decoration-dotted uppercase">
+                  {application.husband_house_name || application.house_name || '—'}
+                </strong>
+              </p>
+              <p>
+                PO,{' '}
+                <strong className="text-sky-900 font-bold underline decoration-dotted uppercase">
+                  {application.husband_post_office || '—'}
+                </strong>
+                &nbsp;&nbsp;&nbsp;&nbsp; Taluk,{' '}
+                <strong className="text-sky-900 font-bold underline decoration-dotted uppercase">
+                  {application.husband_taluk || '—'}
+                </strong>
+              </p>
+              <p>
+                district,{' '}
+                <strong className="text-sky-900 font-bold underline decoration-dotted uppercase">
+                  {application.husband_district || 'MALAPPURAM'}
+                </strong>
+                &nbsp;&nbsp;&nbsp;&nbsp; State,{' '}
+                <strong className="text-sky-900 font-bold underline decoration-dotted uppercase">
+                  {application.husband_state || 'KERALA'}
+                </strong>
+              </p>
+
+              <div className="pt-1">
+                <p>
+                  has married Ms.{' '}
+                  <strong className="text-sky-900 font-extrabold underline decoration-dotted uppercase">
+                    {application.wife_full_name}
+                  </strong>
+                </p>
+                <p>
+                  D/o.{' '}
+                  <strong className="text-sky-900 font-bold underline decoration-dotted uppercase">
+                    {application.wife_father_name || '—'}
+                  </strong>
+                </p>
+                <p>
+                  House{' '}
+                  <strong className="text-sky-900 font-bold underline decoration-dotted uppercase">
+                    {application.wife_house_name || '—'}
+                  </strong>
+                </p>
+                <p>
+                  PO,{' '}
+                  <strong className="text-sky-900 font-bold underline decoration-dotted uppercase">
+                    {application.wife_post_office || '—'}
+                  </strong>
+                  &nbsp;&nbsp;&nbsp;&nbsp; Taluk{' '}
+                  <strong className="text-sky-900 font-bold underline decoration-dotted uppercase">
+                    {application.wife_taluk || '—'}
+                  </strong>
+                </p>
+                <p>
+                  district,{' '}
+                  <strong className="text-sky-900 font-bold underline decoration-dotted uppercase">
+                    {application.wife_district || 'MALAPPURAM'}
+                  </strong>
+                  &nbsp;&nbsp;&nbsp;&nbsp; State,{' '}
+                  <strong className="text-sky-900 font-bold underline decoration-dotted uppercase">
+                    {application.wife_state || 'KERALA'}
+                  </strong>
+                </p>
+                <p>
+                  on{' '}
+                  <strong className="text-emerald-800 font-bold underline decoration-dotted">
+                    {formatNikahDate(application.date_of_nikah)}
+                  </strong>.
+                </p>
               </div>
-              <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">{isMl ? 'വധു (ഭാര്യ)' : 'Wife (Bride)'}</span>
-                <span className="font-bold text-slate-900">{application.wife_full_name} ({application.wife_initial})</span>
-                <span className="text-slate-500 block text-[11px] mt-0.5">{isMl ? 'ജനനം:' : 'DOB:'} {application.wife_dob}</span>
+
+              <p className="pt-2 text-slate-700 text-[11.5px] leading-relaxed">
+                The Nikah ceremony was solemnised at{' '}
+                <strong className="text-sky-900 font-bold underline decoration-dotted uppercase">
+                  {application.nikah_venue || 'Ansari Juma Masjid, Mariyad'}
+                </strong>{' '}
+                under the leadership of Khatib, Ansari Juma Masjid, in accordance with the Islamic Law of Sharia't, as per the records maintained in this Masjid.
+              </p>
+            </div>
+
+            {/* Bottom Signatures Block */}
+            <div className="pt-6 border-t border-slate-200 flex justify-between items-end text-xs font-bold text-sky-900">
+              <div className="text-center">
+                <div className="w-24 border-b border-sky-700 mb-1"></div>
+                <span>Secretary</span>
               </div>
-              <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">{isMl ? 'വധുവിന്റെ പിതാവ്' : "Wife's Father"}</span>
-                <span className="font-semibold text-slate-800">{application.wife_father_name}</span>
+              <div className="w-16 h-12 border border-dashed border-sky-400 rounded-lg flex items-center justify-center text-[9px] text-sky-600 uppercase font-bold text-center">
+                Mahallu Seal
               </div>
-              <div className="bg-white p-2.5 rounded-xl border border-slate-200">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">{isMl ? 'നിക്കാഹ് തീയതി' : 'Date of Nikah'}</span>
-                <span className="font-bold text-emerald-800">{application.date_of_nikah}</span>
-              </div>
-              <div className="bg-white p-2.5 rounded-xl border border-slate-200 sm:col-span-2">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">{isMl ? 'വധുവിന്റെ സ്ഥിര മേൽവിലാസം' : 'Wife Permanent Address'}</span>
-                <span className="font-medium text-slate-800">{application.wife_address}</span>
-              </div>
-              <div className="bg-white p-2.5 rounded-xl border border-slate-200 sm:col-span-2">
-                <span className="text-slate-400 block text-[10px] uppercase font-bold">{isMl ? 'കുടുംബ വിവരങ്ങൾ' : 'Household & Contact'}</span>
-                <span className="font-medium text-slate-800">
-                  {application.house_name} ({isMl ? 'രജി. നമ്പർ:' : 'Reg No:'} {application.mahallu_reg_no}) • {application.applicant_phone} • {application.applicant_email}
-                </span>
+              <div className="text-center">
+                <div className="w-24 border-b border-sky-700 mb-1"></div>
+                <span>Khatib</span>
               </div>
             </div>
           </div>
-
-          {/* Committee Note if any */}
-          {application.admin_notes && (
-            <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-950">
-              <span className="font-bold block text-emerald-900 mb-0.5">{isMl ? 'കമ്മിറ്റിയുടെ കുറിപ്പ്:' : 'Committee Notes:'}</span>
-              <p>{application.admin_notes}</p>
-            </div>
-          )}
-
         </div>
 
         {/* Modal Bottom Actions */}
-        <div className="bg-slate-50 px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3">
-          <Button variant="outline" onClick={onClose}>
-            {isMl ? 'ക്ലോസ് ചെയ്യുക' : 'Close'}
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handlePrint}
-            className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold flex items-center gap-2 shadow-sm"
-          >
-            <Printer className="h-4 w-4" />
-            {isMl ? 'അക്നോളജ്മെന്റ് പ്രിന്റ് ചെയ്യുക / PDF' : 'Print Acknowledgment / Save PDF'}
-          </Button>
+        <div className="bg-white px-5 sm:px-6 py-4 border-t border-slate-100 flex items-center justify-between gap-3">
+          <div className="text-[11px] text-slate-500 font-medium hidden sm:block">
+            {isMl ? 'A4 സൈസ് പ്രിന്റിന് അനുയോജ്യമായ ഫോർമാറ്റ്' : 'Optimized for A4 Portrait print'}
+          </div>
+          <div className="flex items-center gap-2.5 ml-auto">
+            <Button variant="outline" size="sm" onClick={onClose}>
+              {isMl ? 'ക്ലോസ് ചെയ്യുക' : 'Close'}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handlePrint}
+              className="bg-[#0369a1] hover:bg-[#0284c7] text-white font-bold flex items-center gap-2 shadow-sm rounded-xl px-4"
+            >
+              <Printer className="h-4 w-4" />
+              {isMl ? 'അക്നോളജ്മെന്റ് പ്രിന്റ് ചെയ്യുക / PDF' : 'Print Acknowledgment / Save PDF'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
