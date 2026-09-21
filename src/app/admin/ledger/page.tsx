@@ -486,9 +486,8 @@ export default function FinancialLedgerPage() {
         <tr style="background:${index % 2 === 0 ? '#ffffff' : '#f8fafc'};">
           <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;white-space:nowrap;font-size:11px;color:#334155;">${formattedDate}</td>
           <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;text-align:center;">
-            <span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;${
-              isCredit ? 'background:#dcfce7;color:#166534;' : 'background:#ffe4e6;color:#9f1239;'
-            }">${item.type}</span>
+            <span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;${isCredit ? 'background:#dcfce7;color:#166534;' : 'background:#ffe4e6;color:#9f1239;'
+        }">${item.type}</span>
           </td>
           <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-weight:600;font-size:11px;color:#0f172a;">${item.category}</td>
           <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;color:#1e293b;">${householdText}</td>
@@ -943,11 +942,10 @@ export default function FinancialLedgerPage() {
                 key={preset.id}
                 type="button"
                 onClick={() => applyDatePreset(preset.id as any)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                  datePreset === preset.id
-                    ? 'bg-emerald-800 text-white font-semibold shadow-xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${datePreset === preset.id
+                  ? 'bg-emerald-800 text-white font-semibold shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
               >
                 {preset.label}
               </button>
@@ -999,25 +997,22 @@ export default function FinancialLedgerPage() {
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl w-full md:w-auto">
             <button
               onClick={() => setTypeFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                typeFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${typeFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               {isMl ? 'എല്ലാ ഇടപാടുകളും' : 'All Types'}
             </button>
             <button
               onClick={() => setTypeFilter('credit')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                typeFilter === 'credit' ? 'bg-emerald-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${typeFilter === 'credit' ? 'bg-emerald-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               {isMl ? 'വരവ് മാത്രം' : 'Credits Only'}
             </button>
             <button
               onClick={() => setTypeFilter('debit')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                typeFilter === 'debit' ? 'bg-rose-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${typeFilter === 'debit' ? 'bg-rose-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               {isMl ? 'ചിലവ് മാത്രം' : 'Debits Only'}
             </button>
@@ -1240,9 +1235,8 @@ export default function FinancialLedgerPage() {
                       </td>
 
                       <td
-                        className={`py-3.5 px-6 text-right font-extrabold text-sm whitespace-nowrap ${
-                          item.type === 'credit' ? 'text-emerald-700' : 'text-rose-700'
-                        }`}
+                        className={`py-3.5 px-6 text-right font-extrabold text-sm whitespace-nowrap ${item.type === 'credit' ? 'text-emerald-700' : 'text-rose-700'
+                          }`}
                       >
                         {item.type === 'credit' ? '+' : '-'} {formatCurrency(item.amount)}
                       </td>
@@ -1330,19 +1324,24 @@ export default function FinancialLedgerPage() {
             >
               {entryType === 'credit' ? (
                 <>
-                  <option value="Donation">{isMl ? 'പൊതു / അഭ്യുദയകാംക്ഷി സംഭാവന' : 'Public / Well-wisher Donation'}</option>
-                  <option value="House Monthly Due">{isMl ? 'പ്രതിമാസ വരിസംഖ്യ (ഓഫ്‌ലൈൻ ക്യാഷ്)' : 'House Monthly Due (Offline Cash)'}</option>
-                  <option value="Madrasa Collection">{isMl ? 'മദ്രസ വിദ്യാഭ്യാസ ഫണ്ട്' : 'Madrasa Education Fund'}</option>
-                  <option value="Friday Collection">{isMl ? 'വെള്ളിയാഴ്ച ജുമുഅ പിരിവ്' : 'Friday Jumua Collection'}</option>
+                  <option value="Donation">{isMl ? 'സംഭാവന' : 'Donation'}</option>
+                  <option value="House Monthly Due">{isMl ? 'പ്രതിമാസ വരിസംഖ്യ' : 'House Monthly Due'}</option>
+                  <option value="Bucket Collection">{isMl ? 'ബക്കറ്റ് പിരിവ്' : 'Bucket Collection'}</option>
+                  <option value="Lease Money">{isMl ? 'പാട്ടം' : 'Lease Money'}</option>
+                  <option value="Rent">{isMl ? 'വാടക' : 'Rent'}</option>
+                  <option value="Gurudees">{isMl ? 'ഗുരുദീസ്' : 'Gurudees'}</option>
+                  <option value="Auction">{isMl ? 'ലേലം' : 'Auction'}</option>
                   <option value="Other">{isMl ? 'മറ്റുള്ളവ (വിവരണത്തിൽ വ്യക്തമാക്കുക)' : 'Other (Will mention in description)'}</option>
                 </>
               ) : (
                 <>
-                  <option value="Maintenance">{isMl ? 'പള്ളി / മദ്രസ അറ്റകുറ്റപ്പണി' : 'Mosque / Madrasa Maintenance'}</option>
-                  <option value="Electricity">{isMl ? 'കെ.എസ്.ഇ.ബി വൈദ്യുതി & വെള്ളം ബിൽ' : 'KSEB Electricity & Water'}</option>
-                  <option value="Relief Aid">{isMl ? 'ചികിത്സാ & ദുരിതാശ്വാസ ധനസഹായം' : 'Medical & Relief Financial Aid'}</option>
-                  <option value="Salaries">{isMl ? 'ജീവനക്കാരുടെ ശമ്പളം / അലവൻസ്' : 'Staff / Imam / Muazzin Stipend'}</option>
-                  <option value="Sound System">{isMl ? 'ബാങ്ക് മൈക്ക് & സൗണ്ട് സിസ്റ്റം റിപ്പയർ' : 'Azaan Speaker & Sound Repair'}</option>
+                  <option value="UsathadSalary">{isMl ? 'ഉസ്താദിന്റെ ശമ്പളം' : 'Usathad Salary'}</option>
+                  <option value="CleaningSalary">{isMl ? 'വൃത്തിയാക്കുന്നവർക്ക് ശമ്പളം' : 'Cleaning Staff Salary'}</option>
+                  <option value="MosqueElectricityBill">{isMl ? 'പള്ളി വൈദ്യുതി ബിൽ' : 'Mosque Electricity Bill'}</option>
+                  <option value="KabrastanElectricityBill">{isMl ? 'കബറസ്ഥാൻ വൈദ്യുതി ബിൽ' : 'Kabrastan Electricity Bill'}</option>
+                  <option value="Maintenance">{isMl ? 'അറ്റകുറ്റപ്പണി' : 'Maintenance'}</option>
+                  <option value="Contruction">{isMl ? 'നിർമ്മാണം' : 'Construction'}</option>
+                  <option value="Items purchased">{isMl ? 'വാങ്ങിയ സാധനങ്ങൾ' : 'Items purchased'}</option>
                   <option value="Other">{isMl ? 'മറ്റുള്ളവ (വിവരണത്തിൽ വ്യക്തമാക്കുക)' : 'Other (Will mention in description)'}</option>
                 </>
               )}
@@ -1468,9 +1467,8 @@ export default function FinancialLedgerPage() {
                   <span className="font-bold text-slate-900 text-sm">{getCategoryLabel(itemToDelete.category)}</span>
                 </div>
                 <span
-                  className={`font-black text-base ${
-                    itemToDelete.type === 'credit' ? 'text-emerald-700' : 'text-rose-700'
-                  }`}
+                  className={`font-black text-base ${itemToDelete.type === 'credit' ? 'text-emerald-700' : 'text-rose-700'
+                    }`}
                 >
                   {itemToDelete.type === 'credit' ? '+' : '-'} {formatCurrency(itemToDelete.amount)}
                 </span>
