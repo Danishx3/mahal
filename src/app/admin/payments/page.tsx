@@ -16,6 +16,7 @@ import { formatCurrency, formatDateTime, getHouseHeadName } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useLanguage } from '@/lib/context/LanguageContext';
@@ -47,8 +48,43 @@ import {
   CheckSquare,
 } from 'lucide-react';
 import { DuesSettings } from '@/lib/data-service';
-
 import { UpiQrCode } from '@/components/shared/UpiQrCode';
+
+const formatMonthLabel = (billingMonth: string, isMl: boolean) => {
+  if (!billingMonth) return '';
+  const [year, month] = billingMonth.split('-');
+  const monthMapMl: Record<string, string> = {
+    '01': 'ജനുവരി',
+    '02': 'ഫെബ്രുവരി',
+    '03': 'മാർച്ച്',
+    '04': 'ഏപ്രിൽ',
+    '05': 'മേയ്',
+    '06': 'ജൂൺ',
+    '07': 'ജൂലൈ',
+    '08': 'ഓഗസ്റ്റ്',
+    '09': 'സെപ്റ്റംബർ',
+    '10': 'ഒക്ടോബർ',
+    '11': 'നവംബർ',
+    '12': 'ഡിസംബർ',
+  };
+  const monthMapEn: Record<string, string> = {
+    '01': 'January',
+    '02': 'February',
+    '03': 'March',
+    '04': 'April',
+    '05': 'May',
+    '06': 'June',
+    '07': 'July',
+    '08': 'August',
+    '09': 'September',
+    '10': 'October',
+    '11': 'November',
+    '12': 'December',
+  };
+  return isMl
+    ? `${monthMapMl[month] || month} ${year}`
+    : `${monthMapEn[month] || month} ${year}`;
+};
 
 export default function PaymentVerificationHub() {
   const { language } = useLanguage();
@@ -140,6 +176,19 @@ export default function PaymentVerificationHub() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [selectedDueId, setSelectedDueId] = useState<string | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
+
+  // Approve confirmation modal state
+  const [approveConfirmItem, setApproveConfirmItem] = useState<{
+    type: 'monthly' | 'request';
+    dueId?: string;
+    houseRegNo: string;
+    houseName: string;
+    amount: number;
+    label: string;
+    ref?: string;
+    contrib?: PaymentRequestContribution;
+  } | null>(null);
+  const [isApprovingPayment, setIsApprovingPayment] = useState(false);
 
   const loadDues = async () => {
     try {
@@ -416,6 +465,21 @@ export default function PaymentVerificationHub() {
       await loadRequests();
     } catch (err: any) {
       toast(err?.message || 'Failed to approve contribution', 'error');
+    }
+  };
+
+  const executeConfirmApprove = async () => {
+    if (!approveConfirmItem) return;
+    setIsApprovingPayment(true);
+    try {
+      if (approveConfirmItem.type === 'monthly' && approveConfirmItem.dueId) {
+        await handleApprove(approveConfirmItem.dueId, approveConfirmItem.houseRegNo);
+      } else if (approveConfirmItem.type === 'request' && approveConfirmItem.contrib) {
+        await handleApproveContribution(approveConfirmItem.contrib);
+      }
+      setApproveConfirmItem(null);
+    } finally {
+      setIsApprovingPayment(false);
     }
   };
 
@@ -1030,7 +1094,17 @@ export default function PaymentVerificationHub() {
                               <Button
                                 variant="primary"
                                 size="sm"
-                                onClick={() => handleApprove(due.id, house.mahallu_reg_no)}
+                                onClick={() => {
+                                  setApproveConfirmItem({
+                                    type: 'monthly',
+                                    dueId: due.id,
+                                    houseRegNo: house.mahallu_reg_no,
+                                    houseName: house.house_name,
+                                    amount: Number(due.amount),
+                                    label: `${formatMonthLabel(due.billing_month, isMl)} ${isMl ? 'മാസവരി' : 'Monthly Due'}`,
+                                    ref: due.transaction_ref || undefined,
+                                  });
+                                }}
                                 className="gap-1.5 bg-emerald-700 hover:bg-emerald-800 cursor-pointer"
                               >
                                 <CheckCircle2 className="h-3.5 w-3.5" />
@@ -1126,7 +1200,19 @@ export default function PaymentVerificationHub() {
                                 <Button
                                 variant="primary"
                                 size="sm"
-                                onClick={() => handleApproveContribution(contrib)}
+                                onClick={() => {
+                                  const req = paymentRequests.find((r) => r.id === contrib.request_id);
+                                  const house = houses.find((h) => h.id === contrib.house_id) || null;
+                                  setApproveConfirmItem({
+                                    type: 'request',
+                                    houseRegNo: house?.mahallu_reg_no || '—',
+                                    houseName: house?.house_name || '—',
+                                    amount: Number(contrib.amount),
+                                    label: req?.title || (isMl ? 'പ്രത്യേക പിരിവ്' : 'Special Collection'),
+                                    ref: contrib.transaction_ref || undefined,
+                                    contrib,
+                                  });
+                                }}
                                 className="gap-1.5 bg-emerald-700 hover:bg-emerald-800 cursor-pointer"
                               >
                                 <CheckCircle2 className="h-3.5 w-3.5" />
@@ -1227,7 +1313,17 @@ export default function PaymentVerificationHub() {
                         <Button
                           variant="primary"
                           size="sm"
-                          onClick={() => handleApprove(due.id, house.mahallu_reg_no)}
+                          onClick={() => {
+                            setApproveConfirmItem({
+                              type: 'monthly',
+                              dueId: due.id,
+                              houseRegNo: house.mahallu_reg_no,
+                              houseName: house.house_name,
+                              amount: Number(due.amount),
+                              label: `${formatMonthLabel(due.billing_month, isMl)} ${isMl ? 'മാസവരി' : 'Monthly Due'}`,
+                              ref: due.transaction_ref || undefined,
+                            });
+                          }}
                           className="w-full justify-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 min-h-[42px] font-semibold text-xs"
                         >
                           <CheckCircle2 className="h-4 w-4" />
@@ -1319,7 +1415,19 @@ export default function PaymentVerificationHub() {
                         <Button
                           variant="primary"
                           size="sm"
-                          onClick={() => handleApproveContribution(contrib)}
+                          onClick={() => {
+                            const req = paymentRequests.find((r) => r.id === contrib.request_id);
+                            const house = houses.find((h) => h.id === contrib.house_id) || null;
+                            setApproveConfirmItem({
+                              type: 'request',
+                              houseRegNo: house?.mahallu_reg_no || '—',
+                              houseName: house?.house_name || '—',
+                              amount: Number(contrib.amount),
+                              label: req?.title || (isMl ? 'പ്രത്യേക പിരിവ്' : 'Special Collection'),
+                              ref: contrib.transaction_ref || undefined,
+                              contrib,
+                            });
+                          }}
                           className="w-full justify-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 min-h-[42px] font-semibold text-xs"
                         >
                           <CheckCircle2 className="h-4 w-4" />
@@ -1397,6 +1505,48 @@ export default function PaymentVerificationHub() {
           </div>
         </form>
       </Modal>
+
+      {/* Approve Payment Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!approveConfirmItem}
+        onClose={() => {
+          if (!isApprovingPayment) setApproveConfirmItem(null);
+        }}
+        onConfirm={executeConfirmApprove}
+        isLoading={isApprovingPayment}
+        title={isMl ? 'പേയ്‌മെന്റ് അംഗീകരിക്കൽ സ്ഥിരീകരിക്കുക' : 'Confirm Payment Approval'}
+        description={
+          isMl
+            ? 'ഈ പേയ്‌മെന്റ് അംഗീകരിക്കുകയും ഫിനാൻഷ്യൽ ലെഡ്ജറിലേക്ക് വരവ് ചേർക്കുകയും ചെയ്യണമെന്ന് ഉറപ്പാണോ? ഔദ്യോഗിക രസീത് ഉടൻ സൃഷ്ടിക്കപ്പെടുന്നതാണ്.'
+            : 'Are you sure you want to approve this payment and post automatic credit to the financial ledger? An official receipt will be generated.'
+        }
+        confirmText={isMl ? 'അംഗീകരിച്ച് വരവ് ചേർക്കുക' : 'Approve & Post Credit'}
+        cancelText={isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
+        variant="primary"
+      >
+        {approveConfirmItem && (
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">{isMl ? 'ഇനം / അടവ്:' : 'Payment Item:'}</span>
+              <span className="font-bold text-slate-900">{approveConfirmItem.label}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">{isMl ? 'തുക:' : 'Amount:'}</span>
+              <span className="font-black text-emerald-800 text-sm">{formatCurrency(approveConfirmItem.amount)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">{isMl ? 'കുടുംബം / വീട്:' : 'House / Member:'}</span>
+              <span className="font-bold text-slate-800">{approveConfirmItem.houseName} (#{approveConfirmItem.houseRegNo})</span>
+            </div>
+            {approveConfirmItem.ref && (
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">UTR / Ref:</span>
+                <span className="font-mono text-slate-700">{approveConfirmItem.ref}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </ConfirmationModal>
 
       {/* Configure Mahallu UPI ID Modal */}
       <Modal

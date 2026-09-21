@@ -8,6 +8,7 @@ import { useLanguage } from '@/lib/context/LanguageContext';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { useToast } from '@/components/ui/Toast';
 import {
   UserCheck,
@@ -37,6 +38,8 @@ export default function ProfileVerificationHub() {
   const [activeTab, setActiveTab] = useState<'registrations' | 'updates'>('registrations');
   const [pendingHouses, setPendingHouses] = useState<HouseWithDetails[]>([]);
   const [pendingUpdates, setPendingUpdates] = useState<ProfileUpdateRequest[]>([]);
+  const [houseToApprove, setHouseToApprove] = useState<HouseWithDetails | null>(null);
+  const [updateToApprove, setUpdateToApprove] = useState<ProfileUpdateRequest | null>(null);
 
   // Registration audit drawer & rejection
   const [selectedHouse, setSelectedHouse] = useState<HouseWithDetails | null>(null);
@@ -382,8 +385,7 @@ export default function ProfileVerificationHub() {
                             <Button
                               variant="primary"
                               size="sm"
-                              onClick={() => handleApproveRegistration(house.id)}
-                              isLoading={approvingId === house.id}
+                              onClick={() => setHouseToApprove(house)}
                               disabled={approvingId !== null}
                               className="gap-1 bg-emerald-700 hover:bg-emerald-800 cursor-pointer"
                             >
@@ -495,8 +497,7 @@ export default function ProfileVerificationHub() {
                       <Button
                         variant="primary"
                         size="sm"
-                        onClick={() => handleApproveRegistration(house.id)}
-                        isLoading={approvingId === house.id}
+                        onClick={() => setHouseToApprove(house)}
                         disabled={approvingId !== null}
                         className="w-full justify-center gap-1 text-xs min-h-[40px] bg-emerald-700 hover:bg-emerald-800 px-1"
                       >
@@ -647,8 +648,7 @@ export default function ProfileVerificationHub() {
                             <Button
                               variant="primary"
                               size="sm"
-                              onClick={() => handleApproveUpdate(update)}
-                              isLoading={approvingUpdateId === update.id}
+                              onClick={() => setUpdateToApprove(update)}
                               disabled={approvingUpdateId !== null}
                               className="gap-1 bg-emerald-700 hover:bg-emerald-800 cursor-pointer"
                             >
@@ -776,8 +776,7 @@ export default function ProfileVerificationHub() {
                       <Button
                         variant="primary"
                         size="sm"
-                        onClick={() => handleApproveUpdate(update)}
-                        isLoading={approvingUpdateId === update.id}
+                        onClick={() => setUpdateToApprove(update)}
                         disabled={approvingUpdateId !== null}
                         className="w-full justify-center gap-1 text-xs min-h-[40px] bg-emerald-700 hover:bg-emerald-800 px-1"
                       >
@@ -1291,8 +1290,7 @@ export default function ProfileVerificationHub() {
                 type="button"
                 variant="primary"
                 size="sm"
-                onClick={() => handleApproveUpdate(selectedUpdate)}
-                isLoading={approvingUpdateId === selectedUpdate.id}
+                onClick={() => setUpdateToApprove(selectedUpdate)}
                 disabled={approvingUpdateId !== null}
                 className="gap-1.5 bg-emerald-700 hover:bg-emerald-800 cursor-pointer"
               >
@@ -1477,10 +1475,9 @@ export default function ProfileVerificationHub() {
                 </Button>
                 <Button
                   variant="primary"
-                  onClick={() => handleApproveRegistration(selectedHouse.id)}
-                  isLoading={approvingId === selectedHouse.id}
+                  onClick={() => setHouseToApprove(selectedHouse)}
                   disabled={approvingId !== null}
-                  className="gap-1.5 bg-emerald-700 hover:bg-emerald-800"
+                  className="gap-1.5 bg-emerald-700 hover:bg-emerald-800 cursor-pointer"
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   {isMl ? 'പ്രൊഫൈൽ അംഗീകരിക്കുക' : 'Approve Profile'}
@@ -1536,6 +1533,90 @@ export default function ProfileVerificationHub() {
           </div>
         </form>
       </Modal>
+
+      {/* Registration Approval Confirmation Modal */}
+      {houseToApprove && (
+        <ConfirmationModal
+          isOpen={!!houseToApprove}
+          onClose={() => {
+            if (!approvingId) setHouseToApprove(null);
+          }}
+          onConfirm={async () => {
+            await handleApproveRegistration(houseToApprove.id);
+            setHouseToApprove(null);
+          }}
+          isLoading={approvingId === houseToApprove.id}
+          title={isMl ? 'കുടുംബ രജിസ്ട്രേഷൻ അംഗീകരിക്കൽ സ്ഥിരീകരിക്കുക' : 'Confirm Registration Approval'}
+          description={
+            isMl
+              ? 'ഈ കുടുംബത്തിന്റെ രജിസ്ട്രേഷൻ ഔദ്യോഗികമായി അംഗീകരിച്ച് പോർട്ടൽ ആക്സസ് നൽകണമെന്ന് ഉറപ്പാണോ?'
+              : 'Are you sure you want to approve this household profile? This will unlock full portal access and activate official membership.'
+          }
+          confirmText={isMl ? 'അംഗീകരിക്കുക' : 'Confirm & Approve'}
+          cancelText={isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
+          variant="success"
+        >
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">{isMl ? 'കുടുംബം / വീട്ടുപേര്:' : 'House Name:'}</span>
+              <span className="font-bold text-slate-900">{houseToApprove.house_name}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">{isMl ? 'വീട്ടു നമ്പർ:' : 'House No:'}</span>
+              <span className="font-semibold text-slate-800">{houseToApprove.house_number || '—'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">{isMl ? 'മഹല്ല് റെജി. നമ്പർ:' : 'Mahallu Reg No:'}</span>
+              <span className="font-mono font-bold text-emerald-800">{houseToApprove.mahallu_reg_no}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">{isMl ? 'കുടുംബാംഗങ്ങൾ:' : 'Members:'}</span>
+              <span className="font-semibold text-slate-800">{houseToApprove.family_members?.length || 0} {isMl ? 'പേർ' : 'members'}</span>
+            </div>
+          </div>
+        </ConfirmationModal>
+      )}
+
+      {/* Profile Update Approval Confirmation Modal */}
+      {updateToApprove && (
+        <ConfirmationModal
+          isOpen={!!updateToApprove}
+          onClose={() => {
+            if (!approvingUpdateId) setUpdateToApprove(null);
+          }}
+          onConfirm={async () => {
+            await handleApproveUpdate(updateToApprove);
+            setUpdateToApprove(null);
+          }}
+          isLoading={approvingUpdateId === updateToApprove.id}
+          title={isMl ? 'വിവരങ്ങളുടെ മാറ്റം അംഗീകരിക്കൽ സ്ഥിരീകരിക്കുക' : 'Confirm Profile Update Approval'}
+          description={
+            isMl
+              ? 'ഈ തിരുത്തലുകൾ പരിശോധിച്ച് ഔദ്യോഗിക മഹല്ല് രേഖകളിലേക്ക് ചേർക്കണമെന്ന് ഉറപ്പാണോ?'
+              : 'Are you sure you want to approve and commit these profile updates to official Mahallu records?'
+          }
+          confirmText={isMl ? 'അംഗീകരിക്കുക' : 'Confirm & Apply'}
+          cancelText={isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
+          variant="success"
+        >
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">{isMl ? 'വീട്ടുപേര്:' : 'House Name:'}</span>
+              <span className="font-bold text-slate-900">{updateToApprove.requested_details.house_name}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">{isMl ? 'വീട്ടു നമ്പർ:' : 'House No:'}</span>
+              <span className="font-semibold text-slate-800">{updateToApprove.requested_details.house_number || '—'}</span>
+            </div>
+            {updateToApprove.requested_members && updateToApprove.requested_members.length > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-medium">{isMl ? 'പുതുക്കിയ അംഗങ്ങൾ:' : 'Updated Members:'}</span>
+                <span className="font-semibold text-emerald-800">{updateToApprove.requested_members.length} {isMl ? 'പേർ' : 'members'}</span>
+              </div>
+            )}
+          </div>
+        </ConfirmationModal>
+      )}
     </div>
   );
 }

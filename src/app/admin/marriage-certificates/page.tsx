@@ -8,6 +8,7 @@ import { MarriageCertificateApplication, MarriageCertificateStatus } from '@/lib
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { useToast } from '@/components/ui/Toast';
 import { LoadingScreen } from '@/components/ui/LoadingAnimation';
 import { formatDateTime } from '@/lib/utils';
@@ -58,6 +59,7 @@ export default function AdminMarriageCertificatesPage() {
   const [adminNotesInput, setAdminNotesInput] = useState('');
   const [rejectionReasonInput, setRejectionReasonInput] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [confirmApproveOpen, setConfirmApproveOpen] = useState(false);
   const [slipApp, setSlipApp] = useState<MarriageCertificateApplication | null>(null);
 
   const loadApplications = async () => {
@@ -127,6 +129,15 @@ export default function AdminMarriageCertificatesPage() {
     setSelectedApp(app);
     setRejectionReasonInput('');
     setRejectModalOpen(true);
+  };
+
+  // Initiate Approval Prompt
+  const handleInitiateApprove = () => {
+    if (!certNumberInput.trim()) {
+      toast(isMl ? 'സർട്ടിഫിക്കറ്റ് നമ്പർ രേഖപ്പെടുത്തുക.' : 'Please enter the official certificate registration number.', 'error');
+      return;
+    }
+    setConfirmApproveOpen(true);
   };
 
   // Execute Approval
@@ -653,9 +664,9 @@ export default function AdminMarriageCertificatesPage() {
               </Button>
               <Button
                 variant="primary"
-                onClick={handleConfirmApproval}
+                onClick={handleInitiateApprove}
                 disabled={processing}
-                className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold flex items-center gap-2"
+                className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold flex items-center gap-2 cursor-pointer"
               >
                 {processing ? (
                   <>
@@ -672,6 +683,49 @@ export default function AdminMarriageCertificatesPage() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {/* Certificate Approval Final Confirmation Dialog */}
+      {selectedApp && (
+        <ConfirmationModal
+          isOpen={confirmApproveOpen}
+          onClose={() => {
+            if (!processing) setConfirmApproveOpen(false);
+          }}
+          onConfirm={async () => {
+            await handleConfirmApproval();
+            setConfirmApproveOpen(false);
+          }}
+          isLoading={processing}
+          title={isMl ? 'വിവാഹ സർട്ടിഫിക്കറ്റ് അംഗീകരിക്കൽ സ്ഥിരീകരിക്കുക' : 'Confirm Certificate Approval'}
+          description={
+            isMl
+              ? `സർട്ടിഫിക്കറ്റ് നമ്പർ #${certNumberInput}-ൽ ഈ വിവാഹ സർട്ടിഫിക്കറ്റ് ഔദ്യോഗികമായി അംഗീകരിച്ച് അപേക്ഷകന് ഇമെയിൽ അയക്കണമെന്ന് ഉറപ്പാണോ?`
+              : `Are you sure you want to officially approve Marriage Certificate #${certNumberInput} and dispatch email notification to ${selectedApp.applicant_email}?`
+          }
+          confirmText={isMl ? 'അംഗീകരിക്കുക' : 'Confirm & Approve'}
+          cancelText={isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
+          variant="success"
+        >
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">{isMl ? 'സർട്ടിഫിക്കറ്റ് നമ്പർ:' : 'Certificate No:'}</span>
+              <span className="font-mono font-bold text-emerald-800 text-sm">#{certNumberInput}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">{isMl ? 'വരൻ & വധു:' : 'Couple:'}</span>
+              <span className="font-bold text-slate-800">{selectedApp.husband_name} & {selectedApp.wife_full_name}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">{isMl ? 'കുടുംബം / വീട്:' : 'Household:'}</span>
+              <span className="font-bold text-slate-800">{selectedApp.house_name} (#{selectedApp.mahallu_reg_no})</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">{isMl ? 'നിക്കാഹ് തീയതി:' : 'Date of Nikah:'}</span>
+              <span className="text-slate-700">{selectedApp.date_of_nikah}</span>
+            </div>
+          </div>
+        </ConfirmationModal>
       )}
 
       {/* ═══════════ REJECT MODAL ═══════════ */}
