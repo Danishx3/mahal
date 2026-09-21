@@ -8,7 +8,6 @@ import { useLanguage } from '@/lib/context/LanguageContext';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { useToast } from '@/components/ui/Toast';
 import {
   Users,
@@ -18,7 +17,6 @@ import {
   MoreVertical,
   ShieldAlert,
   ShieldCheck,
-  Trash2,
   Eye,
   Crown,
   MapPin,
@@ -33,8 +31,6 @@ export default function HousesDirectoryPage() {
   const { toast } = useToast();
   const [houses, setHouses] = useState<HouseWithDetails[]>([]);
   const [stats, setStats] = useState<any>(null);
-  const [houseToDelete, setHouseToDelete] = useState<{ id: string; name: string; regNo?: string; memberCount?: number } | null>(null);
-  const [isDeletingHouse, setIsDeletingHouse] = useState(false);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -108,22 +104,6 @@ export default function HousesDirectoryPage() {
       'success'
     );
     loadData();
-  };
-
-  const executeConfirmDeleteHouse = async () => {
-    if (!houseToDelete) return;
-    setIsDeletingHouse(true);
-    try {
-      await DataService.deleteHouse(houseToDelete.id);
-      toast(isMl ? 'കുടുംബത്തിന്റെ രേഖകൾ നീക്കം ചെയ്തു' : 'Household record removed', 'info');
-      setDrawerOpen(false);
-      setHouseToDelete(null);
-      loadData();
-    } catch (err: any) {
-      toast(err?.message || (isMl ? 'വീട് നീക്കം ചെയ്യുന്നതിൽ പരാജയപ്പെട്ടു' : 'Failed to delete house'), 'error');
-    } finally {
-      setIsDeletingHouse(false);
-    }
   };
 
   // Pagination calculation
@@ -479,14 +459,6 @@ export default function HousesDirectoryPage() {
                               {isMl ? 'തടയുക' : 'Block'}
                             </Button>
                           )}
-
-                          <button
-                            onClick={() => setHouseToDelete({ id: h.id, name: h.house_name, regNo: h.mahallu_reg_no, memberCount: h.family_members?.length })}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors cursor-pointer"
-                            title={isMl ? 'രേഖ നീക്കം ചെയ്യുക' : 'Remove Record'}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -605,14 +577,6 @@ export default function HousesDirectoryPage() {
                         <span>{isMl ? 'തടയുക' : 'Block Access'}</span>
                       </Button>
                     )}
-
-                    <button
-                      onClick={() => setHouseToDelete({ id: h.id, name: h.house_name, regNo: h.mahallu_reg_no, memberCount: h.family_members?.length })}
-                      className="h-[42px] w-[42px] shrink-0 flex items-center justify-center rounded-xl border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition-colors cursor-pointer"
-                      title={isMl ? 'രേഖ നീക്കം ചെയ്യുക' : 'Delete House'}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
                   </div>
                 </div>
               );
@@ -752,16 +716,7 @@ export default function HousesDirectoryPage() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setHouseToDelete({ id: selectedHouse.id, name: selectedHouse.house_name, regNo: selectedHouse.mahallu_reg_no, memberCount: selectedHouse.family_members?.length })}
-                className="gap-1.5"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                {isMl ? 'രേഖ നീക്കം ചെയ്യുക' : 'Remove Record'}
-              </Button>
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-end">
               <Button variant="outline" size="sm" onClick={() => setDrawerOpen(false)}>
                 {isMl ? 'അടയ്ക്കുക' : 'Close'}
               </Button>
@@ -769,46 +724,6 @@ export default function HousesDirectoryPage() {
           </div>
         )}
       </Modal>
-
-      {/* House Deletion Confirmation Modal */}
-      {houseToDelete && (
-        <ConfirmationModal
-          isOpen={!!houseToDelete}
-          onClose={() => {
-            if (!isDeletingHouse) setHouseToDelete(null);
-          }}
-          onConfirm={executeConfirmDeleteHouse}
-          isLoading={isDeletingHouse}
-          title={isMl ? 'വീട് നീക്കം ചെയ്യൽ സ്ഥിരീകരിക്കുക' : 'Confirm House Deletion'}
-          description={
-            isMl
-              ? `"${houseToDelete.name}" എന്ന വീടും ഇതിലെ എല്ലാ കുടുംബാംഗങ്ങളുടെയും സെൻസസ് വിവരങ്ങളും സ്ഥിരമായി നീക്കം ചെയ്യപ്പെടും. ഈ പ്രവർത്തനം പഴയപടിയാക്കാൻ കഴിയില്ല.`
-              : `Permanently delete house "${houseToDelete.name}" and all associated member records? This action cannot be undone.`
-          }
-          confirmText={isMl ? 'ശാശ്വതമായി നീക്കം ചെയ്യുക' : 'Delete Permanently'}
-          cancelText={isMl ? 'റദ്ദാക്കുക' : 'Cancel'}
-          variant="destructive"
-        >
-          <div className="p-3.5 rounded-xl bg-rose-50/70 border border-rose-200 text-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-rose-700 font-medium">{isMl ? 'വീട്ടുപേര്:' : 'House Name:'}</span>
-              <span className="font-bold text-rose-950">{houseToDelete.name}</span>
-            </div>
-            {houseToDelete.regNo && (
-              <div className="flex items-center justify-between">
-                <span className="text-rose-700 font-medium">{isMl ? 'മഹല്ല് രജിസ്റ്റർ നമ്പർ:' : 'Mahallu Reg No:'}</span>
-                <span className="font-mono font-bold text-rose-950">{houseToDelete.regNo}</span>
-              </div>
-            )}
-            {typeof houseToDelete.memberCount === 'number' && (
-              <div className="flex items-center justify-between">
-                <span className="text-rose-700 font-medium">{isMl ? 'കുടുംബാംഗങ്ങളുടെ എണ്ണം:' : 'Census Members:'}</span>
-                <span className="font-semibold text-rose-950">{houseToDelete.memberCount} {isMl ? 'പേർ' : 'members'}</span>
-              </div>
-            )}
-          </div>
-        </ConfirmationModal>
-      )}
     </div>
   );
 }
