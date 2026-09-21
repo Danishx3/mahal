@@ -3309,39 +3309,24 @@ export const DataService = {
   },
 
   async submitMarriageCertificateAsync(payload: any): Promise<MarriageCertificateApplication> {
-    try {
-      const res = await fetch('/api/marriage-certificates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+    const res = await fetch('/api/marriage-certificates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err?.error || 'Failed to submit marriage certificate application');
-      }
-
-      const data = await res.json();
-      if (data.application) {
-        this.saveMarriageCertificateLocal(data.application);
-        return data.application;
-      }
-    } catch (err: any) {
-      console.warn('API submission failed, storing locally:', err?.message);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error || 'Failed to submit marriage certificate application to database');
     }
 
-    const localApp: MarriageCertificateApplication = {
-      ...payload,
-      id: `mc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      status: 'pending',
-      submitted_at: new Date().toISOString(),
-      certificate_number: null,
-      admin_notes: null,
-      rejection_reason: null,
-      reviewed_at: null,
-      reviewed_by: null,
-    };
-    return this.saveMarriageCertificateLocal(localApp);
+    const data = await res.json();
+    if (data.application) {
+      this.saveMarriageCertificateLocal(data.application);
+      return data.application;
+    }
+
+    throw new Error('No application record returned from server');
   },
 
   async reviewMarriageCertificateAsync(

@@ -23,3 +23,10 @@ ALTER TABLE public.marriage_certificates
 -- 3. Nikah ceremony location / venue
 ALTER TABLE public.marriage_certificates
     ADD COLUMN IF NOT EXISTS nikah_venue VARCHAR(255);
+
+-- 4. Make legacy fields optional/nullable to match current official certificate format
+ALTER TABLE public.marriage_certificates ALTER COLUMN husband_dob DROP NOT NULL;
+ALTER TABLE public.marriage_certificates ALTER COLUMN wife_dob DROP NOT NULL;
+ALTER TABLE public.marriage_certificates ALTER COLUMN wife_initial DROP NOT NULL;
+ALTER TABLE public.marriage_certificates ALTER COLUMN wife_address DROP NOT NULL;
+

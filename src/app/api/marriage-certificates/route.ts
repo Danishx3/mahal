@@ -135,6 +135,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const defaultHusbandYear = date_of_nikah ? Math.max(1950, parseInt(date_of_nikah.slice(0, 4)) - 25) : 1995;
+    const defaultWifeYear = date_of_nikah ? Math.max(1950, parseInt(date_of_nikah.slice(0, 4)) - 22) : 1998;
+
+    const effectiveHusbandDob = (husband_dob && String(husband_dob).trim()) || `${defaultHusbandYear}-01-01`;
+    const effectiveWifeDob = (wife_dob && String(wife_dob).trim()) || `${defaultWifeYear}-01-01`;
+    const effectiveWifeInitial = (wife_initial && String(wife_initial).trim()) || wife_father_name?.trim()?.slice(0, 1)?.toUpperCase() || wife_full_name?.trim()?.slice(0, 1)?.toUpperCase() || 'W';
+    const effectiveWifeAddress = (wife_address && String(wife_address).trim()) || `${wife_house_name}, ${wife_post_office}, ${wife_taluk || 'Ernad'}, ${wife_district || 'MALAPPURAM'}`;
+
     const nowIso = new Date().toISOString();
     const payload: any = {
       house_id,
@@ -150,7 +158,7 @@ export async function POST(request: Request) {
       husband_taluk: husband_taluk.trim(),
       husband_district: (husband_district || 'MALAPPURAM').trim().toUpperCase(),
       husband_state: (husband_state || 'KERALA').trim().toUpperCase(),
-      husband_dob: husband_dob || null,
+      husband_dob: effectiveHusbandDob,
       wife_full_name: wife_full_name.trim(),
       wife_father_name: wife_father_name.trim(),
       wife_house_name: wife_house_name.trim(),
@@ -158,9 +166,9 @@ export async function POST(request: Request) {
       wife_taluk: wife_taluk.trim(),
       wife_district: (wife_district || 'MALAPPURAM').trim().toUpperCase(),
       wife_state: (wife_state || 'KERALA').trim().toUpperCase(),
-      wife_initial: (wife_initial || '').trim() || null,
-      wife_address: (wife_address || `${wife_house_name}, ${wife_post_office}`).trim(),
-      wife_dob: wife_dob || null,
+      wife_initial: effectiveWifeInitial,
+      wife_address: effectiveWifeAddress,
+      wife_dob: effectiveWifeDob,
       date_of_nikah,
       nikah_venue: nikah_venue.trim(),
       status: 'pending',
@@ -173,22 +181,20 @@ export async function POST(request: Request) {
     };
 
     const supabase = createClient();
-    let savedApplication: MarriageCertificateApplication | null = null;
-
     const { data, error } = await (supabase.from('marriage_certificates') as any)
       .insert(payload)
       .select()
       .single();
 
     if (error) {
-      console.warn('Supabase insert marriage_certificates error, using fallback:', error.message);
-      savedApplication = {
-        ...payload,
-        id: `mc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      };
-    } else {
-      savedApplication = data;
+      console.error('[API ERROR] Supabase insert marriage_certificates error:', error.message, error.details);
+      return NextResponse.json(
+        { error: `Database insert failed: ${error.message}` },
+        { status: 500 }
+      );
     }
+
+    const savedApplication: MarriageCertificateApplication = data;
 
     // Collect all admin emails to notify
     let adminEmails: string[] = [];
