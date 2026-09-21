@@ -279,10 +279,10 @@ export default function ResidentPaymentCenter() {
         due.status === 'verified'
           ? (isMl ? 'സ്ഥിരീകരിച്ചു' : 'Verified')
           : due.status === 'under_review'
-          ? (isMl ? 'പരിശോധനയിൽ' : 'Under Review')
-          : due.status === 'failed'
-          ? (isMl ? 'നിരസിച്ചു' : 'Failed')
-          : (isMl ? 'അടയ്ക്കാനുണ്ട്' : 'Pending'),
+            ? (isMl ? 'പരിശോധനയിൽ' : 'Under Review')
+            : due.status === 'failed'
+              ? (isMl ? 'നിരസിച്ചു' : 'Failed')
+              : (isMl ? 'അടയ്ക്കാനുണ്ട്' : 'Pending'),
       submittedAt: due.submitted_at,
       verifiedAt: due.verified_at,
       rejectionReason: due.rejection_reason,
@@ -311,10 +311,10 @@ export default function ResidentPaymentCenter() {
         contrib.status === 'rejected'
           ? (isMl ? 'നിരസിച്ചു' : 'Rejected')
           : contrib.status === 'verified'
-          ? (isMl ? 'സ്ഥിരീകരിച്ചു' : 'Verified')
-          : contrib.status === 'under_review'
-          ? (isMl ? 'പരിശോധനയിൽ' : 'Under Review')
-          : (isMl ? 'അടയ്ക്കാനുണ്ട്' : 'Pending'),
+            ? (isMl ? 'സ്ഥിരീകരിച്ചു' : 'Verified')
+            : contrib.status === 'under_review'
+              ? (isMl ? 'പരിശോധനയിൽ' : 'Under Review')
+              : (isMl ? 'അടയ്ക്കാനുണ്ട്' : 'Pending'),
       submittedAt: contrib.submitted_at,
       verifiedAt: contrib.verified_at,
       rejectionReason: contrib.rejection_reason,
@@ -555,19 +555,10 @@ export default function ResidentPaymentCenter() {
                 : 'Track your monthly ₹100 contribution, submit UPI transaction references, and download official receipts.'}
             </p>
           </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Link href="/dashboard">
-              <Button variant="outline" size="sm" className="gap-1.5 text-slate-700 bg-white min-h-[38px] text-xs font-semibold">
-                <Home className="h-4 w-4 text-emerald-700" />
-                {isMl ? 'കുടുംബ വിവരങ്ങൾ' : 'Household Overview'}
-              </Button>
-            </Link>
-          </div>
         </div>
 
-        {/* 1. TOP SECTION: Pending Payments & Action Required (Prominently at the top) */}
-        {pendingDues.length > 0 || failedDues.length > 0 || rejectedSpecialContribs.length > 0 ? (
+        {/* 1. TOP SECTION: Pending Payments & Action Required (Prominently at the top - displayed only when pending dues exist) */}
+        {(pendingDues.length > 0 || failedDues.length > 0 || rejectedSpecialContribs.length > 0) && (
           <div className="rounded-2xl sm:rounded-3xl p-4 sm:p-6 bg-gradient-to-br from-amber-500/10 via-amber-50/60 to-orange-500/10 border-2 border-amber-300 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start sm:items-center gap-3">
@@ -786,36 +777,6 @@ export default function ResidentPaymentCenter() {
               })}
             </div>
           </div>
-        ) : (
-          /* Reassuring banner when 0 pending dues */
-          <div className="rounded-2xl sm:rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-emerald-500/10 via-emerald-50 to-teal-50 border border-emerald-300/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-emerald-600 text-white shrink-0 shadow-xs">
-                <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6" />
-              </div>
-              <div>
-                <h2 className="text-sm sm:text-base font-bold text-emerald-950 flex items-center gap-1.5">
-                  <span>{isMl ? 'എല്ലാ മാസവരികളും കൃത്യമായി അടച്ചിട്ടുണ്ട്!' : 'All Monthly Dues Up to Date!'}</span>
-                  <Sparkles className="h-4 w-4 text-emerald-600" />
-                </h2>
-                <p className="text-xs text-emerald-800 mt-0.5">
-                  {isMl
-                    ? 'നിലവിൽ അടയ്ക്കാനുള്ള കുടിശ്ശികകളൊന്നുമില്ല. നിങ്ങളുടെ കൃത്യമായ സഹകരണത്തിന് മഹല്ല് കമ്മിറ്റിയുടെ നന്ദി.'
-                    : 'You have no pending dues. Thank you for your punctual support to the Mahallu community.'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 self-stretch sm:self-auto">
-              <button
-                type="button"
-                onClick={() => setShowHeroQr(!showHeroQr)}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-emerald-300 text-emerald-800 text-xs font-semibold hover:bg-emerald-50 cursor-pointer min-h-[38px]"
-              >
-                <QrCode className="h-4 w-4 text-emerald-600" />
-                <span>{showHeroQr ? (isMl ? 'QR മറയ്ക്കുക' : 'Hide QR') : (isMl ? 'UPI QR കാണുക' : 'Show UPI QR')}</span>
-              </button>
-            </div>
-          </div>
         )}
 
         {/* 2. Under Review Notice if any submissions are awaiting admin verification */}
@@ -948,15 +909,14 @@ export default function ResidentPaymentCenter() {
                 return (
                   <div
                     key={req.id}
-                    className={`bg-white rounded-2xl border p-4 sm:p-5 shadow-xs flex flex-col justify-between transition-all ${
-                      isVerified
+                    className={`bg-white rounded-2xl border p-4 sm:p-5 shadow-xs flex flex-col justify-between transition-all ${isVerified
                         ? 'border-emerald-300 ring-1 ring-emerald-500/20 bg-emerald-50/20'
                         : isUnderReview
                           ? 'border-amber-300 ring-1 ring-amber-500/20 bg-amber-50/10'
                           : isRejected
                             ? 'border-rose-300 ring-1 ring-rose-500/20 bg-rose-50/10'
                             : 'border-slate-200 hover:border-emerald-400'
-                    }`}
+                      }`}
                   >
                     <div className="space-y-2.5">
                       {/* Category & Status badges */}
@@ -1143,33 +1103,30 @@ export default function ResidentPaymentCenter() {
                 <button
                   type="button"
                   onClick={() => setTypeFilter('all')}
-                  className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    typeFilter === 'all'
+                  className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${typeFilter === 'all'
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   {isMl ? `എല്ലാം (${allTransactions.length})` : `All (${allTransactions.length})`}
                 </button>
                 <button
                   type="button"
                   onClick={() => setTypeFilter('monthly')}
-                  className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    typeFilter === 'monthly'
+                  className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${typeFilter === 'monthly'
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   {isMl ? `മാസവരി (${dueTransactions.length})` : `Monthly Dues (${dueTransactions.length})`}
                 </button>
                 <button
                   type="button"
                   onClick={() => setTypeFilter('special')}
-                  className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    typeFilter === 'special'
+                  className={`px-2.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${typeFilter === 'special'
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                    }`}
                 >
                   {isMl ? `പ്രത്യേക പിരിവുകൾ (${specialTransactions.length})` : `Special Appeals (${specialTransactions.length})`}
                 </button>
@@ -1187,17 +1144,15 @@ export default function ResidentPaymentCenter() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                      activeTab === tab.id
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${activeTab === tab.id
                         ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold'
                         : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                    }`}
+                      }`}
                   >
                     <span>{tab.label}</span>
                     {tab.count > 0 && (
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                        activeTab === tab.id ? 'bg-emerald-200 text-emerald-900 font-extrabold' : 'bg-slate-200 text-slate-700'
-                      }`}>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${activeTab === tab.id ? 'bg-emerald-200 text-emerald-900 font-extrabold' : 'bg-slate-200 text-slate-700'
+                        }`}>
                         {tab.count}
                       </span>
                     )}
@@ -1234,11 +1189,10 @@ export default function ResidentPaymentCenter() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-slate-900 text-sm">{tx.title}</span>
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                              tx.sourceType === 'special_payment'
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${tx.sourceType === 'special_payment'
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                 : 'bg-slate-100 text-slate-700 border-slate-200'
-                            }`}
+                              }`}
                           >
                             {tx.categoryBadge}
                           </span>
@@ -1374,11 +1328,10 @@ export default function ResidentPaymentCenter() {
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <h3 className="font-bold text-slate-900 text-sm">{tx.title}</h3>
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                            tx.sourceType === 'special_payment'
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${tx.sourceType === 'special_payment'
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                               : 'bg-slate-100 text-slate-700 border-slate-200'
-                          }`}
+                            }`}
                         >
                           {tx.categoryBadge}
                         </span>
@@ -1687,8 +1640,8 @@ export default function ResidentPaymentCenter() {
                         type="button"
                         onClick={() => setContribAmount(String(amt))}
                         className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all cursor-pointer ${contribAmount && contribAmount === String(amt)
-                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                           }`}
                       >
                         ₹{amt}
