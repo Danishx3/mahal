@@ -150,7 +150,7 @@ export default function LandingPage() {
               </div>
               <div className="text-left leading-tight">
                 <span className={`text-xs font-bold text-white ${isMl ? 'tracking-normal' : 'tracking-tight'} block`}>
-                  {isMl ? 'കുഞ്ഞിക്കുളം ജുമാ മസ്ജിദ്' : 'Kunjikkulam Juma Masjid'}
+                  {isMl ? 'കുഞ്ഞിക്കുളം മഹല്ല്' : 'Kunjikkulam Mahal'}
                 </span>
                 <span className={`${isMl ? 'text-[11px] font-medium tracking-normal' : 'text-[10px] font-semibold tracking-wider uppercase'} text-emerald-400 block`}>
                   {isMl ? 'ഔദ്യോഗിക മഹല്ല് പോർട്ടൽ' : 'Official Mahallu Portal'}
@@ -162,27 +162,22 @@ export default function LandingPage() {
             <h1 className={`text-4xl sm:text-5xl lg:text-6xl font-extrabold ${isMl ? 'leading-[1.25] tracking-normal' : 'leading-[1.15] tracking-tight'}`}>
               {isMl ? (
                 <>
-                  <span className="text-white">ഏകോപിത മഹല്ല്</span>{' '}
+                  <span className="text-white">മഹല്ല്</span>{' '}
                   <span className="text-emerald-400 block sm:inline font-black drop-shadow-sm">
-                    അഡ്മിനിസ്ട്രേഷൻ
+                    മാനേജ്മെന്റ്
                   </span>
                 </>
               ) : (
                 <>
-                  <span className="text-white">Unified Mahallu</span>{' '}
+                  <span className="text-white">Mahallu</span>{' '}
                   <span className="text-emerald-400 block sm:inline font-black drop-shadow-sm">
-                    Administration
+                    Management
                   </span>
                 </>
               )}
             </h1>
 
-            {/* Subheading */}
-            <p className="text-base sm:text-lg text-slate-200 max-w-2xl mx-auto leading-relaxed">
-              {isMl
-                ? 'കുടുംബ രജിസ്ട്രേഷൻ, മാസവരി ട്രാക്കിംഗ്, UPI പേയ്‌മെന്റുകൾ, ഡിജിറ്റൽ വരവ്-ചിലവ് കണക്കുകൾ എന്നിവ ഏകോപിപ്പിക്കുന്ന ആധുനിക മഹല്ല് പോർട്ടൽ.'
-                : 'A comprehensive portal for household registration, membership dues tracking, UPI payment reconciliation, and double-entry financial management — built for modern village governance.'}
-            </p>
+
 
             {/* Action Buttons */}
             <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
