@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DataService, ProfileUpdateRequest } from '@/lib/data-service';
 import { HouseWithDetails, DIVISION_LABELS, DIVISION_LABELS_ML, Division, FamilyMember, MaritalStatus, PaymentRequestItem } from '@/lib/supabase/types';
+import { divisions } from '@/lib/schemas';
 import { formatCurrency, formatDateTime } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -1175,7 +1176,7 @@ export default function ResidentDashboard() {
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                     required
                   >
-                    {(Object.keys(DIVISION_LABELS) as Division[]).map((key) => (
+                    {divisions.map((key) => (
                       <option key={key} value={key}>
                         {isMl ? (DIVISION_LABELS_ML[key] || key) : DIVISION_LABELS[key]}
                       </option>

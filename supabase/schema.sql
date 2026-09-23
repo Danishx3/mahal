@@ -13,11 +13,12 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 DO $$ BEGIN
     CREATE TYPE division_enum AS ENUM (
         'alungal',
-        'prammal',
+        'parammal',
         'kayanikkara',
         'mariyad',
         'meenamkuzhiyil_south',
-        'meenamkuzhiyil_north'
+        'meenamkuzhiyil_north',
+        'prammal'
     );
 EXCEPTION
     WHEN duplicate_object THEN null;

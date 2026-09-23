@@ -23,7 +23,7 @@ SET role = EXCLUDED.role, status = EXCLUDED.status;
 INSERT INTO public.houses (id, user_id, house_name, house_number, mahallu_reg_no, division, phone, created_at)
 VALUES
     ('h0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Baitul Noor', 'VII/142', 'MHL-ALU-042', 'alungal', '+91 98471 23456', NOW() - INTERVAL '45 days'),
-    ('h0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'Darul Aman', 'IV/89', 'MHL-PRA-118', 'prammal', '+91 94460 78901', NOW() - INTERVAL '2 days'),
+    ('h0000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000002', 'Darul Aman', 'IV/89', 'MHL-PAR-118', 'parammal', '+91 94460 78901', NOW() - INTERVAL '2 days'),
     ('h0000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000003', 'Al Rahma', 'XII/05', 'MHL-KAY-204', 'kayanikkara', '+91 99951 45678', NOW() - INTERVAL '30 days')
 ON CONFLICT (mahallu_reg_no) DO NOTHING;
 

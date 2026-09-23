@@ -2,11 +2,16 @@ import { z } from 'zod';
 
 export const divisions = [
   'alungal',
-  'prammal',
+  'parammal',
   'kayanikkara',
   'mariyad',
   'meenamkuzhiyil_south',
   'meenamkuzhiyil_north',
+] as const;
+
+export const allDivisions = [
+  ...divisions,
+  'prammal',
 ] as const;
 
 export const maritalStatuses = ['single', 'married', 'widowed', 'divorced'] as const;
@@ -25,7 +30,7 @@ export const houseSchema = z.object({
     .min(2, 'Mahallu registration number is required (e.g., MHL-ALU-042)')
     .max(100, 'Registration number cannot exceed 100 characters')
     .regex(/^[A-Za-z0-9\-_/]+$/, 'Only letters, numbers, hyphens, slashes allowed'),
-  division: z.enum(divisions, {
+  division: z.enum(allDivisions, {
     message: 'Please select a valid Mahallu division',
   }),
   phone: z

@@ -669,7 +669,10 @@ export const DataService = {
       }
 
       // 2. Insert house into public.houses
-      const { data: insertedHouse, error: houseErr } = await (supabase.from('houses') as any)
+      let insData: any = null;
+      let houseErr: any = null;
+
+      const insRes = await (supabase.from('houses') as any)
         .insert({
           user_id: userId,
           house_name: input.house.house_name.trim(),
@@ -680,6 +683,28 @@ export const DataService = {
         })
         .select()
         .single();
+
+      insData = insRes.data;
+      houseErr = insRes.error;
+
+      // Graceful fallback if database enum has not been migrated to include 'parammal' yet
+      if (houseErr && houseErr.code === '22P02' && input.house.division === 'parammal') {
+        const retryRes = await (supabase.from('houses') as any)
+          .insert({
+            user_id: userId,
+            house_name: input.house.house_name.trim(),
+            house_number: input.house.house_number.trim(),
+            mahallu_reg_no: input.house.mahallu_reg_no.trim(),
+            division: 'prammal',
+            phone: input.house.phone.trim(),
+          })
+          .select()
+          .single();
+        insData = retryRes.data;
+        houseErr = retryRes.error;
+      }
+
+      const insertedHouse = insData;
 
       if (houseErr) {
         console.error('Database house insert error:', houseErr);
@@ -1513,12 +1538,20 @@ export const DataService = {
       }
 
       // 4. If house does NOT exist in Supabase, insert it now with authUserId
-      const validDivisions = ['alungal', 'palam', 'kallam', 'padam', 'angadi'];
+      const validDivisions = [
+        'alungal',
+        'parammal',
+        'prammal',
+        'kayanikkara',
+        'mariyad',
+        'meenamkuzhiyil_south',
+        'meenamkuzhiyil_north',
+      ];
       const rawDiv = (house.division || 'alungal').toLowerCase();
       const safeDivision = validDivisions.includes(rawDiv) ? rawDiv : 'alungal';
       const regNo = house.mahallu_reg_no?.trim() || `MHL-${authUserId.slice(0, 6).toUpperCase()}`;
 
-      const { data: insertedH, error: insErr } = await (supabase.from('houses') as any)
+      let { data: insertedH, error: insErr } = await (supabase.from('houses') as any)
         .insert({
           user_id: authUserId,
           house_name: house.house_name || 'Resident House',
@@ -1530,6 +1563,23 @@ export const DataService = {
         })
         .select('id')
         .maybeSingle();
+
+      if (insErr && insErr.code === '22P02' && safeDivision === 'parammal') {
+        const retry = await (supabase.from('houses') as any)
+          .insert({
+            user_id: authUserId,
+            house_name: house.house_name || 'Resident House',
+            house_number: house.house_number || '1',
+            mahallu_reg_no: regNo,
+            division: 'prammal',
+            phone: house.phone || '9999999999',
+            created_at: house.created_at || new Date().toISOString(),
+          })
+          .select('id')
+          .maybeSingle();
+        insertedH = retry.data;
+        insErr = retry.error;
+      }
 
       if (insertedH?.id) {
         house.id = insertedH.id;
@@ -2214,11 +2264,19 @@ export const DataService = {
         let query = (supabase.from('houses') as any)
           .select('*, profile:profiles(*), family_members(*), payment_dues(*)');
 
-        if (division && division !== 'all') {
-          query = query.eq('division', division);
+        let targetDivision = division;
+        if (targetDivision && targetDivision !== 'all') {
+          query = query.eq('division', targetDivision);
         }
 
-        const { data, error } = await query;
+        let { data, error } = await query;
+        if (error && error.code === '22P02' && targetDivision === 'parammal') {
+          const retry = await (supabase.from('houses') as any)
+            .select('*, profile:profiles(*), family_members(*), payment_dues(*)')
+            .eq('division', 'prammal');
+          data = retry.data;
+          error = retry.error;
+        }
         if (!error && Array.isArray(data)) {
           const result: { house: HouseWithDetails; due: PaymentDue | null }[] = [];
           for (const h of data) {
@@ -2764,9 +2822,9 @@ export const DataService = {
     let totalEmployed = 0;
     let totalAbroad = 0;
 
-    const divisionBreakdown: Record<Division, { houses: number; population: number; label: string }> = {
+    const divisionBreakdown: Record<string, { houses: number; population: number; label: string }> = {
       alungal: { houses: 0, population: 0, label: DIVISION_LABELS.alungal },
-      prammal: { houses: 0, population: 0, label: DIVISION_LABELS.prammal },
+      parammal: { houses: 0, population: 0, label: DIVISION_LABELS.parammal },
       kayanikkara: { houses: 0, population: 0, label: DIVISION_LABELS.kayanikkara },
       mariyad: { houses: 0, population: 0, label: DIVISION_LABELS.mariyad },
       meenamkuzhiyil_south: { houses: 0, population: 0, label: DIVISION_LABELS.meenamkuzhiyil_south },
@@ -2777,9 +2835,10 @@ export const DataService = {
       const pCount = h.family_members?.length || 0;
       totalPopulation += pCount;
 
-      if (divisionBreakdown[h.division]) {
-        divisionBreakdown[h.division].houses++;
-        divisionBreakdown[h.division].population += pCount;
+      const normDiv = h.division === 'prammal' ? 'parammal' : h.division;
+      if (divisionBreakdown[normDiv]) {
+        divisionBreakdown[normDiv].houses++;
+        divisionBreakdown[normDiv].population += pCount;
       }
 
       for (const m of (h.family_members || [])) {

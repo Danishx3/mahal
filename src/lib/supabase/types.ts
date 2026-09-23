@@ -8,28 +8,31 @@ export type Json =
 
 export type Division =
   | 'alungal'
-  | 'prammal'
+  | 'parammal'
   | 'kayanikkara'
   | 'mariyad'
   | 'meenamkuzhiyil_south'
-  | 'meenamkuzhiyil_north';
+  | 'meenamkuzhiyil_north'
+  | 'prammal';
 
 export const DIVISION_LABELS: Record<Division, string> = {
   alungal: 'Alungal',
-  prammal: 'Prammal',
+  parammal: 'Parammal',
   kayanikkara: 'Kayanikkara',
   mariyad: 'Mariyad',
   meenamkuzhiyil_south: 'Meenamkuzhiyil South',
   meenamkuzhiyil_north: 'Meenamkuzhiyil North',
+  prammal: 'Parammal',
 };
 
 export const DIVISION_LABELS_ML: Record<Division, string> = {
   alungal: 'ആലുങ്ങൽ',
-  prammal: 'പറമ്മൽ',
-  kayanikkara: 'കായനിക്കര',
-  mariyad: 'മരിയാട്',
+  parammal: 'പാറമ്മൽ',
+  kayanikkara: 'കയനിക്കര',
+  mariyad: 'മാരിയാട്',
   meenamkuzhiyil_south: 'മീനംകുഴിയിൽ സൗത്ത്',
   meenamkuzhiyil_north: 'മീനംകുഴിയിൽ നോർത്ത്',
+  prammal: 'പാറമ്മൽ',
 };
 
 export type ProfileStatus =

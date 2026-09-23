@@ -200,14 +200,26 @@ export async function PATCH(request: Request) {
 
     if (action === 'approve') {
       // 1. Update house details
-      await (supabase.from('houses') as any)
+      const divToUpdate = target.requested_details.division;
+      const { error: updateHouseErr } = await (supabase.from('houses') as any)
         .update({
           house_name: target.requested_details.house_name,
           house_number: target.requested_details.house_number,
           phone: target.requested_details.phone,
-          division: target.requested_details.division,
+          division: divToUpdate,
         })
         .eq('id', target.house_id);
+
+      if (updateHouseErr && updateHouseErr.code === '22P02' && divToUpdate === 'parammal') {
+        await (supabase.from('houses') as any)
+          .update({
+            house_name: target.requested_details.house_name,
+            house_number: target.requested_details.house_number,
+            phone: target.requested_details.phone,
+            division: 'prammal',
+          })
+          .eq('id', target.house_id);
+      }
 
       // 2. Update family members if requested
       if (target.requested_members && Array.isArray(target.requested_members) && target.requested_members.length > 0) {
