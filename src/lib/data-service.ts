@@ -92,8 +92,9 @@ function calculateDueAmountForMonth(settings: DuesSettings, billingMonth: string
 let memoryHouses: HouseWithDetails[] = [];
 let memoryLedger: FinancialLedger[] = [];
 let memoryProfileUpdates: ProfileUpdateRequest[] = [];
+let memoryMarriageCertificates: MarriageCertificateApplication[] = [];
 
-// One-time purge of legacy local database caches (preserves onboarding draft form key: mahallu_onboarding_draft_v1)
+// Complete purge of any database/census/house/certificate localStorage caches (Supabase is authoritative)
 if (typeof window !== 'undefined') {
   try {
     const keysToRemove: string[] = [];
@@ -104,7 +105,9 @@ if (typeof window !== 'undefined') {
         (key.startsWith('mahallu_houses') ||
           key.startsWith('mahallu_ledger') ||
           key.startsWith('mahallu_auth_session') ||
-          key.startsWith('mahallu_demo_role'))
+          key.startsWith('mahallu_demo_role') ||
+          key.startsWith('mahallu_synced_census') ||
+          key.startsWith('mahallu_marriage_certificates'))
       ) {
         keysToRemove.push(key);
       }
@@ -171,22 +174,34 @@ export function initSupabaseRealtimeSync() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'houses' },
-        () => notifyDataUpdated({ source: 'supabase_houses' })
+        () => {
+          DataService.syncHousesFromSupabase().catch(() => {});
+          notifyDataUpdated({ source: 'supabase_houses' });
+        }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'family_members' },
-        () => notifyDataUpdated({ source: 'supabase_family_members' })
+        () => {
+          DataService.syncHousesFromSupabase().catch(() => {});
+          notifyDataUpdated({ source: 'supabase_family_members' });
+        }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'payment_dues' },
-        () => notifyDataUpdated({ source: 'supabase_payment_dues' })
+        () => {
+          DataService.syncHousesFromSupabase().catch(() => {});
+          notifyDataUpdated({ source: 'supabase_payment_dues' });
+        }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles' },
-        () => notifyDataUpdated({ source: 'supabase_profiles' })
+        () => {
+          DataService.syncHousesFromSupabase().catch(() => {});
+          notifyDataUpdated({ source: 'supabase_profiles' });
+        }
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
@@ -198,27 +213,11 @@ export function initSupabaseRealtimeSync() {
   }
 }
 
-const LIVE_CENSUS_CACHE_KEY = 'mahallu_synced_census_cache_v1';
-
 function hydrateMemoryHouses(): HouseWithDetails[] {
-  if (memoryHouses.length > 0) return memoryHouses;
-  if (typeof window !== 'undefined') {
-    try {
-      const cached = localStorage.getItem(LIVE_CENSUS_CACHE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          memoryHouses = parsed;
-          return memoryHouses;
-        }
-      }
-    } catch {}
-  }
   return memoryHouses;
 }
 
 if (typeof window !== 'undefined') {
-  hydrateMemoryHouses();
   initSupabaseRealtimeSync();
   setTimeout(() => {
     DataService.syncHousesFromSupabase().catch(() => {});
@@ -226,9 +225,6 @@ if (typeof window !== 'undefined') {
 }
 
 function getStoredHouses(): HouseWithDetails[] {
-  if (memoryHouses.length === 0) {
-    hydrateMemoryHouses();
-  }
   return memoryHouses;
 }
 
@@ -241,11 +237,6 @@ function saveStoredHouses(houses: HouseWithDetails[], notify: boolean = true) {
     return h;
   });
   memoryHouses = normalized;
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(LIVE_CENSUS_CACHE_KEY, JSON.stringify(normalized));
-    } catch {}
-  }
   if (notify) {
     notifyDataUpdated();
   }
@@ -418,7 +409,11 @@ export const DataService = {
           .limit(1)
           .maybeSingle();
 
-        if (!error && data) {
+        if (!error) {
+          if (!data) {
+            memoryHouses = memoryHouses.filter((h) => h.user_id !== userId);
+            return null;
+          }
           let prof = Array.isArray(data.profile) ? data.profile[0] : data.profile;
           if (!prof) {
             prof = {
@@ -464,7 +459,11 @@ export const DataService = {
           .eq('id', id)
           .maybeSingle();
 
-        if (!error && data) {
+        if (!error) {
+          if (!data) {
+            memoryHouses = memoryHouses.filter((h) => h.id !== id);
+            return null;
+          }
           let prof = Array.isArray(data.profile) ? data.profile[0] : data.profile;
           const dues = (data.payment_dues || []).sort((a: any, b: any) =>
             b.billing_month.localeCompare(a.billing_month)
@@ -862,50 +861,33 @@ export const DataService = {
   },
 
   async syncHousesFromSupabase(): Promise<HouseWithDetails[]> {
-    if (!hasSupabaseConfig()) return getStoredHouses();
+    if (!hasSupabaseConfig()) return memoryHouses;
     try {
       const supabase = createClient();
       const { data, error } = await (supabase.from('houses') as any)
         .select('*, family_members(*), payment_dues(*), profile:profiles(*)');
 
-      if (!error && Array.isArray(data) && data.length > 0) {
-        const existingHouses = getStoredHouses();
+      if (error) {
+        console.warn('Supabase sync error:', error);
+        return memoryHouses;
+      }
+
+      if (Array.isArray(data)) {
         const mapped: HouseWithDetails[] = data.map((h: any) => {
           let prof = Array.isArray(h.profile) ? h.profile[0] : h.profile;
-          const match = existingHouses.find((eh) => eh.id === h.id || eh.user_id === h.user_id);
           if (!prof && h.user_id) {
-            prof = match?.profile || {
+            prof = {
               id: h.user_id,
-              email: 'resident@mahallu.org',
+              email: h.phone || 'resident@mahallu.org',
               role: 'resident',
               status: 'pending_verification',
               created_at: h.created_at,
             };
           }
-          // Prevent stale Supabase read from reverting a locally approved house
-          if (match?.profile?.status === 'approved' && prof?.status === 'pending_verification') {
-            prof.status = 'approved';
-          }
-          // Preserve local dues if already submitted or verified
-          const remoteDues = h.payment_dues || [];
-          const localDues = match?.payment_dues || [];
-          const mergedDues = [...remoteDues];
-          for (const lDue of localDues) {
-            const idx = mergedDues.findIndex((d) => d.id === lDue.id || d.billing_month === lDue.billing_month);
-            if (idx >= 0) {
-              const rDue = mergedDues[idx];
-              if (
-                (lDue.status === 'verified' && rDue.status !== 'verified') ||
-                (lDue.status === 'under_review' && rDue.status === 'pending') ||
-                (lDue.status === 'failed' && rDue.status !== 'verified') ||
-                (lDue.transaction_ref && !rDue.transaction_ref)
-              ) {
-                mergedDues[idx] = { ...rDue, ...lDue };
-              }
-            } else {
-              mergedDues.push(lDue);
-            }
-          }
+
+          const dues = (h.payment_dues || []).sort((a: any, b: any) =>
+            b.billing_month.localeCompare(a.billing_month)
+          );
 
           return {
             id: h.id,
@@ -918,21 +900,13 @@ export const DataService = {
             created_at: h.created_at,
             profile: prof || undefined,
             family_members: h.family_members || [],
-            payment_dues: mergedDues,
+            payment_dues: dues,
           };
         });
 
-        // Merge to keep any local houses that haven't synced yet
-        const mappedIds = new Set(mapped.map((h) => h.id));
-        const merged = [...mapped];
-        for (const eh of existingHouses) {
-          if (!mappedIds.has(eh.id)) {
-            merged.push(eh);
-          }
-        }
-
-        saveStoredHouses(merged, false);
-        return merged;
+        // Supabase is the single source of truth - direct assignment without resurrecting deleted houses
+        saveStoredHouses(mapped, false);
+        return mapped;
       }
     } catch (err) {
       console.warn('Supabase sync error:', err);
@@ -3305,21 +3279,10 @@ export const DataService = {
   },
 
   getMarriageCertificates(houseId?: string, status?: string): MarriageCertificateApplication[] {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('mahallu_marriage_certificates');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            let list = [...parsed];
-            if (houseId) list = list.filter((m) => m.house_id === houseId);
-            if (status && status !== 'all') list = list.filter((m) => m.status === status);
-            return list.sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
-          }
-        }
-      } catch {}
-    }
-    return [];
+    let list = [...memoryMarriageCertificates];
+    if (houseId) list = list.filter((m) => m.house_id === houseId);
+    if (status && status !== 'all') list = list.filter((m) => m.status === status);
+    return list.sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
   },
 
   getMarriageCertificateById(id: string): MarriageCertificateApplication | null {
@@ -3328,19 +3291,15 @@ export const DataService = {
   },
 
   saveMarriageCertificateLocal(application: MarriageCertificateApplication): MarriageCertificateApplication {
+    const idx = memoryMarriageCertificates.findIndex((m) => m.id === application.id);
+    if (idx >= 0) {
+      memoryMarriageCertificates[idx] = application;
+    } else {
+      memoryMarriageCertificates.unshift(application);
+    }
     if (typeof window !== 'undefined') {
-      try {
-        const all = this.getMarriageCertificates();
-        const idx = all.findIndex((m) => m.id === application.id);
-        if (idx >= 0) {
-          all[idx] = application;
-        } else {
-          all.unshift(application);
-        }
-        localStorage.setItem('mahallu_marriage_certificates', JSON.stringify(all));
-        window.dispatchEvent(new CustomEvent('mahallu_marriage_certs_updated'));
-        window.dispatchEvent(new CustomEvent('mahallu_data_updated'));
-      } catch {}
+      window.dispatchEvent(new CustomEvent('mahallu_marriage_certs_updated'));
+      window.dispatchEvent(new CustomEvent('mahallu_data_updated'));
     }
     return application;
   },
@@ -3355,11 +3314,7 @@ export const DataService = {
       if (res.ok) {
         const data = await res.json();
         if (data.applications && Array.isArray(data.applications)) {
-          if (typeof window !== 'undefined') {
-            try {
-              localStorage.setItem('mahallu_marriage_certificates', JSON.stringify(data.applications));
-            } catch {}
-          }
+          memoryMarriageCertificates = data.applications;
           return data.applications;
         }
       }
