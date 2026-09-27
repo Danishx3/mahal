@@ -23,9 +23,9 @@ export function Footer() {
   const { language } = useLanguage();
   const isMl = language === 'ml';
 
-  // Hide footer on internal admin/dashboard workspaces
-  const hideOnPaths = ['/admin', '/dashboard'];
-  const shouldHide = hideOnPaths.some((p) => pathname.startsWith(p));
+  // Hide footer on internal admin/dashboard workspaces and login page
+  const hideOnPaths = ['/admin', '/dashboard', '/auth/login'];
+  const shouldHide = hideOnPaths.some((p) => pathname?.startsWith(p));
 
   if (shouldHide) return null;
 

@@ -2,9 +2,10 @@
 
 import React, { useState, Suspense } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient, hasSupabaseConfig } from '@/lib/supabase/client';
-import { Landmark, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Landmark, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { useLanguage } from '@/lib/context/LanguageContext';
@@ -62,24 +63,21 @@ function LoginFormContent() {
     <div className="w-full max-w-md bg-white text-slate-900 rounded-3xl shadow-2xl p-6 sm:p-8 border border-slate-100 space-y-6">
       {/* Header */}
       <div className="text-center space-y-3">
-        <div className="h-20 w-20 rounded-2xl overflow-hidden shadow-lg shadow-emerald-900/10 mx-auto ring-2 ring-emerald-600/20 bg-white p-1">
-          <Image
-            src="/logo.jpg"
-            alt="Kunjikkulam Juma Masjid Logo"
-            width={80}
-            height={80}
-            className="w-full h-full object-cover rounded-xl"
-            priority
-          />
-        </div>
+        <Link href="/" className="inline-block group cursor-pointer" title={isMl ? 'പ്രധാന പേജിലേക്ക്' : 'Back to Home'}>
+          <div className="h-20 w-20 rounded-2xl overflow-hidden shadow-lg shadow-emerald-900/10 mx-auto ring-2 ring-emerald-600/20 bg-white p-1 group-hover:scale-105 group-hover:ring-emerald-500/40 transition-all duration-200">
+            <Image
+              src="/logo.jpg"
+              alt="Kunjikkulam Juma Masjid Logo"
+              width={80}
+              height={80}
+              className="w-full h-full object-cover rounded-xl"
+              priority
+            />
+          </div>
+        </Link>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           {isMl ? 'മഹല്ല് പോർട്ടൽ ലോഗിൻ' : 'Mahallu Portal Access'}
         </h1>
-        <p className="text-xs text-slate-500 max-w-sm mx-auto">
-          {isMl
-            ? 'കുടുംബ മാസവരി വിവരങ്ങൾ പരിശോധിക്കാനും അടയ്ക്കാനും അഡ്മിൻ കൺസോൾ ലഭ്യമാക്കാനും ലോഗിൻ ചെയ്യുക.'
-            : 'Sign in to manage your household dues, submit UPI transaction references, or access the administrative console.'}
-        </p>
       </div>
 
       {/* Supabase Configuration Notice (if .env.local not yet configured) */}
@@ -143,11 +141,25 @@ function LoginFormContent() {
 }
 
 export default function LoginPage() {
+  const { language } = useLanguage();
+  const isMl = language === 'ml';
+
   return (
     <div
-      className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-slate-950 text-slate-100"
+      className="flex-1 min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 bg-slate-950 text-slate-100 relative"
       style={{ background: 'linear-gradient(to bottom, #022c22 0%, #0f172a 50%, #020617 100%)' }}
     >
+      {/* Return to Home link */}
+      <div className="w-full max-w-md mb-4 flex justify-between items-center px-1">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-xs font-medium text-emerald-400/80 hover:text-emerald-300 transition-colors py-1.5 px-3 rounded-lg hover:bg-white/5 cursor-pointer"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          {isMl ? 'പ്രധാന പേജിലേക്ക് മടങ്ങുക' : 'Back to Home'}
+        </Link>
+      </div>
+
       <Suspense fallback={<div className="text-slate-400 text-sm">Loading login portal...</div>}>
         <LoginFormContent />
       </Suspense>

@@ -351,37 +351,11 @@ export default function OnboardingPage() {
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-semibold">
                 {isMl ? 'ലോഗിൻ ആവശ്യമാണ്' : 'Sign In Required'}
               </span>
-              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                {isMl ? 'രജിസ്റ്റർ ചെയ്യാൻ ലോഗിൻ ചെയ്യുക' : 'Please Sign In to Register'}
-              </h1>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-                {isMl
-                  ? 'നിങ്ങളുടെ കുടുംബ വിവരങ്ങളും സെൻസസും മഹല്ല് ഡയറക്ടറിയിലേക്ക് സമർപ്പിക്കുന്നതിനായി Google അക്കൗണ്ട് ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യുക.'
-                  : 'To submit your household details and family census to the Mahallu directory, please sign in with your Google account.'}
-              </p>
+
+
             </div>
 
-            {/* Why Sign In with Google */}
-            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-left space-y-2.5">
-              <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                {isMl ? 'എന്തുകൊണ്ട് Google ലോഗിൻ?' : 'Why Google Sign-In is Required:'}
-              </div>
-              <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
-                <li>
-                  <strong className="text-slate-800">{isMl ? 'സുരക്ഷിതമായ ഐഡന്റിറ്റി:' : 'Identity Security:'}</strong>{' '}
-                  {isMl ? 'നിങ്ങളുടെ വീട്ടു വിവരങ്ങൾ Google അക്കൗണ്ടുമായി ബന്ധിപ്പിക്കുന്നു.' : 'Links your house records directly to your verified Google account.'}
-                </li>
-                <li>
-                  <strong className="text-slate-800">{isMl ? 'മാസവരി & രസീതുകൾ:' : 'Dues & Receipts:'}</strong>{' '}
-                  {isMl ? 'മാസവരി വിവരങ്ങളും ഡിജിറ്റൽ രസീതുകളും തത്സമയം ലഭ്യമാക്കുന്നു.' : 'Enables real-time tracking of monthly Mahallu dues and payment receipts.'}
-                </li>
-                <li>
-                  <strong className="text-slate-800">{isMl ? 'കമ്മിറ്റി വെരിഫിക്കേഷൻ:' : 'Verification Updates:'}</strong>{' '}
-                  {isMl ? 'മഹല്ല് ഭാരവാഹികൾക്ക് നിങ്ങളുടെ രേഖകൾ പരിശോധിക്കാൻ സാധിക്കുന്നു.' : 'Allows committee officials to verify your dwelling and family census.'}
-                </li>
-              </ul>
-            </div>
+
 
             {/* Google Sign In Action */}
             <div className="space-y-3 pt-2">

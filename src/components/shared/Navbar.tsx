@@ -255,7 +255,7 @@ export function Navbar() {
   const avatarLetter = (displayName[0] || 'M').toUpperCase();
 
   // Floating Round Bottom Navigation for mobile visitors on public / landing pages
-  const showGlobalRoundBottomNav = !pathname.startsWith('/admin') && !pathname.startsWith('/dashboard');
+  const showGlobalRoundBottomNav = !pathname?.startsWith('/admin') && !pathname?.startsWith('/dashboard') && !pathname?.startsWith('/auth/login');
 
   const globalMobileNav = !user
     ? [
@@ -279,6 +279,11 @@ export function Navbar() {
         { label: isMl ? 'സർട്ടിഫിക്കറ്റ്' : 'Certs', href: '/dashboard/marriage-certificate', icon: FileCheck },
         { label: language === 'ml' ? 'English' : 'മലയാളം', icon: Globe, isAction: true, onClick: toggleLanguage },
       ];
+
+  // Completely hide Navbar on login page
+  if (pathname?.startsWith('/auth/login')) {
+    return null;
+  }
 
   return (
     <>
