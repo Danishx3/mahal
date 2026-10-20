@@ -4,7 +4,6 @@ import { ToastProvider } from '@/components/ui/Toast';
 import { AuthProvider } from '@/lib/context/AuthContext';
 import { LanguageProvider } from '@/lib/context/LanguageContext';
 import { Navbar } from '@/components/shared/Navbar';
-import { Footer } from '@/components/shared/Footer';
 import { TopProgressBar } from '@/components/shared/TopProgressBar';
 import { PwaRegister } from '@/components/shared/PwaRegister';
 import { PushNotificationPrompt } from '@/components/shared/PushNotificationPrompt';
@@ -40,6 +39,9 @@ export const metadata: Metadata = {
       { url: '/icon-192x192.png', sizes: '192x192' },
     ],
   },
+  verification: {
+    google: 'mw_e3OjbUw_umwtkOJyXwUchPkv-Pn7oC2_TV8zQbLE',
+  },
 };
 
 export default function RootLayout({
@@ -50,6 +52,7 @@ export default function RootLayout({
   return (
     <html lang="ml" className="h-full antialiased" suppressHydrationWarning>
       <head>
+        <meta name="google-site-verification" content="mw_e3OjbUw_umwtkOJyXwUchPkv-Pn7oC2_TV8zQbLE" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -67,7 +70,6 @@ export default function RootLayout({
               <TopProgressBar />
               <Navbar />
               <main className="flex-1 flex flex-col">{children}</main>
-              <Footer />
               <PwaRegister />
               <PushNotificationPrompt />
             </ToastProvider>
