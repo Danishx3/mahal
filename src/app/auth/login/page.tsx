@@ -1,14 +1,21 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import Script from 'next/script';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient, hasSupabaseConfig } from '@/lib/supabase/client';
-import { Landmark, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { useLanguage } from '@/lib/context/LanguageContext';
+
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
 
 function LoginFormContent() {
   const router = useRouter();
@@ -19,15 +26,151 @@ function LoginFormContent() {
   const isMl = language === 'ml';
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleSdkReady, setIsGoogleSdkReady] = useState(false);
   const isConfigured = hasSupabaseConfig();
+  const googleButtonRef = useRef<HTMLDivElement>(null);
+  const currentRawNonceRef = useRef<string>('');
 
-  // Production Google OAuth
-  const handleGoogleLogin = async () => {
+  const googleClientId =
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+    '590477167704-op1je997v0q24c64428s9198fa4ktgfn.apps.googleusercontent.com';
+
+  // Helper to generate cryptographic nonce for Google & Supabase
+  const generateNonce = async () => {
+    try {
+      const rawNonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))));
+      const encoder = new TextEncoder();
+      const encodedNonce = encoder.encode(rawNonce);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', encodedNonce);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashedNonce = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+      return { rawNonce, hashedNonce };
+    } catch {
+      return { rawNonce: '', hashedNonce: '' };
+    }
+  };
+
+  // Handle native Google ID token response from Google Identity Services
+  const handleGoogleCredentialResponse = async (response: { credential?: string }) => {
+    if (!response?.credential) return;
+    setIsLoading(true);
+    try {
+      const supabase = createClient();
+      const rawNonce = currentRawNonceRef.current;
+
+      // Authenticate with Supabase using the Google ID token
+      let authResult = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: response.credential,
+        ...(rawNonce ? { nonce: rawNonce } : {}),
+      });
+
+      // If nonce check rejected, retry without nonce in case project has skip_nonce enabled
+      if (authResult.error && rawNonce && authResult.error.message.toLowerCase().includes('nonce')) {
+        authResult = await supabase.auth.signInWithIdToken({
+          provider: 'google',
+          token: response.credential,
+        });
+      }
+
+      if (authResult.error) {
+        toast(authResult.error.message, 'error');
+        return;
+      }
+
+      if (authResult.data?.user) {
+        toast(isMl ? 'വിജയകരമായി ലോഗിൻ ചെയ്തു!' : 'Logged in successfully!', 'success');
+
+        // Check user role and status
+        const { data: profile } = (await supabase
+          .from('profiles')
+          .select('role, status')
+          .eq('id', authResult.data.user.id)
+          .maybeSingle()) as { data: { role?: string; status?: string } | null };
+
+        if (profile?.role === 'admin') {
+          router.push(redirectUrl.startsWith('/admin') ? redirectUrl : '/admin');
+        } else {
+          const { data: house } = (await supabase
+            .from('houses')
+            .select('id')
+            .eq('user_id', authResult.data.user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()) as { data: { id?: string } | null };
+
+          if (house && profile?.status === 'pending_verification') {
+            router.push('/onboarding/pending');
+          } else {
+            router.push(redirectUrl || '/dashboard');
+          }
+        }
+        router.refresh();
+      }
+    } catch (err: any) {
+      toast(
+        err?.message || (isMl ? 'ലോഗിൻ പരാജയപ്പെട്ടു.' : 'Authentication failed. Please check credentials.'),
+        'error'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Initialize Google Identity Services (GIS)
+  const initGoogleSdk = async () => {
+    if (!window.google?.accounts?.id || !googleButtonRef.current) return;
+
+    try {
+      const { rawNonce, hashedNonce } = await generateNonce();
+      currentRawNonceRef.current = rawNonce;
+
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: handleGoogleCredentialResponse,
+        ...(hashedNonce ? { nonce: hashedNonce } : {}),
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+
+      // Render official Google button inside our container
+      googleButtonRef.current.innerHTML = '';
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: 'outline',
+        size: 'large',
+        type: 'standard',
+        shape: 'rectangular',
+        text: 'continue_with',
+        logo_alignment: 'left',
+        width: 320,
+      });
+
+      setIsGoogleSdkReady(true);
+
+      // Trigger One Tap prompt if available
+      try {
+        window.google.accounts.id.prompt();
+      } catch {
+        // One tap prompt can be silently ignored if unsupported
+      }
+    } catch (e) {
+      console.warn('Google SDK init failed, fallback available:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+      initGoogleSdk();
+    }
+  }, [googleClientId]);
+
+  // Fallback OAuth redirect (used if script is blocked or still loading)
+  const handleFallbackOAuthLogin = async () => {
     if (!isConfigured) {
       toast(
         isMl
           ? 'Supabase ക്രെഡൻഷ്യലുകൾ ക്രമീകരിച്ചിട്ടില്ല (.env.local).'
-          : 'Supabase project credentials not configured in .env.local yet. Please add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.',
+          : 'Supabase project credentials not configured in .env.local yet.',
         'info'
       );
       return;
@@ -53,7 +196,7 @@ function LoginFormContent() {
         toast(error.message, 'error');
       }
     } catch (err: any) {
-      toast(err?.message || (isMl ? 'ലോഗിൻ പരാജയപ്പെട്ടു.' : 'Authentication failed. Please check credentials.'), 'error');
+      toast(err?.message || (isMl ? 'ലോഗിൻ പരാജയപ്പെട്ടു.' : 'Authentication failed.'), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -93,34 +236,51 @@ function LoginFormContent() {
         </div>
       )}
 
-      {/* Primary Action: Google OAuth Only */}
+      {/* Primary Action: Google Sign-in */}
       <div className="space-y-4 pt-2">
-        <Button
-          variant="outline"
-          className="w-full py-3.5 h-auto text-slate-800 hover:bg-slate-50 border-slate-300 hover:border-slate-400 font-semibold shadow-sm flex items-center justify-center gap-3 cursor-pointer text-sm rounded-xl transition-all"
-          onClick={handleGoogleLogin}
-          isLoading={isLoading}
-        >
-          <svg className="h-5 w-5" viewBox="0 0 24 24">
-            <path
-              fill="#4285F4"
-              d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.16 0 9.97 0 12s.45 3.84 1.25 5.42l4.03-3.15z"
-            />
-            <path
-              fill="#EA4335"
-              d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-            />
-          </svg>
-          {isMl ? 'Google വഴി തുടരുക' : 'Continue with Google'}
-        </Button>
+        {/* Load Google Identity Services client script */}
+        <Script
+          src="https://accounts.google.com/gsi/client"
+          strategy="afterInteractive"
+          onLoad={() => {
+            initGoogleSdk();
+          }}
+        />
+
+        {/* Official Google Identity Services Button Container (no supabase.co) */}
+        <div className="flex justify-center w-full min-h-[44px]">
+          <div ref={googleButtonRef} className="w-full flex justify-center" />
+        </div>
+
+        {/* Fallback button if Google script is still loading */}
+        {!isGoogleSdkReady && (
+          <Button
+            variant="outline"
+            className="w-full py-3.5 h-auto text-slate-800 hover:bg-slate-50 border-slate-300 hover:border-slate-400 font-semibold shadow-sm flex items-center justify-center gap-3 cursor-pointer text-sm rounded-xl transition-all"
+            onClick={handleFallbackOAuthLogin}
+            isLoading={isLoading}
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.15z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.35 24 12 24z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.16 0 9.97 0 12s.45 3.84 1.25 5.42l4.03-3.15z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+              />
+            </svg>
+            {isMl ? 'Google വഴി തുടരുക' : 'Continue with Google'}
+          </Button>
+        )}
 
         <p className="text-[11px] text-center text-slate-500 leading-relaxed px-2">
           {isMl
