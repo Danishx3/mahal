@@ -279,8 +279,22 @@ export default function OnboardingPage() {
 
     setIsSubmitting(true);
     try {
+      // Ensure under-18 members default to 'single' and 'Student'
+      const sanitizedMembers = data.members.map((m) => {
+        const isMinor = typeof m.age === 'number' && m.age < 18;
+        return {
+          ...m,
+          marital_status: isMinor ? ('single' as const) : (m.marital_status || 'single'),
+          job_status: isMinor ? (m.job_status || 'Student') : (m.job_status || 'Employed'),
+        };
+      });
+
       // Save house and members via DataService with authenticated Supabase user ID and email
-      const newHouse = await DataService.createHouse(data, user.id, user.email || undefined);
+      const newHouse = await DataService.createHouse(
+        { ...data, members: sanitizedMembers as any },
+        user.id,
+        user.email || undefined
+      );
       await refreshProfile();
       // Clear auto-saved draft upon successful submission
       try {
@@ -791,6 +805,9 @@ export default function OnboardingPage() {
               <div className="space-y-6">
                 {fields.map((field, index) => {
                   const isFirst = index === 0;
+                  const memberAge = watchedData?.members?.[index]?.age;
+                  const isUnder18 = typeof memberAge === 'number' && !isNaN(memberAge) && memberAge < 18;
+
                   return (
                     <div
                       key={field.id}
@@ -814,6 +831,11 @@ export default function OnboardingPage() {
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
                               <Crown className="h-3 w-3 text-amber-500" />
                               {isMl ? 'കുടുംബനാഥൻ' : 'Head of Household'}
+                            </span>
+                          )}
+                          {!isFirst && isUnder18 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-semibold border border-blue-200">
+                              {isMl ? 'പ്രായപൂർത്തിയാകാത്തയാൾ (< 18)' : 'Minor (< 18)'}
                             </span>
                           )}
                         </div>
@@ -888,50 +910,61 @@ export default function OnboardingPage() {
                             className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs"
                             {...register(`members.${index}.age` as const, {
                               valueAsNumber: true,
+                              onChange: (e) => {
+                                const newAge = Number(e.target.value);
+                                if (!isNaN(newAge) && newAge < 18) {
+                                  setValue(`members.${index}.marital_status`, 'single');
+                                  setValue(`members.${index}.job_status`, 'Student');
+                                }
+                              },
                             })}
                           />
                         </div>
 
-                        {/* Marital Status */}
-                        <div>
-                          <label className="block font-semibold text-slate-700 mb-1">
-                            {isMl ? 'വിവാഹാവസ്ഥ *' : 'Marital Status *'}
-                          </label>
-                          <select
-                            className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs capitalize"
-                            {...register(`members.${index}.marital_status` as const)}
-                          >
-                            <option value="married">{isMl ? 'വിവാഹിതൻ/വിവാഹിത' : 'Married'}</option>
-                            <option value="single">{isMl ? 'അവിവാഹിതൻ/അവിവാഹിത' : 'Single'}</option>
-                            <option value="widowed">{isMl ? 'വിധവ/വിഭാര്യൻ' : 'Widowed'}</option>
-                            <option value="divorced">{isMl ? 'വിവാഹമോചിതൻ/വിവാഹമോചിത' : 'Divorced'}</option>
-                          </select>
-                        </div>
+                        {/* Marital Status - Only ask if 18 or older */}
+                        {!isUnder18 && (
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1">
+                              {isMl ? 'വിവാഹാവസ്ഥ *' : 'Marital Status *'}
+                            </label>
+                            <select
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs capitalize"
+                              {...register(`members.${index}.marital_status` as const)}
+                            >
+                              <option value="married">{isMl ? 'വിവാഹിതൻ/വിവാഹിത' : 'Married'}</option>
+                              <option value="single">{isMl ? 'അവിവാഹിതൻ/അവിവാഹിത' : 'Single'}</option>
+                              <option value="widowed">{isMl ? 'വിധവ/വിഭാര്യൻ' : 'Widowed'}</option>
+                              <option value="divorced">{isMl ? 'വിവാഹമോചിതൻ/വിവാഹമോചിത' : 'Divorced'}</option>
+                            </select>
+                          </div>
+                        )}
 
-                        {/* Employment Status */}
-                        <div>
-                          <label className="block font-semibold text-slate-700 mb-1">
-                            {isMl ? 'തൊഴിൽ / ജോലി *' : 'Job / Employment *'}
-                          </label>
-                          <select
-                            className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs"
-                            {...register(`members.${index}.job_status` as const)}
-                          >
-                            <option value="Employed">{isMl ? 'ജോലി (self)' : 'Employed (self)'}</option>
-                            <option value="Business">{isMl ? 'ബിസിനസ്സ് / വ്യാപാരം' : 'Business / Trade'}</option>
-                            <option value="Government">{isMl ? 'ഗവൺമെൻ്റ് ജോലി' : 'Government Job'}</option>
-                            <option value="Abroad">{isMl ? 'പ്രവാസി (NRI)' : 'Abroad / NRI'}</option>
-                            <option value="Homemaker">{isMl ? 'വീട്ടമ്മ' : 'Homemaker'}</option>
-                            <option value="Student">{isMl ? 'വിദ്യാർത്ഥി' : 'Student'}</option>
-                            <option value="Agriculture">{isMl ? 'കൃഷി' : 'Agriculture'}</option>
-                            <option value="Retired">{isMl ? 'വിരമിച്ചു' : 'Retired'}</option>
-                            <option value="Unemployed">{isMl ? 'തൊഴിൽരഹിതൻ' : 'Unemployed'}</option>
-                            <option value="Other">{isMl ? 'മറ്റുള്ളവ' : 'Other'}</option>
-                          </select>
-                        </div>
+                        {/* Employment Status - Only ask if 18 or older */}
+                        {!isUnder18 && (
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1">
+                              {isMl ? 'തൊഴിൽ / ജോലി *' : 'Job / Employment *'}
+                            </label>
+                            <select
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 text-xs"
+                              {...register(`members.${index}.job_status` as const)}
+                            >
+                              <option value="Employed">{isMl ? 'ജോലി (self)' : 'Employed (self)'}</option>
+                              <option value="Business">{isMl ? 'ബിസിനസ്സ് / വ്യാപാരം' : 'Business / Trade'}</option>
+                              <option value="Government">{isMl ? 'ഗവൺമെൻ്റ് ജോലി' : 'Government Job'}</option>
+                              <option value="Abroad">{isMl ? 'പ്രവാസി (NRI)' : 'Abroad / NRI'}</option>
+                              <option value="Homemaker">{isMl ? 'വീട്ടമ്മ' : 'Homemaker'}</option>
+                              <option value="Student">{isMl ? 'വിദ്യാർത്ഥി' : 'Student'}</option>
+                              <option value="Agriculture">{isMl ? 'കൃഷി' : 'Agriculture'}</option>
+                              <option value="Retired">{isMl ? 'വിരമിച്ചു' : 'Retired'}</option>
+                              <option value="Unemployed">{isMl ? 'തൊഴിൽരഹിതൻ' : 'Unemployed'}</option>
+                              <option value="Other">{isMl ? 'മറ്റുള്ളവ' : 'Other'}</option>
+                            </select>
+                          </div>
+                        )}
 
                         {/* General Education */}
-                        <div>
+                        <div className={isUnder18 ? 'sm:col-span-1' : ''}>
                           <label className="block font-semibold text-slate-700 mb-1">
                             {isMl ? 'പൊതു വിദ്യാഭ്യാസം *' : 'General Education *'}
                           </label>
@@ -1112,7 +1145,9 @@ export default function OnboardingPage() {
                           </td>
                           <td className="p-3 text-slate-700">{m.relationship}</td>
                           <td className="p-3 text-slate-700">{m.age}</td>
-                          <td className="p-3 text-slate-700">{m.job_status}</td>
+                          <td className="p-3 text-slate-700">
+                            {typeof m.age === 'number' && m.age < 18 ? '—' : (m.job_status || '—')}
+                          </td>
                           <td className="p-3 text-slate-700">{m.general_education}</td>
                           <td className="p-3 text-slate-700">{m.religious_education}</td>
                         </tr>

@@ -1325,55 +1325,60 @@ export default function ResidentDashboard() {
                             min={0}
                             max={125}
                             value={member.age ?? ''}
-                            onChange={(e) =>
-                              handleUpdateMember(
-                                index,
-                                'age',
-                                e.target.value === '' ? null : Number(e.target.value)
-                              )
-                            }
+                            onChange={(e) => {
+                              const newAge = e.target.value === '' ? null : Number(e.target.value);
+                              handleUpdateMember(index, 'age', newAge);
+                              if (newAge !== null && newAge < 18) {
+                                handleUpdateMember(index, 'marital_status', 'single');
+                                handleUpdateMember(index, 'job_status', 'Student');
+                              }
+                            }}
                             placeholder="e.g. 35"
                             className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-emerald-600 focus:outline-none"
                           />
                         </div>
 
-                        {/* Marital Status */}
-                        <div>
-                          <label className="block font-semibold text-slate-700 mb-1">
-                            {isMl ? 'വിവാഹാവസ്ഥ *' : 'Marital Status *'}
-                          </label>
-                          <select
-                            value={member.marital_status}
-                            onChange={(e) =>
-                              handleUpdateMember(index, 'marital_status', e.target.value as MaritalStatus)
-                            }
-                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                          >
-                            {MARITAL_STATUS_OPTIONS.map((ms) => (
-                              <option key={ms.value} value={ms.value}>
-                                {isMl ? ms.labelMl : ms.labelEn}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                        {/* Marital Status - only if 18 or older */}
+                        {!(typeof member.age === 'number' && member.age < 18) && (
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1">
+                              {isMl ? 'വിവാഹാവസ്ഥ *' : 'Marital Status *'}
+                            </label>
+                            <select
+                              value={member.marital_status}
+                              onChange={(e) =>
+                                handleUpdateMember(index, 'marital_status', e.target.value as MaritalStatus)
+                              }
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                            >
+                              {MARITAL_STATUS_OPTIONS.map((ms) => (
+                                <option key={ms.value} value={ms.value}>
+                                 {isMl ? ms.labelMl : ms.labelEn}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
 
-                        {/* Employment Status */}
-                        <div>
-                          <label className="block font-semibold text-slate-700 mb-1">
-                            {isMl ? 'തൊഴിൽ / ജോലി *' : 'Job / Employment *'}
-                          </label>
-                          <select
-                            value={member.job_status}
-                            onChange={(e) => handleUpdateMember(index, 'job_status', e.target.value)}
-                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
-                          >
-                            {JOB_STATUS_OPTIONS.map((job) => (
-                              <option key={job.value} value={job.value}>
-                                {isMl ? job.labelMl : job.labelEn}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                        {/* Employment Status - only if 18 or older */}
+                        {!(typeof member.age === 'number' && member.age < 18) && (
+                          <div>
+                            <label className="block font-semibold text-slate-700 mb-1">
+                              {isMl ? 'തൊഴിൽ / ജോലി *' : 'Job / Employment *'}
+                            </label>
+                            <select
+                              value={member.job_status}
+                              onChange={(e) => handleUpdateMember(index, 'job_status', e.target.value)}
+                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                            >
+                              {JOB_STATUS_OPTIONS.map((job) => (
+                                <option key={job.value} value={job.value}>
+                                  {isMl ? job.labelMl : job.labelEn}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
 
                         {/* General Education */}
                         <div>

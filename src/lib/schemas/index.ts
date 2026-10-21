@@ -39,34 +39,53 @@ export const houseSchema = z.object({
     .max(20, 'Phone number cannot exceed 20 characters'),
 });
 
-export const familyMemberSchema = z.object({
-  name: z
-    .string()
-    .min(2, 'Member name must be at least 2 characters')
-    .max(100, 'Member name cannot exceed 100 characters'),
-  is_head_of_family: z.boolean(),
-  relationship: z
-    .string()
-    .min(2, 'Relationship is required (e.g., Self, Wife, Son, Mother)'),
-  marital_status: z.enum(maritalStatuses, {
-    message: 'Please select a marital status',
-  }),
-  job_status: z
-    .string()
-    .min(2, 'Employment status is required (e.g., Employed, Business, Abroad, Student, Homemaker)'),
-  general_education: z
-    .string()
-    .min(2, 'General education is required (e.g., SSLC, Plus Two, Degree, PG)'),
-  religious_education: z
-    .string()
-    .min(2, 'Religious education is required (e.g., Madrasa 10th, Dars, Scholar)'),
-  age: z
-    .number()
-    .int('Age must be an integer')
-    .min(0, 'Age cannot be negative')
-    .max(130, 'Please enter a realistic age'),
-  phone: z.string().optional().or(z.literal('')),
-});
+export const familyMemberSchema = z
+  .object({
+    name: z
+      .string()
+      .min(2, 'Member name must be at least 2 characters')
+      .max(100, 'Member name cannot exceed 100 characters'),
+    is_head_of_family: z.boolean(),
+    relationship: z
+      .string()
+      .min(2, 'Relationship is required (e.g., Self, Wife, Son, Mother)'),
+    marital_status: z.enum(maritalStatuses).optional().default('single'),
+    job_status: z
+      .string()
+      .optional()
+      .default('Student'),
+    general_education: z
+      .string()
+      .min(1, 'General education is required'),
+    religious_education: z
+      .string()
+      .min(1, 'Religious education is required'),
+    age: z
+      .number()
+      .int('Age must be an integer')
+      .min(0, 'Age cannot be negative')
+      .max(130, 'Please enter a realistic age'),
+    phone: z.string().optional().or(z.literal('')),
+  })
+  .superRefine((data, ctx) => {
+    // Only require marital status and job if age is 18 or above
+    if (typeof data.age === 'number' && data.age >= 18) {
+      if (!data.marital_status || !maritalStatuses.includes(data.marital_status as any)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['marital_status'],
+          message: 'Please select a marital status',
+        });
+      }
+      if (!data.job_status || data.job_status.trim().length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['job_status'],
+          message: 'Employment status is required for adults (18+)',
+        });
+      }
+    }
+  });
 
 export const onboardingSchema = z.object({
   house: houseSchema,
