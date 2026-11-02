@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Clock, RefreshCw, Landmark } from 'lucide-react';
+import { Clock, RefreshCw, Landmark, ArrowLeft, LogOut, Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { DataService } from '@/lib/data-service';
 import { Button } from '@/components/ui/Button';
@@ -12,13 +13,19 @@ import { useLanguage } from '@/lib/context/LanguageContext';
 export default function PendingVerificationPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, profile, house, isApproved, refreshProfile } = useAuth();
+  const { user, profile, house, isApproved, isLoading, refreshProfile, signOut } = useAuth();
   const { language } = useLanguage();
   const isMl = language === 'ml';
   const [isChecking, setIsChecking] = useState(false);
 
   const effectiveHouse = house || (user ? DataService.getHouseByUserId(user.id) : null);
   const effectiveIsApproved = isApproved || profile?.status === 'approved' || (effectiveHouse as any)?.profile?.status === 'approved';
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push('/auth/login?redirect=/onboarding/pending');
+    }
+  }, [user, isLoading, router]);
 
   useEffect(() => {
     if (effectiveIsApproved) {
@@ -47,8 +54,37 @@ export default function PendingVerificationPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex-1 min-h-[75vh] flex flex-col items-center justify-center space-y-4 bg-slate-50">
+        <div className="h-14 w-14 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-700 shadow-xs">
+          <Loader2 className="h-7 w-7 animate-spin" />
+        </div>
+        <div className="text-center space-y-1">
+          <p className="text-sm font-bold text-slate-800">{isMl ? 'അക്കൗണ്ട് വിവരങ്ങൾ പരിശോധിക്കുന്നു...' : 'Checking Account Status'}</p>
+          <p className="text-xs text-slate-400">{isMl ? 'ദയവായി കാത്തിരിക്കുക...' : 'Verifying verification status...'}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex-1 flex items-center justify-center p-4 sm:p-8 bg-slate-50">
+    <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 bg-slate-50 min-h-[85vh]">
+      <div className="max-w-xl w-full mb-4 flex justify-between items-center px-1">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors py-1 px-2.5 rounded-lg hover:bg-slate-200/60 cursor-pointer"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          {isMl ? 'ഹോം പേജിലേക്ക്' : 'Return to Home'}
+        </Link>
+        {user?.email && (
+          <span className="text-[11px] text-slate-400">
+            {user.email}
+          </span>
+        )}
+      </div>
+
       <div className="max-w-xl w-full bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-10 text-center space-y-6">
         {/* Animated Clock / Pending Icon */}
         <div className="relative mx-auto w-20 h-20">
@@ -79,9 +115,8 @@ export default function PendingVerificationPage() {
           </p>
         </div>
 
-
         {/* Action Controls */}
-        <div className="pt-2 flex items-center justify-center">
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Button
             variant="outline"
             onClick={handleCheckStatus}
@@ -90,6 +125,15 @@ export default function PendingVerificationPage() {
           >
             <RefreshCw className="h-4 w-4" />
             <span>{isMl ? 'സ്റ്റാറ്റസ് പരിശോധിക്കുക' : 'Check Verification Status'}</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            onClick={() => signOut()}
+            className="w-full sm:w-auto text-slate-500 hover:text-rose-600 gap-1.5 cursor-pointer text-xs"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span>{isMl ? 'മറ്റൊരു അക്കൗണ്ടിലേക്ക് മാറുക' : 'Switch Account'}</span>
           </Button>
         </div>
       </div>
